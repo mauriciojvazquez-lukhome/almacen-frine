@@ -1262,6 +1262,169 @@ app.get("/api/reportes/caja/:caja_sesion_id", async (req, res) => {
   }
 });
 
+// ==========================================
+// DASHBOARD INICIO PRO
+// ==========================================
+app.get("/api/dashboard/inicio-pro", async (req, res) => {
+  try {
+    const resumenResult = await pool.query(`
+      SELECT
+        COALESCE(SUM(total), 0) AS ventas_hoy,
+        COUNT(*) AS cantidad_ventas_hoy
+      FROM ventas
+      WHERE DATE(fecha) = CURRENT_DATE
+    `);
+
+    const topProductosResult = await pool.query(`
+      SELECT
+        p.nombre,
+        COALESCE(SUM(vd.cantidad), 0) AS cantidad_vendida,
+        COALESCE(SUM(vd.subtotal), 0) AS total_vendido
+      FROM ventas_detalle vd
+      INNER JOIN productos p ON p.id = vd.producto_id
+      GROUP BY p.id, p.nombre
+      ORDER BY total_vendido DESC
+      LIMIT 5
+    `);
+
+    const ventas7DiasResult = await pool.query(`
+      SELECT
+        TO_CHAR(DATE(fecha), 'DD/MM') AS dia,
+        DATE(fecha) AS fecha_real,
+        COALESCE(SUM(total), 0) AS total
+      FROM ventas
+      WHERE fecha >= CURRENT_DATE - INTERVAL '6 days'
+      GROUP BY DATE(fecha)
+      ORDER BY DATE(fecha) ASC
+    `);
+
+    const ultimasVentasResult = await pool.query(`
+      SELECT
+        v.id,
+        v.fecha,
+        v.total,
+        v.forma_pago,
+        e.nombre AS empleado_nombre
+      FROM ventas v
+      LEFT JOIN empleados e ON e.id = v.empleado_id
+      ORDER BY v.id DESC
+      LIMIT 6
+    `);
+
+    const stockBajoResult = await pool.query(`
+      SELECT
+        nombre,
+        stock_actual,
+        stock_minimo
+      FROM productos
+      WHERE activo = true
+        AND stock_actual <= stock_minimo
+      ORDER BY nombre ASC
+      LIMIT 5
+    `);
+
+    const productosSinCodigoResult = await pool.query(`
+      SELECT COUNT(*) AS cantidad
+      FROM productos
+      WHERE activo = true
+        AND (codigo_barras IS NULL OR TRIM(codigo_barras) = '')
+    `);
+
+    const productosSinPluResult = await pool.query(`
+      SELECT COUNT(*) AS cantidad
+      FROM productos
+      WHERE activo = true
+        AND tipo_venta = 'peso'
+        AND (plu IS NULL OR TRIM(plu) = '')
+    `);
+
+    const cajaAbierta = await buscarCajaAbierta();
+
+    const movimientosCajaResult = cajaAbierta
+      ? await pool.query(
+          `
+          SELECT
+            tipo,
+            monto,
+            motivo,
+            fecha
+          FROM caja_movimientos
+          WHERE caja_sesion_id = $1
+          ORDER BY id DESC
+          LIMIT 6
+          `,
+          [cajaAbierta.id]
+        )
+      : { rows: [] };
+
+    const resumen = resumenResult.rows[0];
+
+    const promedioTicket =
+      Number(resumen.cantidad_ventas_hoy || 0) > 0
+        ? Number(resumen.ventas_hoy || 0) / Number(resumen.cantidad_ventas_hoy || 0)
+        : 0;
+
+    const alertas = [];
+
+    if (!cajaAbierta) {
+      alertas.push("La caja está cerrada.");
+    }
+
+    if (stockBajoResult.rows.length > 0) {
+      alertas.push(`Hay ${stockBajoResult.rows.length} productos con stock bajo.`);
+    }
+
+    if (Number(productosSinCodigoResult.rows[0].cantidad || 0) > 0) {
+      alertas.push(`Hay ${productosSinCodigoResult.rows[0].cantidad} productos sin código de barras.`);
+    }
+
+    if (Number(productosSinPluResult.rows[0].cantidad || 0) > 0) {
+      alertas.push(`Hay ${productosSinPluResult.rows[0].cantidad} productos por peso sin PLU.`);
+    }
+
+    res.json({
+      resumen: {
+        ventas_hoy: Number(resumen.ventas_hoy || 0),
+        cantidad_ventas_hoy: Number(resumen.cantidad_ventas_hoy || 0),
+        promedio_ticket: Number(promedioTicket || 0),
+        caja_abierta: cajaAbierta,
+        productos_bajo_stock: stockBajoResult.rows.length
+      },
+      ventas_7_dias: ventas7DiasResult.rows.map(r => ({
+        dia: r.dia,
+        total: Number(r.total || 0)
+      })),
+      top_productos: topProductosResult.rows.map(r => ({
+        nombre: r.nombre,
+        cantidad_vendida: Number(r.cantidad_vendida || 0),
+        total_vendido: Number(r.total_vendido || 0)
+      })),
+      ultimas_ventas: ultimasVentasResult.rows.map(r => ({
+        id: r.id,
+        fecha: r.fecha,
+        total: Number(r.total || 0),
+        forma_pago: r.forma_pago,
+        empleado_nombre: r.empleado_nombre || "-"
+      })),
+      movimientos_caja: movimientosCajaResult.rows.map(r => ({
+        tipo: r.tipo,
+        monto: Number(r.monto || 0),
+        motivo: r.motivo || "",
+        fecha: r.fecha
+      })),
+      stock_bajo: stockBajoResult.rows.map(r => ({
+        nombre: r.nombre,
+        stock_actual: Number(r.stock_actual || 0),
+        stock_minimo: Number(r.stock_minimo || 0)
+      })),
+      alertas
+    });
+  } catch (error) {
+    console.error("Error dashboard inicio pro:", error);
+    res.status(500).json({ error: "Error al cargar dashboard del inicio" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor Almacén Frine corriendo en puerto ${PORT}`);
 });
