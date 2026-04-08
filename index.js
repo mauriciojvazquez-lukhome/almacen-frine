@@ -14,12 +14,15 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("."));
 
-function normalizarNumero(valor, decimales = 2) {
-  const num = Number(valor || 0);
-  return Number(num.toFixed(decimales));
+function n2(valor) {
+  return Number(Number(valor || 0).toFixed(2));
 }
 
-function esTextoVacio(valor) {
+function n3(valor) {
+  return Number(Number(valor || 0).toFixed(3));
+}
+
+function vacio(valor) {
   return valor === undefined || valor === null || String(valor).trim() === "";
 }
 
@@ -32,6 +35,18 @@ async function buscarCajaAbierta() {
     LIMIT 1
   `);
   return result.rows[0] || null;
+}
+
+function permisosDesdeBody(body = {}) {
+  return {
+    puede_inicio: body.puede_inicio === true,
+    puede_ventas: body.puede_ventas === true,
+    puede_productos: body.puede_productos === true,
+    puede_compras: body.puede_compras === true,
+    puede_caja: body.puede_caja === true,
+    puede_reportes: body.puede_reportes === true,
+    puede_configuracion: body.puede_configuracion === true
+  };
 }
 
 app.get("/", (req, res) => {
@@ -56,13 +71,25 @@ app.post("/api/login", async (req, res) => {
   try {
     const { usuario, password } = req.body;
 
-    if (esTextoVacio(usuario) || esTextoVacio(password)) {
+    if (vacio(usuario) || vacio(password)) {
       return res.status(400).json({ error: "Usuario y contraseña son obligatorios" });
     }
 
     const result = await pool.query(
       `
-      SELECT id, nombre, usuario, rol, activo
+      SELECT
+        id,
+        nombre,
+        usuario,
+        rol,
+        activo,
+        puede_inicio,
+        puede_ventas,
+        puede_productos,
+        puede_compras,
+        puede_caja,
+        puede_reportes,
+        puede_configuracion
       FROM empleados
       WHERE usuario = $1
         AND password = $2
@@ -83,13 +110,32 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+
+// ==========================================
+// EMPLEADOS / CONFIGURACION
+// ==========================================
 app.get("/api/empleados", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, nombre, usuario, rol, activo, created_at
+      SELECT
+        id,
+        nombre,
+        usuario,
+        password,
+        rol,
+        activo,
+        puede_inicio,
+        puede_ventas,
+        puede_productos,
+        puede_compras,
+        puede_caja,
+        puede_reportes,
+        puede_configuracion,
+        created_at
       FROM empleados
       ORDER BY nombre ASC
     `);
+
     res.json(result.rows);
   } catch (error) {
     console.error("Error empleados:", error);
@@ -97,25 +143,100 @@ app.get("/api/empleados", async (req, res) => {
   }
 });
 
+app.get("/api/empleados/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+      SELECT
+        id,
+        nombre,
+        usuario,
+        password,
+        rol,
+        activo,
+        puede_inicio,
+        puede_ventas,
+        puede_productos,
+        puede_compras,
+        puede_caja,
+        puede_reportes,
+        puede_configuracion,
+        created_at
+      FROM empleados
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Empleado no encontrado" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error empleado por id:", error);
+    res.status(500).json({ error: "Error al obtener empleado" });
+  }
+});
+
 app.post("/api/empleados", async (req, res) => {
   try {
-    const { nombre, usuario, password, rol } = req.body;
+    const { nombre, usuario, password, rol, activo } = req.body;
+    const permisos = permisosDesdeBody(req.body);
 
-    if (esTextoVacio(nombre) || esTextoVacio(usuario) || esTextoVacio(password)) {
+    if (vacio(nombre) || vacio(usuario) || vacio(password)) {
       return res.status(400).json({ error: "Nombre, usuario y contraseña son obligatorios" });
     }
 
     const result = await pool.query(
       `
-      INSERT INTO empleados (nombre, usuario, password, rol)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id, nombre, usuario, rol, activo, created_at
+      INSERT INTO empleados (
+        nombre,
+        usuario,
+        password,
+        rol,
+        activo,
+        puede_inicio,
+        puede_ventas,
+        puede_productos,
+        puede_compras,
+        puede_caja,
+        puede_reportes,
+        puede_configuracion
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      RETURNING
+        id,
+        nombre,
+        usuario,
+        password,
+        rol,
+        activo,
+        puede_inicio,
+        puede_ventas,
+        puede_productos,
+        puede_compras,
+        puede_caja,
+        puede_reportes,
+        puede_configuracion,
+        created_at
       `,
       [
         String(nombre).trim(),
         String(usuario).trim(),
         String(password).trim(),
-        esTextoVacio(rol) ? "cajero" : String(rol).trim()
+        vacio(rol) ? "cajero" : String(rol).trim(),
+        activo === false ? false : true,
+        permisos.puede_inicio,
+        permisos.puede_ventas,
+        permisos.puede_productos,
+        permisos.puede_compras,
+        permisos.puede_caja,
+        permisos.puede_reportes,
+        permisos.puede_configuracion
       ]
     );
 
@@ -123,6 +244,77 @@ app.post("/api/empleados", async (req, res) => {
   } catch (error) {
     console.error("Error crear empleado:", error);
     res.status(500).json({ error: "Error al crear empleado" });
+  }
+});
+
+app.put("/api/empleados/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, usuario, password, rol, activo } = req.body;
+    const permisos = permisosDesdeBody(req.body);
+
+    if (vacio(nombre) || vacio(usuario) || vacio(password)) {
+      return res.status(400).json({ error: "Nombre, usuario y contraseña son obligatorios" });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE empleados
+      SET
+        nombre = $1,
+        usuario = $2,
+        password = $3,
+        rol = $4,
+        activo = $5,
+        puede_inicio = $6,
+        puede_ventas = $7,
+        puede_productos = $8,
+        puede_compras = $9,
+        puede_caja = $10,
+        puede_reportes = $11,
+        puede_configuracion = $12
+      WHERE id = $13
+      RETURNING
+        id,
+        nombre,
+        usuario,
+        password,
+        rol,
+        activo,
+        puede_inicio,
+        puede_ventas,
+        puede_productos,
+        puede_compras,
+        puede_caja,
+        puede_reportes,
+        puede_configuracion,
+        created_at
+      `,
+      [
+        String(nombre).trim(),
+        String(usuario).trim(),
+        String(password).trim(),
+        vacio(rol) ? "cajero" : String(rol).trim(),
+        activo === false ? false : true,
+        permisos.puede_inicio,
+        permisos.puede_ventas,
+        permisos.puede_productos,
+        permisos.puede_compras,
+        permisos.puede_caja,
+        permisos.puede_reportes,
+        permisos.puede_configuracion,
+        id
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Empleado no encontrado" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error editar empleado:", error);
+    res.status(500).json({ error: "Error al editar empleado" });
   }
 });
 
@@ -149,7 +341,7 @@ app.post("/api/categorias", async (req, res) => {
   try {
     const { nombre } = req.body;
 
-    if (esTextoVacio(nombre)) {
+    if (vacio(nombre)) {
       return res.status(400).json({ error: "El nombre es obligatorio" });
     }
 
@@ -192,7 +384,7 @@ app.post("/api/proveedores", async (req, res) => {
   try {
     const { nombre, telefono, direccion, observaciones } = req.body;
 
-    if (esTextoVacio(nombre)) {
+    if (vacio(nombre)) {
       return res.status(400).json({ error: "El nombre del proveedor es obligatorio" });
     }
 
@@ -337,7 +529,7 @@ app.post("/api/productos", async (req, res) => {
       permite_decimal
     } = req.body;
 
-    if (esTextoVacio(nombre)) {
+    if (vacio(nombre)) {
       return res.status(400).json({ error: "El nombre es obligatorio" });
     }
 
@@ -362,16 +554,16 @@ app.post("/api/productos", async (req, res) => {
       RETURNING *
       `,
       [
-        esTextoVacio(codigo_barras) ? null : String(codigo_barras).trim(),
-        esTextoVacio(plu) ? null : String(plu).trim(),
+        vacio(codigo_barras) ? null : String(codigo_barras).trim(),
+        vacio(plu) ? null : String(plu).trim(),
         String(nombre).trim(),
         categoria_id || null,
         tipo,
-        normalizarNumero(costo, 2),
-        normalizarNumero(porcentaje_ganancia, 2),
-        normalizarNumero(precio_venta, 2),
-        tipo === "peso" ? normalizarNumero(stock_actual, 3) : normalizarNumero(stock_actual, 3),
-        tipo === "peso" ? normalizarNumero(stock_minimo, 3) : normalizarNumero(stock_minimo, 3),
+        n2(costo),
+        n2(porcentaje_ganancia),
+        n2(precio_venta),
+        n3(stock_actual),
+        n3(stock_minimo),
         Boolean(permite_decimal)
       ]
     );
@@ -400,7 +592,7 @@ app.put("/api/productos/:id", async (req, res) => {
       activo
     } = req.body;
 
-    if (esTextoVacio(nombre)) {
+    if (vacio(nombre)) {
       return res.status(400).json({ error: "El nombre es obligatorio" });
     }
 
@@ -426,15 +618,15 @@ app.put("/api/productos/:id", async (req, res) => {
       RETURNING *
       `,
       [
-        esTextoVacio(codigo_barras) ? null : String(codigo_barras).trim(),
-        esTextoVacio(plu) ? null : String(plu).trim(),
+        vacio(codigo_barras) ? null : String(codigo_barras).trim(),
+        vacio(plu) ? null : String(plu).trim(),
         String(nombre).trim(),
         categoria_id || null,
         tipo,
-        normalizarNumero(costo, 2),
-        normalizarNumero(porcentaje_ganancia, 2),
-        normalizarNumero(precio_venta, 2),
-        normalizarNumero(stock_minimo, 3),
+        n2(costo),
+        n2(porcentaje_ganancia),
+        n2(precio_venta),
+        n3(stock_minimo),
         Boolean(permite_decimal),
         activo === false ? false : true,
         id
@@ -489,10 +681,7 @@ app.post("/api/compras", async (req, res) => {
     await client.query("BEGIN");
 
     let totalCompra = 0;
-
-    for (const item of items) {
-      totalCompra += normalizarNumero(item.subtotal, 2);
-    }
+    for (const item of items) totalCompra += n2(item.subtotal);
 
     const compraResult = await client.query(
       `
@@ -504,7 +693,7 @@ app.post("/api/compras", async (req, res) => {
         proveedor_id || null,
         empleado_id || null,
         observaciones || "",
-        normalizarNumero(totalCompra, 2)
+        n2(totalCompra)
       ]
     );
 
@@ -512,9 +701,9 @@ app.post("/api/compras", async (req, res) => {
 
     for (const item of items) {
       const productoId = item.producto_id;
-      const cantidad = normalizarNumero(item.cantidad, 3);
-      const costoUnitario = normalizarNumero(item.costo_unitario, 2);
-      const subtotal = normalizarNumero(item.subtotal, 2);
+      const cantidad = n3(item.cantidad);
+      const costoUnitario = n2(item.costo_unitario);
+      const subtotal = n2(item.subtotal);
 
       await client.query(
         `
@@ -597,11 +786,7 @@ app.post("/api/caja/abrir", async (req, res) => {
       VALUES ($1, $2, $3)
       RETURNING *
       `,
-      [
-        empleado_id || null,
-        normalizarNumero(monto_inicial, 2),
-        observaciones || ""
-      ]
+      [empleado_id || null, n2(monto_inicial), observaciones || ""]
     );
 
     const caja = result.rows[0];
@@ -611,7 +796,7 @@ app.post("/api/caja/abrir", async (req, res) => {
       INSERT INTO caja_movimientos (caja_sesion_id, tipo, monto, motivo, empleado_id)
       VALUES ($1, 'apertura', $2, $3, $4)
       `,
-      [caja.id, normalizarNumero(monto_inicial, 2), "Apertura de caja", empleado_id || null]
+      [caja.id, n2(monto_inicial), "Apertura de caja", empleado_id || null]
     );
 
     await client.query("COMMIT");
@@ -643,13 +828,7 @@ app.post("/api/caja/movimiento", async (req, res) => {
       VALUES ($1, $2, $3, $4, $5)
       RETURNING *
       `,
-      [
-        caja_sesion_id,
-        tipo,
-        normalizarNumero(monto, 2),
-        motivo || "",
-        empleado_id || null
-      ]
+      [caja_sesion_id, tipo, n2(monto), motivo || "", empleado_id || null]
     );
 
     res.json(result.rows[0]);
@@ -710,8 +889,6 @@ app.post("/api/caja/cerrar", async (req, res) => {
       return res.status(404).json({ error: "Caja no encontrada" });
     }
 
-    const caja = cajaResult.rows[0];
-
     const movimientosResult = await client.query(
       `
       SELECT
@@ -728,9 +905,9 @@ app.post("/api/caja/cerrar", async (req, res) => {
       [caja_sesion_id]
     );
 
-    const saldoSistema = normalizarNumero(movimientosResult.rows[0].saldo_sistema, 2);
-    const efectivoReal = normalizarNumero(efectivo_real, 2);
-    const diferencia = normalizarNumero(efectivoReal - saldoSistema, 2);
+    const saldoSistema = n2(movimientosResult.rows[0].saldo_sistema);
+    const efectivoReal = n2(efectivo_real);
+    const diferencia = n2(efectivoReal - saldoSistema);
 
     const updateResult = await client.query(
       `
@@ -759,12 +936,7 @@ app.post("/api/caja/cerrar", async (req, res) => {
       INSERT INTO caja_movimientos (caja_sesion_id, tipo, monto, motivo, empleado_id)
       VALUES ($1, 'cierre', $2, $3, $4)
       `,
-      [
-        caja_sesion_id,
-        efectivoReal,
-        "Cierre de caja",
-        empleado_cierre_id || null
-      ]
+      [caja_sesion_id, efectivoReal, "Cierre de caja", empleado_cierre_id || null]
     );
 
     await client.query("COMMIT");
@@ -830,10 +1002,7 @@ app.post("/api/ventas", async (req, res) => {
     await client.query("BEGIN");
 
     let totalVenta = 0;
-
-    for (const item of items) {
-      totalVenta += normalizarNumero(item.subtotal, 2);
-    }
+    for (const item of items) totalVenta += n2(item.subtotal);
 
     const ventaResult = await client.query(
       `
@@ -844,7 +1013,7 @@ app.post("/api/ventas", async (req, res) => {
       [
         cajaAbierta ? cajaAbierta.id : null,
         empleado_id || null,
-        normalizarNumero(totalVenta, 2),
+        n2(totalVenta),
         forma_pago || "efectivo",
         observaciones || ""
       ]
@@ -854,9 +1023,9 @@ app.post("/api/ventas", async (req, res) => {
 
     for (const item of items) {
       const productoId = item.producto_id;
-      const cantidad = normalizarNumero(item.cantidad, 3);
-      const precioUnitario = normalizarNumero(item.precio_unitario, 2);
-      const subtotal = normalizarNumero(item.subtotal, 2);
+      const cantidad = n3(item.cantidad);
+      const precioUnitario = n2(item.precio_unitario);
+      const subtotal = n2(item.subtotal);
 
       const productoResult = await client.query(
         `
@@ -909,19 +1078,13 @@ app.post("/api/ventas", async (req, res) => {
       );
     }
 
-    if (forma_pago === "efectivo" && cajaAbierta) {
+    if ((forma_pago || "efectivo") === "efectivo" && cajaAbierta) {
       await client.query(
         `
         INSERT INTO caja_movimientos (caja_sesion_id, tipo, monto, motivo, empleado_id, venta_id)
         VALUES ($1, 'venta_efectivo', $2, $3, $4, $5)
         `,
-        [
-          cajaAbierta.id,
-          normalizarNumero(totalVenta, 2),
-          "Venta en efectivo",
-          empleado_id || null,
-          venta.id
-        ]
+        [cajaAbierta.id, n2(totalVenta), "Venta en efectivo", empleado_id || null, venta.id]
       );
     }
 
@@ -969,7 +1132,7 @@ app.get("/api/reportes/resumen", async (req, res) => {
     const cajaAbierta = await buscarCajaAbierta();
 
     res.json({
-      ventas_hoy: normalizarNumero(ventasHoy.rows[0].total, 2),
+      ventas_hoy: n2(ventasHoy.rows[0].total),
       cantidad_ventas_hoy: Number(cantidadVentasHoy.rows[0].cantidad || 0),
       productos_bajo_stock: Number(productosBajoStock.rows[0].cantidad || 0),
       caja_abierta: cajaAbierta
@@ -1098,7 +1261,6 @@ app.get("/api/reportes/caja/:caja_sesion_id", async (req, res) => {
     res.status(500).json({ error: "Error al obtener reporte de caja" });
   }
 });
-
 
 app.listen(PORT, () => {
   console.log(`Servidor Almacén Frine corriendo en puerto ${PORT}`);
