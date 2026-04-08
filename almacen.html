@@ -1060,23 +1060,159 @@
     } catch (e) {}
   }
 
-  async function cargarResumen() {
-    const res = await fetch("/api/reportes/resumen");
-    const data = await res.json();
+  <script>
+async function cargarResumen() {
+  const res = await fetch("/api/dashboard/inicio-pro");
+  const data = await res.json();
 
-    document.getElementById("mVentasHoy").textContent = "$" + money(data.ventas_hoy);
-    document.getElementById("mCantidadVentasHoy").textContent = data.cantidad_ventas_hoy || 0;
-    document.getElementById("mBajoStock").textContent = data.productos_bajo_stock || 0;
-    document.getElementById("mUsuarioActual").textContent = usuarioActual?.nombre || "-";
-    document.getElementById("resumenRaw").textContent = JSON.stringify(data, null, 2);
+  document.getElementById("mVentasHoy").textContent = "$" + money(data.resumen.ventas_hoy);
+  document.getElementById("mCantidadVentasHoy").textContent = data.resumen.cantidad_ventas_hoy || 0;
+  document.getElementById("mPromedioTicket").textContent = "$" + money(data.resumen.promedio_ticket);
+  document.getElementById("mBajoStock").textContent = data.resumen.productos_bajo_stock || 0;
 
-    const pill = document.getElementById("estadoCajaPill");
-    if (data.caja_abierta) {
-      pill.textContent = "Caja abierta #" + data.caja_abierta.id;
-    } else {
-      pill.textContent = "Caja cerrada";
-    }
+  const pill = document.getElementById("estadoCajaPill");
+  if (data.resumen.caja_abierta) {
+    pill.textContent = "Caja abierta #" + data.resumen.caja_abierta.id;
+  } else {
+    pill.textContent = "Caja cerrada";
   }
+
+  renderGraficoVentas7Dias(data.ventas_7_dias || []);
+  renderTopProductos(data.top_productos || []);
+  renderUltimasVentas(data.ultimas_ventas || []);
+  renderMovimientosCaja(data.movimientos_caja || []);
+  renderAlertas(data.alertas || []);
+}
+
+function renderGraficoVentas7Dias(items) {
+  const box = document.getElementById("graficoVentas7Dias");
+  box.innerHTML = "";
+
+  if (!items.length) {
+    box.innerHTML = `<div class="muted">No hay ventas en los últimos 7 días.</div>`;
+    return;
+  }
+
+  const max = Math.max(...items.map(i => Number(i.total || 0)), 1);
+
+  items.forEach(i => {
+    const porcentaje = (Number(i.total || 0) / max) * 100;
+
+    const div = document.createElement("div");
+    div.className = "barra-wrap";
+    div.innerHTML = `
+      <div class="barra-label">
+        <span>${i.dia}</span>
+        <span>$${money(i.total)}</span>
+      </div>
+      <div class="barra-fondo">
+        <div class="barra-valor" style="width:${porcentaje}%"></div>
+      </div>
+    `;
+    box.appendChild(div);
+  });
+}
+
+function renderTopProductos(items) {
+  const box = document.getElementById("topProductosInicio");
+  box.innerHTML = "";
+
+  if (!items.length) {
+    box.innerHTML = `<div class="muted">Todavía no hay productos vendidos.</div>`;
+    return;
+  }
+
+  const cont = document.createElement("div");
+  cont.className = "lista-dashboard";
+
+  items.forEach(i => {
+    const div = document.createElement("div");
+    div.className = "item-dashboard";
+    div.innerHTML = `
+      <strong>${i.nombre}</strong>
+      <div class="muted">Cantidad vendida: ${qty(i.cantidad_vendida)}</div>
+      <div class="muted">Total vendido: $${money(i.total_vendido)}</div>
+    `;
+    cont.appendChild(div);
+  });
+
+  box.appendChild(cont);
+}
+
+function renderUltimasVentas(items) {
+  const box = document.getElementById("ultimasVentasInicio");
+  box.innerHTML = "";
+
+  if (!items.length) {
+    box.innerHTML = `<div class="muted">No hay ventas cargadas.</div>`;
+    return;
+  }
+
+  const cont = document.createElement("div");
+  cont.className = "lista-dashboard";
+
+  items.forEach(i => {
+    const fecha = new Date(i.fecha).toLocaleString("es-AR");
+    const div = document.createElement("div");
+    div.className = "item-dashboard";
+    div.innerHTML = `
+      <strong>Venta #${i.id}</strong>
+      <div class="muted">Empleado: ${i.empleado_nombre}</div>
+      <div class="muted">Forma de pago: ${i.forma_pago}</div>
+      <div class="muted">Fecha: ${fecha}</div>
+      <div><strong>$${money(i.total)}</strong></div>
+    `;
+    cont.appendChild(div);
+  });
+
+  box.appendChild(cont);
+}
+
+function renderMovimientosCaja(items) {
+  const box = document.getElementById("movimientosCajaInicio");
+  box.innerHTML = "";
+
+  if (!items.length) {
+    box.innerHTML = `<div class="muted">No hay movimientos de caja recientes.</div>`;
+    return;
+  }
+
+  const cont = document.createElement("div");
+  cont.className = "lista-dashboard";
+
+  items.forEach(i => {
+    const fecha = new Date(i.fecha).toLocaleString("es-AR");
+    const div = document.createElement("div");
+    div.className = "item-dashboard";
+    div.innerHTML = `
+      <strong>${i.tipo}</strong>
+      <div class="muted">${i.motivo || "-"}</div>
+      <div class="muted">${fecha}</div>
+      <div><strong>$${money(i.monto)}</strong></div>
+    `;
+    cont.appendChild(div);
+  });
+
+  box.appendChild(cont);
+}
+
+function renderAlertas(items) {
+  const box = document.getElementById("alertasInicio");
+  box.innerHTML = "";
+
+  if (!items.length) {
+    box.innerHTML = `<div class="alerta-ok">Todo en orden. No hay alertas importantes.</div>`;
+    return;
+  }
+
+  items.forEach(t => {
+    const div = document.createElement("div");
+    div.className = "alerta-item";
+    div.textContent = t;
+    box.appendChild(div);
+  });
+}
+</script>
 
   // ---------------- VENTAS ----------------
   async function handleCodigoVenta(e) {
