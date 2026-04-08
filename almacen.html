@@ -1,1 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Almacén Frine</title>
 
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #f3f4f6;
+}
+
+/* LOGIN */
+#login {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-box {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  width: 300px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.1);
+}
+
+.login-box input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+/* APP */
+#app {
+  display: none;
+}
+
+.sidebar {
+  width: 220px;
+  background: #111827;
+  color: white;
+  height: 100vh;
+  position: fixed;
+  padding: 20px;
+}
+
+.sidebar button {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: none;
+  background: #1f2937;
+  color: white;
+  cursor: pointer;
+}
+
+.content {
+  margin-left: 240px;
+  padding: 20px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+input, select, button {
+  padding: 10px;
+}
+
+button {
+  cursor: pointer;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+td, th {
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+}
+
+.pos {
+  display: flex;
+  gap: 20px;
+}
+
+.ticket {
+  width: 300px;
+  background: white;
+  padding: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-box">
+    <h2>Almacén Frine</h2>
+    <input id="user" placeholder="Usuario">
+    <input id="pass" placeholder="Contraseña" type="password">
+    <button onclick="login()">Ingresar</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="sidebar">
+    <h2>FRINE</h2>
+    <button onclick="vista('inicio')">Inicio</button>
+    <button onclick="vista('ventas')">Ventas</button>
+    <button onclick="vista('productos')">Productos</button>
+    <button onclick="vista('compras')">Compras</button>
+    <button onclick="vista('caja')">Caja</button>
+    <button onclick="vista('reportes')">Reportes</button>
+    <button onclick="logout()">Salir</button>
+  </div>
+
+  <div class="content">
+
+    <!-- INICIO -->
+    <div id="inicio" class="card">
+      <h2>Resumen</h2>
+      <div id="resumen"></div>
+    </div>
+
+    <!-- VENTAS -->
+    <div id="ventas" class="card" style="display:none">
+      <h2>Ventas</h2>
+
+      <input id="scan" placeholder="Escanear código..." onkeypress="scanEnter(event)">
+
+      <div class="pos">
+        <div style="flex:1">
+          <table id="ticket"></table>
+        </div>
+
+        <div class="ticket">
+          <h3>Total: $<span id="total">0</span></h3>
+          <button onclick="cobrar()">Cobrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUCTOS -->
+    <div id="productos" class="card" style="display:none">
+      <h2>Productos</h2>
+
+      <input id="nombre" placeholder="Nombre">
+      <input id="codigo" placeholder="Código barras">
+      <input id="plu" placeholder="PLU">
+      <input id="costo" placeholder="Costo">
+      <input id="ganancia" placeholder="% Ganancia">
+      <input id="precio" placeholder="Precio">
+
+      <select id="tipo">
+        <option value="unidad">Unidad</option>
+        <option value="peso">Peso</option>
+      </select>
+
+      <button onclick="crearProducto()">Guardar</button>
+
+      <table id="tablaProductos"></table>
+    </div>
+
+    <!-- COMPRAS -->
+    <div id="compras" class="card" style="display:none">
+      <h2>Compras</h2>
+
+      <input id="scanCompra" placeholder="Escanear..." onkeypress="scanCompraEnter(event)">
+      <table id="tablaCompra"></table>
+
+      <button onclick="guardarCompra()">Guardar Compra</button>
+    </div>
+
+    <!-- CAJA -->
+    <div id="caja" class="card" style="display:none">
+      <h2>Caja</h2>
+
+      <input id="montoInicial" placeholder="Monto inicial">
+      <button onclick="abrirCaja()">Abrir</button>
+
+      <input id="montoRetiro" placeholder="Retiro">
+      <button onclick="retiro()">Retirar</button>
+
+      <input id="cierre" placeholder="Cierre real">
+      <button onclick="cerrarCaja()">Cerrar</button>
+    </div>
+
+    <!-- REPORTES -->
+    <div id="reportes" class="card" style="display:none">
+      <h2>Reportes</h2>
+      <button onclick="reporte()">Cargar</button>
+      <pre id="reporteData"></pre>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let usuario = null;
+let ticket = [];
+
+function vista(v){
+  document.querySelectorAll('.card').forEach(c=>c.style.display='none');
+  document.getElementById(v).style.display='block';
+}
+
+function login(){
+  fetch('/api/login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      usuario:document.getElementById('user').value,
+      password:document.getElementById('pass').value
+    })
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    usuario = d;
+    document.getElementById('login').style.display='none';
+    document.getElementById('app').style.display='block';
+    cargarResumen();
+  });
+}
+
+function logout(){
+  location.reload();
+}
+
+function cargarResumen(){
+  fetch('/api/reportes/resumen')
+  .then(r=>r.json())
+  .then(d=>{
+    document.getElementById('resumen').innerText = JSON.stringify(d,null,2);
+  });
+}
+
+function scanEnter(e){
+  if(e.key==='Enter'){
+    let codigo = e.target.value;
+    fetch('/api/productos/codigo/'+codigo)
+    .then(r=>r.json())
+    .then(p=>{
+      ticket.push(p);
+      renderTicket();
+    });
+    e.target.value='';
+  }
+}
+
+function renderTicket(){
+  let html='';
+  let total=0;
+
+  ticket.forEach(p=>{
+    html+=`<tr><td>${p.nombre}</td><td>$${p.precio_venta}</td></tr>`;
+    total+=Number(p.precio_venta);
+  });
+
+  document.getElementById('ticket').innerHTML=html;
+  document.getElementById('total').innerText=total;
+}
+
+function cobrar(){
+  fetch('/api/ventas',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      empleado_id:usuario.id,
+      items: ticket.map(p=>({
+        producto_id:p.id,
+        cantidad:1,
+        precio_unitario:p.precio_venta,
+        subtotal:p.precio_venta
+      }))
+    })
+  })
+  .then(()=>{ ticket=[]; renderTicket(); });
+}
+
+function crearProducto(){
+  fetch('/api/productos',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      nombre:nombre.value,
+      codigo_barras:codigo.value,
+      plu:plu.value,
+      costo:costo.value,
+      porcentaje_ganancia:ganancia.value,
+      precio_venta:precio.value,
+      tipo_venta:tipo.value
+    })
+  }).then(()=>alert('ok'));
+}
+
+function abrirCaja(){
+  fetch('/api/caja/abrir',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      empleado_id:usuario.id,
+      monto_inicial:montoInicial.value
+    })
+  });
+}
+
+function retiro(){
+  fetch('/api/caja/movimiento',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      tipo:'retiro',
+      monto:montoRetiro.value
+    })
+  });
+}
+
+function cerrarCaja(){
+  fetch('/api/caja/cerrar',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      efectivo_real:cierre.value
+    })
+  });
+}
+
+function reporte(){
+  fetch('/api/reportes/ventas-diarias')
+  .then(r=>r.json())
+  .then(d=>{
+    document.getElementById('reporteData').innerText = JSON.stringify(d,null,2);
+  });
+}
+</script>
+
+</body>
+</html>
