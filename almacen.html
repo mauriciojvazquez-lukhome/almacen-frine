@@ -459,105 +459,62 @@
 
       <!-- INICIO -->
       <section id="page-inicio" class="page">
-        <div class="topbar">
-          <div>
-            <h1 class="page-title">Inicio</h1>
-            <div class="page-subtitle">Resumen general del sistema.</div>
-          </div>
-          <div class="pill" id="estadoCajaPill">Caja: cargando...</div>
-        </div>
+  <div class="topbar">
+    <div>
+      <h1 class="page-title">Inicio</h1>
+      <div class="page-subtitle">Resumen general del sistema.</div>
+    </div>
+    <div class="pill" id="estadoCajaPill">Caja: cargando...</div>
+  </div>
 
-        <div class="grid-4">
-          <div class="card">
-            <div class="metric" id="mVentasHoy">$0</div>
-            <div class="muted">Ventas de hoy</div>
-          </div>
-          <div class="card">
-            <div class="metric" id="mCantidadVentasHoy">0</div>
-            <div class="muted">Cantidad de ventas hoy</div>
-          </div>
-          <div class="card">
-            <div class="metric" id="mBajoStock">0</div>
-            <div class="muted">Productos con stock bajo</div>
-          </div>
-          <div class="card">
-            <div class="metric" id="mUsuarioActual">-</div>
-            <div class="muted">Usuario actual</div>
-          </div>
-        </div>
+  <div class="grid-4">
+    <div class="card">
+      <div class="metric" id="mVentasHoy">$0</div>
+      <div class="muted">Ventas de hoy</div>
+    </div>
+    <div class="card">
+      <div class="metric" id="mCantidadVentasHoy">0</div>
+      <div class="muted">Cantidad de tickets</div>
+    </div>
+    <div class="card">
+      <div class="metric" id="mPromedioTicket">$0</div>
+      <div class="muted">Promedio por ticket</div>
+    </div>
+    <div class="card">
+      <div class="metric" id="mBajoStock">0</div>
+      <div class="muted">Productos con stock bajo</div>
+    </div>
+  </div>
 
-        <div class="card">
-          <h3>Resumen técnico</h3>
-          <pre id="resumenRaw">Cargando...</pre>
-        </div>
-      </section>
+  <div class="grid-2">
+    <div class="card">
+      <h3>Ventas últimos 7 días</h3>
+      <div id="graficoVentas7Dias"></div>
+    </div>
 
-      <!-- VENTAS -->
-      <section id="page-ventas" class="page">
-        <div class="topbar">
-          <div>
-            <h1 class="page-title">Ventas</h1>
-            <div class="page-subtitle">Escaneá o cargá por código / PLU.</div>
-          </div>
-        </div>
+    <div class="card">
+      <h3>Top productos vendidos</h3>
+      <div id="topProductosInicio"></div>
+    </div>
+  </div>
 
-        <div class="split">
-          <div class="card">
-            <h3>Agregar al ticket</h3>
+  <div class="grid-3">
+    <div class="card">
+      <h3>Últimas ventas</h3>
+      <div id="ultimasVentasInicio"></div>
+    </div>
 
-            <div class="field">
-              <label>Escanear / Código / PLU</label>
-              <input id="ventaCodigo" placeholder="Escaneá y enter" onkeypress="handleCodigoVenta(event)" />
-            </div>
+    <div class="card">
+      <h3>Movimientos de caja</h3>
+      <div id="movimientosCajaInicio"></div>
+    </div>
 
-            <div class="row">
-              <div class="field">
-                <label>Forma de pago</label>
-                <select id="ventaFormaPago">
-                  <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="debito">Débito</option>
-                  <option value="credito">Crédito</option>
-                  <option value="cuenta_corriente">Cuenta corriente</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label>Observaciones</label>
-                <input id="ventaObs" placeholder="Opcional" />
-              </div>
-            </div>
-
-            <div class="message hidden" id="ventaMsg"></div>
-
-            <div class="scroll-x">
-              <table class="ticket-table">
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th>Cant.</th>
-                    <th>P. Unit.</th>
-                    <th>Subtotal</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="ventaTicketBody"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="card">
-            <h3>Ticket</h3>
-            <div class="muted">Productos cargados</div>
-            <div style="margin-top:8px" id="ventaCantidadItems">0 items</div>
-
-            <div class="total-box">$<span id="ventaTotal">0.00</span></div>
-
-            <button class="btn btn-success" style="width:100%; margin-bottom:10px;" onclick="guardarVenta()">Cobrar</button>
-            <button class="btn btn-secondary" style="width:100%" onclick="limpiarTicket()">Vaciar ticket</button>
-          </div>
-        </div>
-      </section>
+    <div class="card">
+      <h3>Alertas</h3>
+      <div id="alertasInicio"></div>
+    </div>
+  </div>
+</section>
 
       <!-- PRODUCTOS -->
       <section id="page-productos" class="page">
