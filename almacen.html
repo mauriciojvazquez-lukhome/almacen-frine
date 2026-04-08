@@ -1,61 +1,168 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Almacén Frine</title>
+<meta charset="UTF-8">
+<title>FRINE</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{font-family:Arial;margin:0;background:#eef2f7}
+.hidden{display:none}
+#loginScreen{height:100vh;display:flex;justify-content:center;align-items:center;background:#0f172a;color:white}
+.card{background:white;color:black;padding:20px;border-radius:12px;width:300px}
+input,button,select{width:100%;padding:10px;margin-top:8px}
+#app{display:none;padding:20px}
+.section{margin-bottom:30px}
+table{width:100%;border-collapse:collapse}
+td,th{border-bottom:1px solid #ccc;padding:8px}
+</style>
 </head>
+
 <body>
 
-<!-- LOGIN -->
 <div id="loginScreen">
-  <h1>FRINE</h1>
-  <input id="loginUsuario" placeholder="Usuario" />
-  <input id="loginPassword" type="password" placeholder="Password" />
-  <button onclick="hacerLogin()">Ingresar</button>
-  <div id="loginError"></div>
+  <div class="card">
+    <h2>FRINE</h2>
+    <input id="loginUsuario" placeholder="Usuario">
+    <input id="loginPassword" type="password" placeholder="Contraseña">
+    <button onclick="hacerLogin()">Ingresar</button>
+    <div id="loginError"></div>
+  </div>
 </div>
 
-<!-- APP -->
-<div id="app" style="display:none;">
-  <h2>Bienvenido</h2>
-  <div id="sidebarNombre"></div>
+<div id="app">
+  <h2>Bienvenido <span id="sidebarNombre"></span></h2>
+
+  <div class="section">
+    <h3>VENTAS</h3>
+    <input id="ventaCodigo" placeholder="Escanear producto" onkeypress="handleCodigoVenta(event)">
+    <table>
+      <thead>
+        <tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Total</th><th></th></tr>
+      </thead>
+      <tbody id="ventaTicketBody"></tbody>
+    </table>
+
+    <h3>Total: $<span id="ventaTotal">0</span></h3>
+
+    <select id="ventaFormaPago">
+      <option value="efectivo">Efectivo</option>
+      <option value="transferencia">Transferencia</option>
+    </select>
+
+    <input id="ventaObs" placeholder="Observaciones">
+    <button onclick="guardarVenta()">Guardar venta</button>
+    <div id="ventaMsg"></div>
+  </div>
+
 </div>
 
 <script>
-let usuarioActual = null;
 
-async function hacerLogin() {
-  const usuario = document.getElementById("loginUsuario").value.trim();
-  const password = document.getElementById("loginPassword").value.trim();
-  const errorBox = document.getElementById("loginError");
+let usuarioActual=null;
+let ticketVenta=[];
 
-  errorBox.textContent = "";
+function money(n){return Number(n||0).toFixed(2)}
 
-  try {
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ usuario, password })
-    });
+async function hacerLogin(){
+  const usuario=document.getElementById("loginUsuario").value;
+  const password=document.getElementById("loginPassword").value;
 
-    const data = await res.json();
+  const res=await fetch("/api/login",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({usuario,password})
+  });
 
-    if (!res.ok) {
-      errorBox.textContent = data.error || "Error login";
-      return;
-    }
+  const data=await res.json();
 
-    usuarioActual = data;
-
-    document.getElementById("loginScreen").style.display = "none";
-    document.getElementById("app").style.display = "block";
-    document.getElementById("sidebarNombre").textContent = usuarioActual.nombre;
-
-  } catch (err) {
-    errorBox.textContent = "Error conexión";
+  if(!res.ok){
+    document.getElementById("loginError").textContent=data.error;
+    return;
   }
+
+  usuarioActual=data;
+
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("app").style.display="block";
+  document.getElementById("sidebarNombre").textContent=data.nombre;
 }
+
+async function handleCodigoVenta(e){
+  if(e.key!=="Enter")return;
+
+  const codigo=e.target.value;
+
+  const res=await fetch("/api/productos/codigo/"+codigo);
+  const data=await res.json();
+
+  if(!res.ok){
+    alert("Producto no encontrado");
+    return;
+  }
+
+  ticketVenta.push({
+    producto_id:data.id,
+    nombre:data.nombre,
+    cantidad:1,
+    precio:data.precio_venta,
+    subtotal:data.precio_venta
+  });
+
+  renderTicket();
+  e.target.value="";
+}
+
+function renderTicket(){
+  const body=document.getElementById("ventaTicketBody");
+  body.innerHTML="";
+
+  let total=0;
+
+  ticketVenta.forEach((i,idx)=>{
+    total+=i.subtotal;
+
+    body.innerHTML+=`
+      <tr>
+        <td>${i.nombre}</td>
+        <td>${i.cantidad}</td>
+        <td>$${money(i.precio)}</td>
+        <td>$${money(i.subtotal)}</td>
+        <td><button onclick="eliminar(${idx})">X</button></td>
+      </tr>`;
+  });
+
+  document.getElementById("ventaTotal").textContent=money(total);
+}
+
+function eliminar(i){
+  ticketVenta.splice(i,1);
+  renderTicket();
+}
+
+async function guardarVenta(){
+  const res=await fetch("/api/ventas",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      empleado_id:usuarioActual.id,
+      forma_pago:document.getElementById("ventaFormaPago").value,
+      observaciones:document.getElementById("ventaObs").value,
+      items:ticketVenta
+    })
+  });
+
+  const data=await res.json();
+
+  if(!res.ok){
+    alert(data.error);
+    return;
+  }
+
+  alert("Venta guardada");
+  ticketVenta=[];
+  renderTicket();
+}
+
 </script>
 
 </body>
