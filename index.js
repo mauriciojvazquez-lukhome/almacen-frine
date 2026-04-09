@@ -989,6 +989,10 @@ app.post("/api/ventas", async (req, res) => {
       return res.status(400).json({ error: "La venta debe tener al menos un producto" });
     }
 
+    const formaPagoNormalizada = ["efectivo", "transferencia", "debito", "credito"].includes(String(forma_pago || "").toLowerCase())
+      ? String(forma_pago).toLowerCase()
+      : "efectivo";
+
     const cajaAbiertaResult = await client.query(`
       SELECT *
       FROM caja_sesiones
@@ -999,10 +1003,16 @@ app.post("/api/ventas", async (req, res) => {
 
     const cajaAbierta = cajaAbiertaResult.rows[0] || null;
 
+    if (formaPagoNormalizada === "efectivo" && !cajaAbierta) {
+      return res.status(400).json({ error: "No hay caja abierta para cobrar una venta en efectivo" });
+    }
+
     await client.query("BEGIN");
 
     let totalVenta = 0;
-    for (const item of items) totalVenta += n2(item.subtotal);
+    for (const item of items) {
+      totalVenta += n2(item.subtotal);
+    }
 
     const ventaResult = await client.query(
       `
@@ -1014,7 +1024,7 @@ app.post("/api/ventas", async (req, res) => {
         cajaAbierta ? cajaAbierta.id : null,
         empleado_id || null,
         n2(totalVenta),
-        forma_pago || "efectivo",
+        formaPagoNormalizada,
         observaciones || ""
       ]
     );
@@ -1078,7 +1088,7 @@ app.post("/api/ventas", async (req, res) => {
       );
     }
 
-    if ((forma_pago || "efectivo") === "efectivo" && cajaAbierta) {
+    if (formaPagoNormalizada === "efectivo" && cajaAbierta) {
       await client.query(
         `
         INSERT INTO caja_movimientos (caja_sesion_id, tipo, monto, motivo, empleado_id, venta_id)
@@ -1090,11 +1100,27 @@ app.post("/api/ventas", async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.json({
+    const respuesta = {
       ok: true,
       venta_id: venta.id,
-      venta
-    });
+      venta,
+      forma_pago: formaPagoNormalizada,
+      total: n2(totalVenta)
+    };
+
+    if (formaPagoNormalizada === "efectivo") {
+      respuesta.comprobante_tipo = "comprobante_simple";
+      respuesta.mensaje = "Venta guardada y lista para comprobante simple.";
+    } else if (formaPagoNormalizada === "transferencia") {
+      respuesta.comprobante_tipo = "factura_afip_pendiente";
+      respuesta.afip_estado = "pendiente_backend";
+      respuesta.mensaje = "Venta guardada. La factura AFIP real requiere integración adicional en el backend.";
+    } else {
+      respuesta.comprobante_tipo = "registro_interno";
+      respuesta.mensaje = "Venta guardada correctamente.";
+    }
+
+    res.json(respuesta);
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Error crear venta:", error);
