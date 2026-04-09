@@ -1,169 +1,1885 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>FRINE</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Almacén Frine</title>
 <style>
-body{font-family:Arial;margin:0;background:#eef2f7}
-.hidden{display:none}
-#loginScreen{height:100vh;display:flex;justify-content:center;align-items:center;background:#0f172a;color:white}
-.card{background:white;color:black;padding:20px;border-radius:12px;width:300px}
-input,button,select{width:100%;padding:10px;margin-top:8px}
-#app{display:none;padding:20px}
-.section{margin-bottom:30px}
-table{width:100%;border-collapse:collapse}
-td,th{border-bottom:1px solid #ccc;padding:8px}
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #eef2f7;
+    color: #111827;
+  }
+
+  .hidden { display: none !important; }
+
+  /* LOGIN */
+  #loginScreen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    padding: 20px;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 560px;
+    background: white;
+    border-radius: 24px;
+    padding: 34px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25);
+  }
+
+  .login-card h1 {
+    margin: 0 0 8px 0;
+    font-size: 52px;
+    line-height: 1;
+    color: #0f172a;
+  }
+
+  .login-card p {
+    margin: 0 0 26px 0;
+    color: #64748b;
+    font-size: 18px;
+  }
+
+  .field {
+    margin-bottom: 14px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 13px;
+    color: #64748b;
+    font-weight: bold;
+    margin-bottom: 6px;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    font-size: 14px;
+    outline: none;
+    background: white;
+  }
+
+  .field textarea {
+    min-height: 90px;
+    resize: vertical;
+  }
+
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    border-color: #2563eb;
+  }
+
+  .btn {
+    border: 0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  .btn-primary {
+    background: #2563eb;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #1d4ed8;
+  }
+
+  .btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+  }
+
+  .btn-danger {
+    background: #dc2626;
+    color: white;
+  }
+
+  .btn-success {
+    background: #16a34a;
+    color: white;
+  }
+
+  .login-error {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #dc2626;
+    font-weight: bold;
+  }
+
+  /* APP */
+  #app {
+    display: none;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    align-items: start;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    background: linear-gradient(180deg, #0b1328, #081226);
+    color: white;
+    padding: 24px 16px 30px 16px;
+    min-height: 100vh;
+    position: sticky;
+    top: 0;
+    align-self: start;
+  }
+
+  .brand {
+    font-size: 42px;
+    font-weight: 900;
+    margin-bottom: 10px;
+  }
+
+  .brand-sub {
+    color: #cbd5e1;
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+
+  .user-box {
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 18px;
+  }
+
+  .user-box .name {
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .user-box .role {
+    color: #cbd5e1;
+    font-size: 13px;
+  }
+
+  .nav-scroll {
+    max-height: calc(100vh - 230px);
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .nav-btn {
+    width: 100%;
+    text-align: left;
+    border: 0;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    background: rgba(255,255,255,.08);
+    color: white;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: bold;
+  }
+
+  .nav-btn:hover {
+    background: rgba(255,255,255,.14);
+  }
+
+  .nav-btn.active {
+    background: white;
+    color: #0b1328;
+  }
+
+  .sidebar-footer {
+    margin-top: 18px;
+  }
+
+  .content {
+    padding: 24px;
+    min-width: 0;
+  }
+
+  .page {
+    display: none;
+  }
+
+  .page.active {
+    display: block;
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .page-title {
+    margin: 0;
+    font-size: 34px;
+  }
+
+  .page-subtitle {
+    margin-top: 6px;
+    color: #6b7280;
+    font-size: 14px;
+  }
+
+  .pill {
+    background: white;
+    border: 1px solid #e5e7eb;
+    padding: 10px 14px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .card {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 8px 30px rgba(0,0,0,.05);
+    margin-bottom: 18px;
+  }
+
+  .card h3 {
+    margin: 0 0 14px 0;
+    font-size: 18px;
+  }
+
+  .metric {
+    font-size: 30px;
+    font-weight: 900;
+    margin-bottom: 4px;
+  }
+
+  .muted {
+    color: #6b7280;
+  }
+
+  .row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .row > * {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 10px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 14px;
+    vertical-align: top;
+  }
+
+  th {
+    background: #f8fafc;
+  }
+
+  .scroll-x {
+    overflow-x: auto;
+  }
+
+  .ticket-table td, .ticket-table th {
+    font-size: 13px;
+  }
+
+  .total-box {
+    font-size: 36px;
+    font-weight: 900;
+    margin: 12px 0;
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #e5e7eb;
+  }
+
+  .tag-green {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .tag-red {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  .checks {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .check-item {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+
+  .check-item label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #111827;
+    margin: 0;
+  }
+
+  .message {
+    margin-top: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  .message.ok {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .message.error {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0;
+  }
+
+  .split {
+    display: grid;
+    grid-template-columns: 1.2fr .8fr;
+    gap: 18px;
+  }
+
+  .venta-resumen {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    margin-bottom: 8px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .barra-wrap {
+    margin-bottom: 14px;
+  }
+
+  .barra-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: #374151;
+    font-weight: bold;
+  }
+
+  .barra-fondo {
+    width: 100%;
+    height: 16px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .barra-valor {
+    height: 100%;
+    background: linear-gradient(90deg, #2563eb, #60a5fa);
+    border-radius: 999px;
+  }
+
+  .lista-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .item-dashboard {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 12px;
+    background: #f8fafc;
+  }
+
+  .item-dashboard strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .alerta-item {
+    padding: 12px;
+    border-radius: 12px;
+    background: #fff7ed;
+    color: #9a3412;
+    border: 1px solid #fdba74;
+    margin-bottom: 10px;
+    font-weight: bold;
+  }
+
+  .alerta-ok {
+    padding: 12px;
+    border-radius: 12px;
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+    font-weight: bold;
+  }
+
+  @media (max-width: 1200px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    .split { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar {
+      position: relative;
+      min-height: auto;
+    }
+    .nav-scroll {
+      max-height: none;
+      overflow: visible;
+      padding-right: 0;
+    }
+    .grid-4, .grid-3, .grid-2, .checks {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 </head>
-
 <body>
 
 <div id="loginScreen">
-  <div class="card">
-    <h2>FRINE</h2>
-    <input id="loginUsuario" placeholder="Usuario">
-    <input id="loginPassword" type="password" placeholder="Contraseña">
-    <button onclick="hacerLogin()">Ingresar</button>
-    <div id="loginError"></div>
+  <div class="login-card">
+    <h1>FRINE</h1>
+    <p>Ingresá con tu usuario y contraseña.</p>
+
+    <div class="field">
+      <label>Usuario</label>
+      <input id="loginUsuario" placeholder="Ej: admin" />
+    </div>
+
+    <div class="field">
+      <label>Contraseña</label>
+      <input id="loginPassword" type="password" placeholder="Tu contraseña" />
+    </div>
+
+    <button class="btn btn-primary" style="width:100%" onclick="hacerLogin()">Ingresar</button>
+
+    <div id="loginError" class="login-error"></div>
   </div>
 </div>
 
 <div id="app">
-  <h2>Bienvenido <span id="sidebarNombre"></span></h2>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">FRINE</div>
+      <div class="brand-sub">Sistema de almacén</div>
 
-  <div class="section">
-    <h3>VENTAS</h3>
-    <input id="ventaCodigo" placeholder="Escanear producto" onkeypress="handleCodigoVenta(event)">
-    <table>
-      <thead>
-        <tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Total</th><th></th></tr>
-      </thead>
-      <tbody id="ventaTicketBody"></tbody>
-    </table>
+      <div class="user-box">
+        <div class="name" id="sidebarNombre">-</div>
+        <div class="role" id="sidebarRol">-</div>
+      </div>
 
-    <h3>Total: $<span id="ventaTotal">0</span></h3>
+      <div class="nav-scroll">
+        <button id="btnNavInicio" class="nav-btn" onclick="mostrarPagina('inicio')">Inicio</button>
+        <button id="btnNavVentas" class="nav-btn" onclick="mostrarPagina('ventas')">Ventas</button>
+        <button id="btnNavProductos" class="nav-btn" onclick="mostrarPagina('productos')">Productos</button>
+        <button id="btnNavCompras" class="nav-btn" onclick="mostrarPagina('compras')">Compras</button>
+        <button id="btnNavCaja" class="nav-btn" onclick="mostrarPagina('caja')">Caja</button>
+        <button id="btnNavReportes" class="nav-btn" onclick="mostrarPagina('reportes')">Reportes</button>
+        <button id="btnNavConfiguracion" class="nav-btn" onclick="mostrarPagina('configuracion')">Configuración</button>
+      </div>
 
-    <select id="ventaFormaPago">
-      <option value="efectivo">Efectivo</option>
-      <option value="transferencia">Transferencia</option>
-    </select>
+      <div class="sidebar-footer">
+        <button class="btn btn-danger" style="width:100%" onclick="logout()">Salir</button>
+      </div>
+    </aside>
 
-    <input id="ventaObs" placeholder="Observaciones">
-    <button onclick="guardarVenta()">Guardar venta</button>
-    <div id="ventaMsg"></div>
+    <main class="content">
+
+      <section id="page-inicio" class="page">
+        <div class="topbar">
+          <div>
+            <h1 class="page-title">Inicio</h1>
+            <div class="page-subtitle">Resumen general del sistema.</div>
+          </div>
+          <div class="pill" id="estadoCajaPill">Caja: cargando...</div>
+        </div>
+
+        <div class="grid-4">
+          <div class="card">
+            <div class="metric" id="mVentasHoy">$0</div>
+            <div class="muted">Ventas de hoy</div>
+          </div>
+          <div class="card">
+            <div class="metric" id="mCantidadVentasHoy">0</div>
+            <div class="muted">Cantidad de tickets</div>
+          </div>
+          <div class="card">
+            <div class="metric" id="mPromedioTicket">$0</div>
+            <div class="muted">Promedio por ticket</div>
+          </div>
+          <div class="card">
+            <div class="metric" id="mBajoStock">0</div>
+            <div class="muted">Productos con stock bajo</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Ventas últimos 7 días</h3>
+            <div id="graficoVentas7Dias"></div>
+          </div>
+
+          <div class="card">
+            <h3>Top productos vendidos</h3>
+            <div id="topProductosInicio"></div>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="card">
+            <h3>Últimas ventas</h3>
+            <div id="ultimasVentasInicio"></div>
+          </div>
+
+          <div class="card">
+            <h3>Movimientos de caja</h3>
+            <div id="movimientosCajaInicio"></div>
+          </div>
+
+          <div class="card">
+            <h3>Alertas</h3>
+            <div id="alertasInicio"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-ventas" class="page">
+        <div class="topbar">
+          <div>
+            <h1 class="page-title">Ventas</h1>
+            <div class="page-subtitle">Escaneá productos y generá el ticket.</div>
+          </div>
+        </div>
+
+        <div class="split">
+          <div class="card">
+            <h3>Nuevo ticket</h3>
+
+            <div class="row">
+              <div class="field">
+                <label>Escanear / Código / PLU</label>
+                <input id="ventaCodigo" placeholder="Escaneá y enter" onkeypress="handleCodigoVenta(event)" />
+              </div>
+              <div class="field">
+                <label>Forma de pago</label>
+                <select id="ventaFormaPago">
+                  <option value="efectivo">Efectivo</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="debito">Débito</option>
+                  <option value="credito">Crédito</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="message hidden" id="ventaMsg"></div>
+
+            <div class="scroll-x">
+              <table class="ticket-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Cant.</th>
+                    <th>Precio</th>
+                    <th>Subtotal</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="ventaTicketBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Cierre del ticket</h3>
+
+            <div class="venta-resumen">
+              <div class="muted" id="ventaCantidadItems">0 items</div>
+              <div class="tag">Ticket abierto</div>
+            </div>
+
+            <div style="margin-bottom:10px;" class="muted">Total venta</div>
+            <div class="total-box">$<span id="ventaTotal">0.00</span></div>
+
+            <div class="field">
+              <label>Observaciones</label>
+              <textarea id="ventaObs"></textarea>
+            </div>
+
+            <button class="btn btn-success" style="width:100%; margin-bottom:10px;" onclick="guardarVenta()">Guardar venta</button>
+            <button class="btn btn-secondary" style="width:100%" onclick="limpiarTicket()">Vaciar ticket</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-productos" class="page">
+        <div class="topbar">
+          <div>
+            <h1 class="page-title">Productos</h1>
+            <div class="page-subtitle">Alta de productos y listado.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Nuevo producto</h3>
+
+          <div class="grid-3">
+            <div class="field">
+              <label>Nombre</label>
+              <input id="prodNombre" />
+            </div>
+            <div class="field">
+              <label>Código de barras</label>
+              <input id="prodCodigo" />
+            </div>
+            <div class="field">
+              <label>PLU</label>
+              <input id="prodPlu" />
+            </div>
+
+            <div class="field">
+              <label>Tipo de venta</label>
+              <select id="prodTipo">
+                <option value="unidad">Unidad</option>
+                <option value="peso">Peso</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Costo</label>
+              <input id="prodCosto" type="number" step="0.01" />
+            </div>
+            <div class="field">
+              <label>% Ganancia</label>
+              <input id="prodGanancia" type="number" step="0.01" />
+            </div>
+
+            <div class="field">
+              <label>Precio de venta</label>
+              <input id="prodPrecio" type="number" step="0.01" />
+            </div>
+            <div class="field">
+              <label>Stock inicial</label>
+              <input id="prodStock" type="number" step="0.001" value="0" />
+            </div>
+            <div class="field">
+              <label>Stock mínimo</label>
+              <input id="prodStockMin" type="number" step="0.001" value="0" />
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="btn btn-primary" onclick="crearProducto()">Guardar producto</button>
+            <button class="btn btn-secondary" onclick="calcularPrecioSugerido()">Calcular precio por %</button>
+          </div>
+
+          <div class="message hidden" id="productoMsg"></div>
+        </div>
+
+        <div class="card">
+          <h3>Listado</h3>
+          <div class="row" style="margin-bottom:12px;">
+            <input id="buscarProducto" placeholder="Buscar por nombre / código / plu" oninput="cargarProductos()" />
+          </div>
+
+          <div class="scroll-x">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Código</th>
+                  <th>PLU</th>
+                  <th>Tipo</th>
+                  <th>Costo</th>
+                  <th>Ganancia</th>
+                  <th>Precio</th>
+                  <th>Stock</th>
+                  <th>Mínimo</th>
+                </tr>
+              </thead>
+              <tbody id="productosBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-compras" class="page">
+        <div class="topbar">
+          <div>
+            <h1 class="page-title">Compras</h1>
+            <div class="page-subtitle">Ingreso de mercadería con stock automático.</div>
+          </div>
+        </div>
+
+        <div class="split">
+          <div class="card">
+            <h3>Agregar producto a la compra</h3>
+
+            <div class="row">
+              <div class="field">
+                <label>Escanear / Código / PLU</label>
+                <input id="compraCodigo" placeholder="Escaneá y enter" onkeypress="handleCodigoCompra(event)" />
+              </div>
+              <div class="field">
+                <label>Proveedor</label>
+                <select id="compraProveedor"></select>
+              </div>
+            </div>
+
+            <div class="message hidden" id="compraMsg"></div>
+
+            <div class="scroll-x">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Cant.</th>
+                    <th>Costo Unit.</th>
+                    <th>Subtotal</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="comprasBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Guardar compra</h3>
+            <div style="margin-bottom:10px;" class="muted">Total compra</div>
+            <div class="total-box">$<span id="compraTotal">0.00</span></div>
+
+            <div class="field">
+              <label>Observaciones</label>
+              <textarea id="compraObs"></textarea>
+            </div>
+
+            <button class="btn btn-success" style="width:100%; margin-bottom:10px;" onclick="guardarCompra()">Guardar compra</button>
+            <button class="btn btn-secondary" style="width:100%" onclick="limpiarCompra()">Vaciar compra</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-caja" class="page">
+        <div class="topbar">
+          <div>
+            <h1 class="page-title">Caja</h1>
+            <div class="page-subtitle">Apertura, retiros, ingresos y cierre.</div>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="card">
+            <h3>Abrir caja</h3>
+            <div class="field">
+              <label>Monto inicial</label>
+              <input id="cajaMontoInicial" type="number" step="0.01" />
+            </div>
+            <div class="field">
+              <label>Observaciones</label>
+              <input id="cajaObsApertura" />
+            </div>
+            <button class="btn btn-primary" onclick="abrirCaja()">Abrir caja</button>
+          </div>
+
+          <div class="card">
+            <h3>Movimiento</h3>
+            <div class="field">
+              <label>Tipo</label>
+              <select id="cajaTipoMovimiento">
+                <option value="retiro">Retiro</option>
+                <option value="ingreso">Ingreso</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Monto</label>
+              <input id="cajaMontoMovimiento" type="number" step="0.01" />
+            </div>
+            <div class="field">
+              <label>Motivo</label>
+              <input id="cajaMotivoMovimiento" />
+            </div>
+            <button class="btn btn-secondary" onclick="registrarMovimientoCaja()">Guardar movimiento</button>
+          </div>
+
+          <div class="card">
+            <h3>Cerrar caja</h3>
+            <div class="field">
+              <label>Efectivo real</label>
+              <input id="cajaEfectivoReal" type="number" step="0.01" />
+            </div>
+            <div class="field">
+              <label>Observaciones</label>
+              <input id="cajaObsCierre" />
+            </div>
+            <button class="btn btn-danger" onclick="cerrarCaja()">Cerrar caja</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Estado actual</h3>
+          <pre id="cajaEstadoPre">Cargando...</pre>
+        </div>
+      </section>
+
+      <section id="page-reportes" class="page">
+        <div class="topbar">
+          <div>
+            <h1 class="page-title">Reportes</h1>
+            <div class="page-subtitle">Ventas y stock.</div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom:14px;">
+          <button class="btn btn-primary" onclick="cargarReporteVentasDiarias()">Ventas diarias</button>
+          <button class="btn btn-primary" onclick="cargarReporteVentasPorProducto()">Ventas por producto</button>
+          <button class="btn btn-primary" onclick="cargarReporteVentasPorEmpleado()">Ventas por empleado</button>
+          <button class="btn btn-primary" onclick="cargarReporteStockBajo()">Stock bajo</button>
+        </div>
+
+        <div class="card">
+          <h3>Resultado</h3>
+          <pre id="reportesPre">Todavía no cargaste ningún reporte.</pre>
+        </div>
+      </section>
+
+      <section id="page-configuracion" class="page">
+        <div class="topbar">
+          <div>
+            <h1 class="page-title">Configuración</h1>
+            <div class="page-subtitle">Usuarios y permisos.</div>
+          </div>
+        </div>
+
+        <div class="split">
+          <div class="card">
+            <h3 id="configTituloForm">Nuevo usuario</h3>
+
+            <input type="hidden" id="cfgEmpleadoId" />
+
+            <div class="grid-2">
+              <div class="field">
+                <label>Nombre</label>
+                <input id="cfgNombre" />
+              </div>
+              <div class="field">
+                <label>Usuario</label>
+                <input id="cfgUsuario" />
+              </div>
+
+              <div class="field">
+                <label>Contraseña</label>
+                <input id="cfgPassword" />
+              </div>
+              <div class="field">
+                <label>Rol</label>
+                <select id="cfgRol">
+                  <option value="cajero">Cajero</option>
+                  <option value="encargado">Encargado</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Estado</label>
+              <select id="cfgActivo">
+                <option value="true">Activo</option>
+                <option value="false">Inactivo</option>
+              </select>
+            </div>
+
+            <h3 style="margin-top:18px;">Permisos</h3>
+            <div class="checks">
+              <div class="check-item"><label><input type="checkbox" id="permInicio" /> Inicio</label></div>
+              <div class="check-item"><label><input type="checkbox" id="permVentas" /> Ventas</label></div>
+              <div class="check-item"><label><input type="checkbox" id="permProductos" /> Productos</label></div>
+              <div class="check-item"><label><input type="checkbox" id="permCompras" /> Compras</label></div>
+              <div class="check-item"><label><input type="checkbox" id="permCaja" /> Caja</label></div>
+              <div class="check-item"><label><input type="checkbox" id="permReportes" /> Reportes</label></div>
+              <div class="check-item"><label><input type="checkbox" id="permConfiguracion" /> Configuración</label></div>
+            </div>
+
+            <div class="row" style="margin-top:16px;">
+              <button class="btn btn-primary" id="btnGuardarUsuario" onclick="guardarUsuario()">Guardar usuario</button>
+              <button class="btn btn-secondary" onclick="limpiarFormularioUsuario()">Limpiar</button>
+            </div>
+
+            <div class="message hidden" id="configMsg"></div>
+          </div>
+
+          <div class="card">
+            <h3>Usuarios</h3>
+            <div class="scroll-x">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Activo</th>
+                    <th>Permisos</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="usuariosBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
   </div>
-
 </div>
 
 <script>
+  let usuarioActual = null;
+  let ticketVenta = [];
+  let itemsCompra = [];
+  let cajaAbiertaActual = null;
 
-let usuarioActual=null;
-let ticketVenta=[];
-
-function money(n){return Number(n||0).toFixed(2)}
-
-async function hacerLogin(){
-  const usuario=document.getElementById("loginUsuario").value;
-  const password=document.getElementById("loginPassword").value;
-
-  const res=await fetch("/api/login",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({usuario,password})
-  });
-
-  const data=await res.json();
-
-  if(!res.ok){
-    document.getElementById("loginError").textContent=data.error;
-    return;
+  function money(n) {
+    return Number(n || 0).toFixed(2);
   }
 
-  usuarioActual=data;
-
-  document.getElementById("loginScreen").style.display="none";
-  document.getElementById("app").style.display="block";
-  document.getElementById("sidebarNombre").textContent=data.nombre;
-}
-
-async function handleCodigoVenta(e){
-  if(e.key!=="Enter")return;
-
-  const codigo=e.target.value;
-
-  const res=await fetch("/api/productos/codigo/"+codigo);
-  const data=await res.json();
-
-  if(!res.ok){
-    alert("Producto no encontrado");
-    return;
+  function qty(n) {
+    return Number(n || 0).toFixed(3);
   }
 
-  ticketVenta.push({
-    producto_id:data.id,
-    nombre:data.nombre,
-    cantidad:1,
-    precio:data.precio_venta,
-    subtotal:data.precio_venta
-  });
-
-  renderTicket();
-  e.target.value="";
-}
-
-function renderTicket(){
-  const body=document.getElementById("ventaTicketBody");
-  body.innerHTML="";
-
-  let total=0;
-
-  ticketVenta.forEach((i,idx)=>{
-    total+=i.subtotal;
-
-    body.innerHTML+=`
-      <tr>
-        <td>${i.nombre}</td>
-        <td>${i.cantidad}</td>
-        <td>$${money(i.precio)}</td>
-        <td>$${money(i.subtotal)}</td>
-        <td><button onclick="eliminar(${idx})">X</button></td>
-      </tr>`;
-  });
-
-  document.getElementById("ventaTotal").textContent=money(total);
-}
-
-function eliminar(i){
-  ticketVenta.splice(i,1);
-  renderTicket();
-}
-
-async function guardarVenta(){
-  const res=await fetch("/api/ventas",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      empleado_id:usuarioActual.id,
-      forma_pago:document.getElementById("ventaFormaPago").value,
-      observaciones:document.getElementById("ventaObs").value,
-      items:ticketVenta
-    })
-  });
-
-  const data=await res.json();
-
-  if(!res.ok){
-    alert(data.error);
-    return;
+  function mostrarMensaje(id, texto, tipo = "ok") {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = `message ${tipo}`;
+    el.textContent = texto;
+    el.classList.remove("hidden");
+    setTimeout(() => el.classList.add("hidden"), 3500);
   }
 
-  alert("Venta guardada");
-  ticketVenta=[];
-  renderTicket();
-}
+  function logout() {
+    usuarioActual = null;
+    ticketVenta = [];
+    itemsCompra = [];
+    localStorage.removeItem("frine_usuario");
+    location.reload();
+  }
 
+  function obtenerPermisosFormulario() {
+    return {
+      puede_inicio: document.getElementById("permInicio").checked,
+      puede_ventas: document.getElementById("permVentas").checked,
+      puede_productos: document.getElementById("permProductos").checked,
+      puede_compras: document.getElementById("permCompras").checked,
+      puede_caja: document.getElementById("permCaja").checked,
+      puede_reportes: document.getElementById("permReportes").checked,
+      puede_configuracion: document.getElementById("permConfiguracion").checked
+    };
+  }
+
+  function aplicarPermisosMenu() {
+    document.getElementById("btnNavInicio").style.display = usuarioActual?.puede_inicio ? "block" : "none";
+    document.getElementById("btnNavVentas").style.display = usuarioActual?.puede_ventas ? "block" : "none";
+    document.getElementById("btnNavProductos").style.display = usuarioActual?.puede_productos ? "block" : "none";
+    document.getElementById("btnNavCompras").style.display = usuarioActual?.puede_compras ? "block" : "none";
+    document.getElementById("btnNavCaja").style.display = usuarioActual?.puede_caja ? "block" : "none";
+    document.getElementById("btnNavReportes").style.display = usuarioActual?.puede_reportes ? "block" : "none";
+    document.getElementById("btnNavConfiguracion").style.display = usuarioActual?.puede_configuracion ? "block" : "none";
+  }
+
+  function primeraPantallaPermitida() {
+    if (usuarioActual?.puede_inicio) return "inicio";
+    if (usuarioActual?.puede_ventas) return "ventas";
+    if (usuarioActual?.puede_productos) return "productos";
+    if (usuarioActual?.puede_compras) return "compras";
+    if (usuarioActual?.puede_caja) return "caja";
+    if (usuarioActual?.puede_reportes) return "reportes";
+    if (usuarioActual?.puede_configuracion) return "configuracion";
+    return "inicio";
+  }
+
+  function mostrarPagina(nombre) {
+    const mapa = {
+      inicio: usuarioActual?.puede_inicio,
+      ventas: usuarioActual?.puede_ventas,
+      productos: usuarioActual?.puede_productos,
+      compras: usuarioActual?.puede_compras,
+      caja: usuarioActual?.puede_caja,
+      reportes: usuarioActual?.puede_reportes,
+      configuracion: usuarioActual?.puede_configuracion
+    };
+
+    if (!mapa[nombre]) return;
+
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+
+    const pagina = document.getElementById("page-" + nombre);
+    if (pagina) pagina.classList.add("active");
+
+    const btnMap = {
+      inicio: "btnNavInicio",
+      ventas: "btnNavVentas",
+      productos: "btnNavProductos",
+      compras: "btnNavCompras",
+      caja: "btnNavCaja",
+      reportes: "btnNavReportes",
+      configuracion: "btnNavConfiguracion"
+    };
+
+    if (btnMap[nombre]) {
+      const btn = document.getElementById(btnMap[nombre]);
+      if (btn) btn.classList.add("active");
+    }
+
+    if (nombre === "inicio") cargarResumen();
+    if (nombre === "productos") cargarProductos();
+    if (nombre === "compras") cargarProveedores();
+    if (nombre === "caja") cargarEstadoCaja();
+    if (nombre === "configuracion") cargarUsuarios();
+  }
+
+  async function hacerLogin() {
+    const usuario = document.getElementById("loginUsuario").value.trim();
+    const password = document.getElementById("loginPassword").value.trim();
+    const errorBox = document.getElementById("loginError");
+    errorBox.textContent = "";
+
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuario, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        errorBox.textContent = data.error || "No se pudo iniciar sesión";
+        return;
+      }
+
+      usuarioActual = data;
+      localStorage.setItem("frine_usuario", JSON.stringify(usuarioActual));
+
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      document.getElementById("sidebarNombre").textContent = usuarioActual.nombre;
+      document.getElementById("sidebarRol").textContent = `${usuarioActual.rol} · ${usuarioActual.usuario}`;
+
+      aplicarPermisosMenu();
+      mostrarPagina(primeraPantallaPermitida());
+    } catch (error) {
+      errorBox.textContent = "Error de conexión";
+    }
+  }
+
+  function restaurarSesion() {
+    const guardado = localStorage.getItem("frine_usuario");
+    if (!guardado) return;
+
+    try {
+      usuarioActual = JSON.parse(guardado);
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      document.getElementById("sidebarNombre").textContent = usuarioActual.nombre;
+      document.getElementById("sidebarRol").textContent = `${usuarioActual.rol} · ${usuarioActual.usuario}`;
+
+      aplicarPermisosMenu();
+      mostrarPagina(primeraPantallaPermitida());
+    } catch (e) {
+      localStorage.removeItem("frine_usuario");
+    }
+  }
+
+  async function cargarResumen() {
+    try {
+      const res = await fetch("/api/dashboard/inicio-pro");
+      const data = await res.json();
+
+      document.getElementById("mVentasHoy").textContent = "$" + money(data.resumen?.ventas_hoy);
+      document.getElementById("mCantidadVentasHoy").textContent = data.resumen?.cantidad_ventas_hoy || 0;
+      document.getElementById("mPromedioTicket").textContent = "$" + money(data.resumen?.promedio_ticket);
+      document.getElementById("mBajoStock").textContent = data.resumen?.productos_bajo_stock || 0;
+
+      const pill = document.getElementById("estadoCajaPill");
+      if (data.resumen?.caja_abierta) {
+        pill.textContent = "Caja abierta #" + data.resumen.caja_abierta.id;
+      } else {
+        pill.textContent = "Caja cerrada";
+      }
+
+      renderGraficoVentas7Dias(data.ventas_7_dias || []);
+      renderTopProductos(data.top_productos || []);
+      renderUltimasVentas(data.ultimas_ventas || []);
+      renderMovimientosCaja(data.movimientos_caja || []);
+      renderAlertas(data.alertas || []);
+    } catch (error) {
+      document.getElementById("estadoCajaPill").textContent = "Error al cargar";
+    }
+  }
+
+  function renderGraficoVentas7Dias(items) {
+    const box = document.getElementById("graficoVentas7Dias");
+    box.innerHTML = "";
+
+    if (!items.length) {
+      box.innerHTML = '<div class="muted">No hay ventas en los últimos 7 días.</div>';
+      return;
+    }
+
+    const max = Math.max(...items.map(i => Number(i.total || 0)), 1);
+
+    items.forEach(i => {
+      const porcentaje = (Number(i.total || 0) / max) * 100;
+      const div = document.createElement("div");
+      div.className = "barra-wrap";
+      div.innerHTML = `
+        <div class="barra-label">
+          <span>${i.dia}</span>
+          <span>$${money(i.total)}</span>
+        </div>
+        <div class="barra-fondo">
+          <div class="barra-valor" style="width:${porcentaje}%"></div>
+        </div>
+      `;
+      box.appendChild(div);
+    });
+  }
+
+  function renderTopProductos(items) {
+    const box = document.getElementById("topProductosInicio");
+    box.innerHTML = "";
+
+    if (!items.length) {
+      box.innerHTML = '<div class="muted">Todavía no hay productos vendidos.</div>';
+      return;
+    }
+
+    const cont = document.createElement("div");
+    cont.className = "lista-dashboard";
+
+    items.forEach(i => {
+      const div = document.createElement("div");
+      div.className = "item-dashboard";
+      div.innerHTML = `
+        <strong>${i.nombre}</strong>
+        <div class="muted">Cantidad vendida: ${qty(i.cantidad_vendida)}</div>
+        <div class="muted">Total vendido: $${money(i.total_vendido)}</div>
+      `;
+      cont.appendChild(div);
+    });
+
+    box.appendChild(cont);
+  }
+
+  function renderUltimasVentas(items) {
+    const box = document.getElementById("ultimasVentasInicio");
+    box.innerHTML = "";
+
+    if (!items.length) {
+      box.innerHTML = '<div class="muted">No hay ventas cargadas.</div>';
+      return;
+    }
+
+    const cont = document.createElement("div");
+    cont.className = "lista-dashboard";
+
+    items.forEach(i => {
+      const fecha = i.fecha ? new Date(i.fecha).toLocaleString("es-AR") : "-";
+      const div = document.createElement("div");
+      div.className = "item-dashboard";
+      div.innerHTML = `
+        <strong>Venta #${i.id}</strong>
+        <div class="muted">Empleado: ${i.empleado_nombre || "-"}</div>
+        <div class="muted">Forma de pago: ${i.forma_pago || "-"}</div>
+        <div class="muted">Fecha: ${fecha}</div>
+        <div><strong>$${money(i.total)}</strong></div>
+      `;
+      cont.appendChild(div);
+    });
+
+    box.appendChild(cont);
+  }
+
+  function renderMovimientosCaja(items) {
+    const box = document.getElementById("movimientosCajaInicio");
+    box.innerHTML = "";
+
+    if (!items.length) {
+      box.innerHTML = '<div class="muted">No hay movimientos de caja recientes.</div>';
+      return;
+    }
+
+    const cont = document.createElement("div");
+    cont.className = "lista-dashboard";
+
+    items.forEach(i => {
+      const fecha = i.fecha ? new Date(i.fecha).toLocaleString("es-AR") : "-";
+      const div = document.createElement("div");
+      div.className = "item-dashboard";
+      div.innerHTML = `
+        <strong>${i.tipo}</strong>
+        <div class="muted">${i.motivo || "-"}</div>
+        <div class="muted">${fecha}</div>
+        <div><strong>$${money(i.monto)}</strong></div>
+      `;
+      cont.appendChild(div);
+    });
+
+    box.appendChild(cont);
+  }
+
+  function renderAlertas(items) {
+    const box = document.getElementById("alertasInicio");
+    box.innerHTML = "";
+
+    if (!items.length) {
+      box.innerHTML = '<div class="alerta-ok">Todo en orden. No hay alertas importantes.</div>';
+      return;
+    }
+
+    items.forEach(t => {
+      const div = document.createElement("div");
+      div.className = "alerta-item";
+      div.textContent = t;
+      box.appendChild(div);
+    });
+  }
+
+  async function handleCodigoVenta(e) {
+    if (e.key !== "Enter") return;
+
+    const codigo = e.target.value.trim();
+    if (!codigo) return;
+
+    try {
+      const res = await fetch("/api/productos/codigo/" + encodeURIComponent(codigo));
+      const data = await res.json();
+
+      if (!res.ok) {
+        mostrarMensaje("ventaMsg", data.error || "Producto no encontrado", "error");
+        e.target.value = "";
+        return;
+      }
+
+      let cantidad = 1;
+      if (data.tipo_venta === "peso") {
+        const ingreso = prompt("Producto por peso. Ingresá cantidad en kg:", "0.100");
+        if (!ingreso) {
+          e.target.value = "";
+          return;
+        }
+        cantidad = Number(ingreso);
+        if (isNaN(cantidad) || cantidad <= 0) {
+          mostrarMensaje("ventaMsg", "Cantidad inválida", "error");
+          e.target.value = "";
+          return;
+        }
+      }
+
+      ticketVenta.push({
+        producto_id: data.id,
+        nombre: data.nombre,
+        cantidad: cantidad,
+        precio_unitario: Number(data.precio_venta),
+        subtotal: Number(data.precio_venta) * Number(cantidad),
+        tipo_venta: data.tipo_venta
+      });
+
+      renderTicketVenta();
+      e.target.value = "";
+    } catch (error) {
+      mostrarMensaje("ventaMsg", "Error al buscar producto", "error");
+    }
+  }
+
+  function renderTicketVenta() {
+    const body = document.getElementById("ventaTicketBody");
+    body.innerHTML = "";
+
+    let total = 0;
+
+    ticketVenta.forEach((item, index) => {
+      total += Number(item.subtotal);
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${item.nombre}</td>
+        <td>${qty(item.cantidad)}</td>
+        <td>$${money(item.precio_unitario)}</td>
+        <td>$${money(item.subtotal)}</td>
+        <td><button class="btn btn-secondary" onclick="eliminarItemVenta(${index})">X</button></td>
+      `;
+      body.appendChild(tr);
+    });
+
+    document.getElementById("ventaTotal").textContent = money(total);
+    document.getElementById("ventaCantidadItems").textContent = ticketVenta.length + " items";
+  }
+
+  function eliminarItemVenta(index) {
+    ticketVenta.splice(index, 1);
+    renderTicketVenta();
+  }
+
+  function limpiarTicket() {
+    ticketVenta = [];
+    renderTicketVenta();
+    document.getElementById("ventaObs").value = "";
+  }
+
+  async function guardarVenta() {
+    if (ticketVenta.length === 0) {
+      mostrarMensaje("ventaMsg", "No hay productos en el ticket", "error");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/ventas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          empleado_id: usuarioActual.id,
+          forma_pago: document.getElementById("ventaFormaPago").value,
+          observaciones: document.getElementById("ventaObs").value,
+          items: ticketVenta
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        mostrarMensaje("ventaMsg", data.error || "Error al guardar venta", "error");
+        return;
+      }
+
+      mostrarMensaje("ventaMsg", "Venta guardada correctamente");
+      ticketVenta = [];
+      renderTicketVenta();
+      document.getElementById("ventaObs").value = "";
+      cargarResumen();
+      cargarProductos();
+    } catch (error) {
+      mostrarMensaje("ventaMsg", "Error de conexión", "error");
+    }
+  }
+
+  function calcularPrecioSugerido() {
+    const costo = Number(document.getElementById("prodCosto").value || 0);
+    const ganancia = Number(document.getElementById("prodGanancia").value || 0);
+    const precio = costo * (1 + (ganancia / 100));
+    document.getElementById("prodPrecio").value = precio.toFixed(2);
+  }
+
+  async function crearProducto() {
+    try {
+      const res = await fetch("/api/productos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: document.getElementById("prodNombre").value,
+          codigo_barras: document.getElementById("prodCodigo").value,
+          plu: document.getElementById("prodPlu").value,
+          tipo_venta: document.getElementById("prodTipo").value,
+          costo: document.getElementById("prodCosto").value,
+          porcentaje_ganancia: document.getElementById("prodGanancia").value,
+          precio_venta: document.getElementById("prodPrecio").value,
+          stock_actual: document.getElementById("prodStock").value,
+          stock_minimo: document.getElementById("prodStockMin").value
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        mostrarMensaje("productoMsg", data.error || "Error al crear producto", "error");
+        return;
+      }
+
+      mostrarMensaje("productoMsg", "Producto guardado");
+      limpiarProductoForm();
+      cargarProductos();
+      cargarResumen();
+    } catch (error) {
+      mostrarMensaje("productoMsg", "Error de conexión", "error");
+    }
+  }
+
+  function limpiarProductoForm() {
+    document.getElementById("prodNombre").value = "";
+    document.getElementById("prodCodigo").value = "";
+    document.getElementById("prodPlu").value = "";
+    document.getElementById("prodTipo").value = "unidad";
+    document.getElementById("prodCosto").value = "";
+    document.getElementById("prodGanancia").value = "";
+    document.getElementById("prodPrecio").value = "";
+    document.getElementById("prodStock").value = "0";
+    document.getElementById("prodStockMin").value = "0";
+  }
+
+  async function cargarProductos() {
+    try {
+      const q = document.getElementById("buscarProducto").value.trim();
+      const url = q ? `/api/productos?q=${encodeURIComponent(q)}` : "/api/productos";
+      const res = await fetch(url);
+      const data = await res.json();
+
+      const body = document.getElementById("productosBody");
+      body.innerHTML = "";
+
+      (Array.isArray(data) ? data : []).forEach(p => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${p.id}</td>
+          <td>${p.nombre}</td>
+          <td>${p.codigo_barras || ""}</td>
+          <td>${p.plu || ""}</td>
+          <td>${p.tipo_venta || ""}</td>
+          <td>$${money(p.costo)}</td>
+          <td>${money(p.porcentaje_ganancia)}%</td>
+          <td>$${money(p.precio_venta)}</td>
+          <td>${qty(p.stock_actual)}</td>
+          <td>${qty(p.stock_minimo)}</td>
+        `;
+        body.appendChild(tr);
+      });
+    } catch (error) {}
+  }
+
+  async function cargarProveedores() {
+    try {
+      const res = await fetch("/api/proveedores");
+      const data = await res.json();
+
+      const sel = document.getElementById("compraProveedor");
+      sel.innerHTML = '<option value="">Sin proveedor</option>';
+
+      (Array.isArray(data) ? data : []).forEach(p => {
+        const op = document.createElement("option");
+        op.value = p.id;
+        op.textContent = p.nombre;
+        sel.appendChild(op);
+      });
+    } catch (error) {
+      document.getElementById("compraProveedor").innerHTML = '<option value="">Sin proveedor</option>';
+    }
+  }
+
+  async function handleCodigoCompra(e) {
+    if (e.key !== "Enter") return;
+
+    const codigo = e.target.value.trim();
+    if (!codigo) return;
+
+    try {
+      const res = await fetch("/api/productos/codigo/" + encodeURIComponent(codigo));
+      const data = await res.json();
+
+      if (!res.ok) {
+        mostrarMensaje("compraMsg", data.error || "Producto no encontrado", "error");
+        e.target.value = "";
+        return;
+      }
+
+      let cantidad = prompt("Cantidad a ingresar:", data.tipo_venta === "peso" ? "1.000" : "1");
+      if (!cantidad) {
+        e.target.value = "";
+        return;
+      }
+
+      let costo = prompt("Costo unitario:", data.costo || "0");
+      if (costo === null) {
+        e.target.value = "";
+        return;
+      }
+
+      cantidad = Number(cantidad);
+      costo = Number(costo);
+
+      if (isNaN(cantidad) || cantidad <= 0 || isNaN(costo) || costo < 0) {
+        mostrarMensaje("compraMsg", "Cantidad o costo inválido", "error");
+        e.target.value = "";
+        return;
+      }
+
+      itemsCompra.push({
+        producto_id: data.id,
+        nombre: data.nombre,
+        cantidad,
+        costo_unitario: costo,
+        subtotal: cantidad * costo
+      });
+
+      renderCompra();
+      e.target.value = "";
+    } catch (error) {
+      mostrarMensaje("compraMsg", "Error de conexión", "error");
+    }
+  }
+
+  function renderCompra() {
+    const body = document.getElementById("comprasBody");
+    body.innerHTML = "";
+
+    let total = 0;
+
+    itemsCompra.forEach((item, index) => {
+      total += Number(item.subtotal);
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${item.nombre}</td>
+        <td>${qty(item.cantidad)}</td>
+        <td>$${money(item.costo_unitario)}</td>
+        <td>$${money(item.subtotal)}</td>
+        <td><button class="btn btn-secondary" onclick="eliminarItemCompra(${index})">X</button></td>
+      `;
+      body.appendChild(tr);
+    });
+
+    document.getElementById("compraTotal").textContent = money(total);
+  }
+
+  function eliminarItemCompra(index) {
+    itemsCompra.splice(index, 1);
+    renderCompra();
+  }
+
+  function limpiarCompra() {
+    itemsCompra = [];
+    renderCompra();
+    document.getElementById("compraObs").value = "";
+  }
+
+  async function guardarCompra() {
+    if (itemsCompra.length === 0) {
+      mostrarMensaje("compraMsg", "No hay productos cargados", "error");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/compras", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          proveedor_id: document.getElementById("compraProveedor").value || null,
+          empleado_id: usuarioActual.id,
+          observaciones: document.getElementById("compraObs").value,
+          items: itemsCompra
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        mostrarMensaje("compraMsg", data.error || "Error al guardar compra", "error");
+        return;
+      }
+
+      mostrarMensaje("compraMsg", "Compra guardada");
+      itemsCompra = [];
+      renderCompra();
+      document.getElementById("compraObs").value = "";
+      cargarProductos();
+      cargarResumen();
+    } catch (error) {
+      mostrarMensaje("compraMsg", "Error de conexión", "error");
+    }
+  }
+
+  async function cargarEstadoCaja() {
+    try {
+      const res = await fetch("/api/caja/abierta");
+      const data = await res.json();
+      cajaAbiertaActual = data || null;
+      document.getElementById("cajaEstadoPre").textContent = JSON.stringify(data, null, 2);
+    } catch (error) {
+      document.getElementById("cajaEstadoPre").textContent = "Error al cargar caja";
+    }
+  }
+
+  async function abrirCaja() {
+    try {
+      const res = await fetch("/api/caja/abrir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          empleado_id: usuarioActual.id,
+          monto_inicial: document.getElementById("cajaMontoInicial").value,
+          observaciones: document.getElementById("cajaObsApertura").value
+        })
+      });
+
+      const data = await res.json();
+      alert(data.error || "Caja abierta");
+      cargarEstadoCaja();
+      cargarResumen();
+    } catch (error) {
+      alert("Error de conexión");
+    }
+  }
+
+  async function registrarMovimientoCaja() {
+    if (!cajaAbiertaActual?.id) {
+      alert("No hay caja abierta");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/caja/movimiento", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          caja_sesion_id: cajaAbiertaActual.id,
+          tipo: document.getElementById("cajaTipoMovimiento").value,
+          monto: document.getElementById("cajaMontoMovimiento").value,
+          motivo: document.getElementById("cajaMotivoMovimiento").value,
+          empleado_id: usuarioActual.id
+        })
+      });
+
+      const data = await res.json();
+      alert(data.error || "Movimiento guardado");
+      cargarEstadoCaja();
+      cargarResumen();
+    } catch (error) {
+      alert("Error de conexión");
+    }
+  }
+
+  async function cerrarCaja() {
+    if (!cajaAbiertaActual?.id) {
+      alert("No hay caja abierta");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/caja/cerrar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          caja_sesion_id: cajaAbiertaActual.id,
+          empleado_cierre_id: usuarioActual.id,
+          efectivo_real: document.getElementById("cajaEfectivoReal").value,
+          observaciones: document.getElementById("cajaObsCierre").value
+        })
+      });
+
+      const data = await res.json();
+      alert(data.error || "Caja cerrada");
+      cargarEstadoCaja();
+      cargarResumen();
+    } catch (error) {
+      alert("Error de conexión");
+    }
+  }
+
+  async function cargarReporteVentasDiarias() {
+    const res = await fetch("/api/reportes/ventas-diarias");
+    const data = await res.json();
+    document.getElementById("reportesPre").textContent = JSON.stringify(data, null, 2);
+  }
+
+  async function cargarReporteVentasPorProducto() {
+    const res = await fetch("/api/reportes/ventas-por-producto");
+    const data = await res.json();
+    document.getElementById("reportesPre").textContent = JSON.stringify(data, null, 2);
+  }
+
+  async function cargarReporteVentasPorEmpleado() {
+    const res = await fetch("/api/reportes/ventas-por-empleado");
+    const data = await res.json();
+    document.getElementById("reportesPre").textContent = JSON.stringify(data, null, 2);
+  }
+
+  async function cargarReporteStockBajo() {
+    const res = await fetch("/api/reportes/stock-bajo");
+    const data = await res.json();
+    document.getElementById("reportesPre").textContent = JSON.stringify(data, null, 2);
+  }
+
+  function limpiarFormularioUsuario() {
+    document.getElementById("cfgEmpleadoId").value = "";
+    document.getElementById("cfgNombre").value = "";
+    document.getElementById("cfgUsuario").value = "";
+    document.getElementById("cfgPassword").value = "";
+    document.getElementById("cfgRol").value = "cajero";
+    document.getElementById("cfgActivo").value = "true";
+
+    document.getElementById("permInicio").checked = true;
+    document.getElementById("permVentas").checked = true;
+    document.getElementById("permProductos").checked = false;
+    document.getElementById("permCompras").checked = false;
+    document.getElementById("permCaja").checked = false;
+    document.getElementById("permReportes").checked = false;
+    document.getElementById("permConfiguracion").checked = false;
+
+    document.getElementById("configTituloForm").textContent = "Nuevo usuario";
+    document.getElementById("btnGuardarUsuario").textContent = "Guardar usuario";
+  }
+
+  async function guardarUsuario() {
+    const id = document.getElementById("cfgEmpleadoId").value;
+
+    const payload = {
+      nombre: document.getElementById("cfgNombre").value,
+      usuario: document.getElementById("cfgUsuario").value,
+      password: document.getElementById("cfgPassword").value,
+      rol: document.getElementById("cfgRol").value,
+      activo: document.getElementById("cfgActivo").value === "true",
+      ...obtenerPermisosFormulario()
+    };
+
+    try {
+      const res = await fetch(id ? `/api/empleados/${id}` : "/api/empleados", {
+        method: id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        mostrarMensaje("configMsg", data.error || "Error al guardar usuario", "error");
+        return;
+      }
+
+      mostrarMensaje("configMsg", id ? "Usuario actualizado" : "Usuario creado");
+      limpiarFormularioUsuario();
+      cargarUsuarios();
+    } catch (error) {
+      mostrarMensaje("configMsg", "Error de conexión", "error");
+    }
+  }
+
+  async function cargarUsuarios() {
+    try {
+      const res = await fetch("/api/empleados");
+      const data = await res.json();
+
+      const body = document.getElementById("usuariosBody");
+      body.innerHTML = "";
+
+      (Array.isArray(data) ? data : []).forEach(u => {
+        const permisos = [];
+        if (u.puede_inicio) permisos.push("Inicio");
+        if (u.puede_ventas) permisos.push("Ventas");
+        if (u.puede_productos) permisos.push("Productos");
+        if (u.puede_compras) permisos.push("Compras");
+        if (u.puede_caja) permisos.push("Caja");
+        if (u.puede_reportes) permisos.push("Reportes");
+        if (u.puede_configuracion) permisos.push("Config");
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${u.id}</td>
+          <td>${u.nombre}</td>
+          <td>${u.usuario}</td>
+          <td>${u.rol}</td>
+          <td>${u.activo ? '<span class="tag tag-green">Sí</span>' : '<span class="tag tag-red">No</span>'}</td>
+          <td>${permisos.join(", ")}</td>
+          <td><button class="btn btn-secondary" onclick="editarUsuario(${u.id})">Editar</button></td>
+        `;
+        body.appendChild(tr);
+      });
+    } catch (error) {}
+  }
+
+  async function editarUsuario(id) {
+    const res = await fetch(`/api/empleados/${id}`);
+    const u = await res.json();
+
+    document.getElementById("cfgEmpleadoId").value = u.id;
+    document.getElementById("cfgNombre").value = u.nombre || "";
+    document.getElementById("cfgUsuario").value = u.usuario || "";
+    document.getElementById("cfgPassword").value = u.password || "";
+    document.getElementById("cfgRol").value = u.rol || "cajero";
+    document.getElementById("cfgActivo").value = String(u.activo);
+
+    document.getElementById("permInicio").checked = !!u.puede_inicio;
+    document.getElementById("permVentas").checked = !!u.puede_ventas;
+    document.getElementById("permProductos").checked = !!u.puede_productos;
+    document.getElementById("permCompras").checked = !!u.puede_compras;
+    document.getElementById("permCaja").checked = !!u.puede_caja;
+    document.getElementById("permReportes").checked = !!u.puede_reportes;
+    document.getElementById("permConfiguracion").checked = !!u.puede_configuracion;
+
+    document.getElementById("configTituloForm").textContent = "Editar usuario";
+    document.getElementById("btnGuardarUsuario").textContent = "Guardar cambios";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  restaurarSesion();
 </script>
-
 </body>
 </html>
