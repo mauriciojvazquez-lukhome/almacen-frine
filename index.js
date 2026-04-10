@@ -961,16 +961,54 @@ app.post("/api/caja/cerrar", async (req, res) => {
 // ==========================================
 // VENTAS
 // ==========================================
+
 app.get("/api/ventas", async (req, res) => {
   try {
-    const result = await pool.query(`
+    const { desde, hasta, forma_pago, q } = req.query;
+
+    const condiciones = [];
+    const valores = [];
+    let i = 1;
+
+    if (desde) {
+      condiciones.push(`DATE(v.fecha) >= $${i++}`);
+      valores.push(desde);
+    }
+
+    if (hasta) {
+      condiciones.push(`DATE(v.fecha) <= $${i++}`);
+      valores.push(hasta);
+    }
+
+    if (forma_pago) {
+      condiciones.push(`v.forma_pago = $${i++}`);
+      valores.push(String(forma_pago).trim().toLowerCase());
+    }
+
+    if (q) {
+      condiciones.push(`(
+        CAST(v.id AS TEXT) ILIKE $${i}
+        OR COALESCE(e.nombre, '') ILIKE $${i}
+        OR COALESCE(v.observaciones, '') ILIKE $${i}
+      )`);
+      valores.push(`%${String(q).trim()}%`);
+      i++;
+    }
+
+    const where = condiciones.length ? `WHERE ${condiciones.join(" AND ")}` : "";
+
+    const result = await pool.query(
+      `
       SELECT
         v.*,
         e.nombre AS empleado_nombre
       FROM ventas v
       LEFT JOIN empleados e ON e.id = v.empleado_id
+      ${where}
       ORDER BY v.id DESC
-    `);
+      `,
+      valores
+    );
 
     res.json(result.rows);
   } catch (error) {
@@ -978,6 +1016,52 @@ app.get("/api/ventas", async (req, res) => {
     res.status(500).json({ error: "Error al obtener ventas" });
   }
 });
+
+
+app.get("/api/ventas/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const ventaResult = await pool.query(
+      `
+      SELECT
+        v.*,
+        e.nombre AS empleado_nombre
+      FROM ventas v
+      LEFT JOIN empleados e ON e.id = v.empleado_id
+      WHERE v.id = $1
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    if (ventaResult.rows.length === 0) {
+      return res.status(404).json({ error: "Venta no encontrada" });
+    }
+
+    const detalleResult = await pool.query(
+      `
+      SELECT
+        vd.*,
+        p.nombre
+      FROM ventas_detalle vd
+      LEFT JOIN productos p ON p.id = vd.producto_id
+      WHERE vd.venta_id = $1
+      ORDER BY vd.id ASC
+      `,
+      [id]
+    );
+
+    res.json({
+      venta: ventaResult.rows[0],
+      detalle: detalleResult.rows
+    });
+  } catch (error) {
+    console.error("Error venta detalle:", error);
+    res.status(500).json({ error: "Error al obtener detalle de venta" });
+  }
+});
+
 
 app.post("/api/ventas", async (req, res) => {
   const client = await pool.connect();
