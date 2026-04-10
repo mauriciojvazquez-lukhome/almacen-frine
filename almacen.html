@@ -213,11 +213,11 @@ let usuarioActual=null,ticketVenta=[],itemsCompra=[],cajaAbiertaActual=null,ulti
 `;texto+=`Forma de pago: ${venta.forma_pago||"-"}
 `;texto+=`Observaciones: ${venta.observaciones||"-"}
 
-`;texto+="DETALLE
+`;texto+=`DETALLE
 ------------------------------
-";detalle.forEach(item=>{texto+=`${item.nombre||"Producto"} | Cant: ${qty(item.cantidad)} | P.Unit: $${money(item.precio_unitario)} | Subt: $${money(item.subtotal)}
-`});texto+="------------------------------
-";texto+=`TOTAL: $${money(venta.total)}
+`;detalle.forEach(item=>{texto+=`${item.nombre||"Producto"} | Cant: ${qty(item.cantidad)} | P.Unit: $${money(item.precio_unitario)} | Subt: $${money(item.subtotal)}
+`});texto+=`------------------------------
+`;texto+=`TOTAL: $${money(venta.total)}
 `;document.getElementById("historialVentaDetalle").textContent=texto}catch(error){alert("Error de conexión al cargar detalle")}}async function reimprimirVenta(id){try{const res=await fetch("/api/ventas/"+id),data=await res.json();if(!res.ok){alert(data.error||"No se pudo reimprimir");return}const venta=data.venta||{},detalle=Array.isArray(data.detalle)?data.detalle:[];let texto=`FRINE
 Comprobante reimpreso
 
@@ -226,10 +226,10 @@ Comprobante reimpreso
 `;texto+=`Cajero: ${venta.empleado_nombre||"-"}
 `;texto+=`Forma de pago: ${(venta.forma_pago||"-").toUpperCase()}
 
-`;texto+="--------------------------------
-";detalle.forEach(item=>{texto+=`${item.nombre||"Producto"} x ${qty(item.cantidad)}   $${money(item.subtotal)}
-`});texto+="--------------------------------
-";texto+=`TOTAL: $${money(venta.total)}
+`;texto+=`--------------------------------
+`;detalle.forEach(item=>{texto+=`${item.nombre||"Producto"} x ${qty(item.cantidad)}   $${money(item.subtotal)}
+`});texto+=`--------------------------------
+`;texto+=`TOTAL: $${money(venta.total)}
 `;texto+=`OBS: ${venta.observaciones||"-"}
 `;imprimirTexto(texto,"Comprobante FRINE")}catch(error){alert("Error de conexión al reimprimir")}}document.addEventListener("keydown",e=>{const ventasActiva=document.getElementById("page-ventas")?.classList.contains("active");if(!ventasActiva)return;if(e.key==="F1"){e.preventDefault();document.getElementById("ventaFormaPago").value="efectivo";actualizarModoPagoVisual()}if(e.key==="F2"){e.preventDefault();document.getElementById("ventaFormaPago").value="transferencia";actualizarModoPagoVisual()}if(e.key==="F4"){e.preventDefault();guardarVenta()}});restaurarSesion();
 </script>
