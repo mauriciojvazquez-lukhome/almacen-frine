@@ -112,12 +112,97 @@
 </head>
 <body>
 <div id="loginScreen"><div class="login-card"><h1>FRINE</h1><p>Ingresá con tu usuario y contraseña.</p><div class="field"><label>Usuario</label><input id="loginUsuario" placeholder="Ej: admin" /></div><div class="field"><label>Contraseña</label><input id="loginPassword" type="password" placeholder="Tu contraseña" /></div><button class="btn btn-primary" style="width:100%" onclick="hacerLogin()">Ingresar</button><div id="loginError" class="login-error"></div></div></div>
-<div id="app"><div class="layout"><aside class="sidebar"><div class="brand">FRINE</div><div class="brand-sub">Sistema de almacén</div><div class="user-box"><div class="name" id="sidebarNombre">-</div><div class="role" id="sidebarRol">-</div></div><div class="nav-scroll"><button id="btnNavInicio" class="nav-btn" onclick="mostrarPagina('inicio')">Inicio</button><button id="btnNavVentas" class="nav-btn" onclick="mostrarPagina('ventas')">Ventas</button><button id="btnNavProductos" class="nav-btn" onclick="mostrarPagina('productos')">Productos</button><button id="btnNavCompras" class="nav-btn" onclick="mostrarPagina('compras')">Compras</button><button id="btnNavCaja" class="nav-btn" onclick="mostrarPagina('caja')">Caja</button><button id="btnNavReportes" class="nav-btn" onclick="mostrarPagina('reportes')">Reportes</button><button id="btnNavConfiguracion" class="nav-btn" onclick="mostrarPagina('configuracion')">Configuración</button></div><div class="sidebar-footer"><button class="btn btn-danger" style="width:100%" onclick="logout()">Salir</button></div></aside><main class="content">
+<div id="app"><div class="layout"><aside class="sidebar"><div class="brand">FRINE</div><div class="brand-sub">Sistema de almacén</div><div class="user-box"><div class="name" id="sidebarNombre">-</div><div class="role" id="sidebarRol">-</div></div><div class="nav-scroll"><button id="btnNavInicio" class="nav-btn" onclick="mostrarPagina('inicio')">Inicio</button><button id="btnNavVentas" class="nav-btn" onclick="mostrarPagina('ventas')">Ventas</button><button id="btnNavProductos" class="nav-btn" onclick="mostrarPagina('productos')">Productos</button><button id="btnNavCompras" class="nav-btn" onclick="mostrarPagina('compras')">Compras</button><button id="btnNavCaja" class="nav-btn" onclick="mostrarPagina('caja')">Caja</button><button id="btnNavHistorialVentas" class="nav-btn" onclick="mostrarPagina('historial-ventas')">Historial ventas</button><button id="btnNavReportes" class="nav-btn" onclick="mostrarPagina('reportes')">Reportes</button><button id="btnNavConfiguracion" class="nav-btn" onclick="mostrarPagina('configuracion')">Configuración</button></div><div class="sidebar-footer"><button class="btn btn-danger" style="width:100%" onclick="logout()">Salir</button></div></aside><main class="content">
 <section id="page-inicio" class="page"><div class="topbar"><div><h1 class="page-title">Inicio</h1><div class="page-subtitle">Resumen general del sistema.</div></div><div class="pill" id="estadoCajaPill">Caja: cargando...</div></div><div class="grid-4"><div class="card"><div class="metric" id="mVentasHoy">$0</div><div class="muted">Ventas de hoy</div></div><div class="card"><div class="metric" id="mCantidadVentasHoy">0</div><div class="muted">Cantidad de tickets</div></div><div class="card"><div class="metric" id="mPromedioTicket">$0</div><div class="muted">Promedio por ticket</div></div><div class="card"><div class="metric" id="mBajoStock">0</div><div class="muted">Productos con stock bajo</div></div></div><div class="grid-2"><div class="card"><h3>Ventas últimos 7 días</h3><div id="graficoVentas7Dias"></div></div><div class="card"><h3>Top productos vendidos</h3><div id="topProductosInicio"></div></div></div><div class="grid-3"><div class="card"><h3>Últimas ventas</h3><div id="ultimasVentasInicio"></div></div><div class="card"><h3>Movimientos de caja</h3><div id="movimientosCajaInicio"></div></div><div class="card"><h3>Alertas</h3><div id="alertasInicio"></div></div></div></section>
 <section id="page-ventas" class="page"><div class="topbar"><div><h1 class="page-title">Ventas</h1><div class="page-subtitle">POS rápido con scanner, atajos y ticket prolijo.</div></div><div class="pill" id="ventaModoPill">F1 efectivo · F2 transferencia · F4 cobrar</div></div><div class="venta-toolbar"><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Escanear / Código / PLU</label><input id="ventaCodigo" placeholder="Escaneá y enter" onkeypress="handleCodigoVenta(event)" /></div></div><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Forma de pago</label><select id="ventaFormaPago" onchange="actualizarModoPagoVisual()"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="debito">Débito</option><option value="credito">Crédito</option></select></div></div><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Acciones rápidas</label><div class="row"><button class="btn btn-success" onclick="guardarVenta()">Cobrar</button><button class="btn btn-secondary" onclick="limpiarTicket()">Vaciar</button></div></div></div></div><div class="split"><div class="card"><div class="venta-headline"><h3 style="margin:0;">Ticket actual</h3><div class="tag tag-blue" id="ventaCantidadItems">0 items</div></div><div class="message hidden" id="ventaMsg"></div><div class="scroll-x"><table class="ticket-table"><thead><tr><th>Producto</th><th style="width:170px;">Cantidad</th><th>Precio</th><th>Subtotal</th><th>Stock</th><th></th></tr></thead><tbody id="ventaTicketBody"></tbody></table></div><div id="ventaVacio" class="venta-ticket-vacio">Todavía no cargaste productos en el ticket.</div></div><div><div class="venta-card-total"><div class="mini">TOTAL A COBRAR</div><div class="big">$<span id="ventaTotal">0.00</span></div></div><div class="card"><h3>Cierre del ticket</h3><div class="venta-resumen"><div class="tag" id="ventaTagPago">Efectivo</div><div class="tag tag-green" id="ventaTagEstado">Listo para cobrar</div></div><div class="field"><label>Observaciones</label><textarea id="ventaObs"></textarea></div><button class="btn btn-success" style="width:100%; margin-bottom:10px;" onclick="guardarVenta()">Cobrar venta</button><button class="btn btn-ghost" style="width:100%; margin-bottom:10px;" onclick="imprimirUltimoComprobanteManual()">Reimprimir último comprobante</button><button class="btn btn-secondary" style="width:100%" onclick="limpiarTicket()">Vaciar ticket</button><div class="venta-atajos"><div class="atajo">F1<br>Efectivo</div><div class="atajo">F2<br>Transferencia</div><div class="atajo">F4<br>Cobrar</div></div><div class="print-note" id="ventaNotaAfip">Efectivo imprime comprobante simple. Factura AFIP real para transferencia necesita backend extra en index.js.</div></div></div></div></section>
 <section id="page-productos" class="page"><div class="topbar"><div><h1 class="page-title">Productos</h1><div class="page-subtitle">Alta de productos y listado.</div></div></div><div class="card"><h3>Nuevo producto</h3><div class="grid-3"><div class="field"><label>Nombre</label><input id="prodNombre" /></div><div class="field"><label>Código de barras</label><input id="prodCodigo" /></div><div class="field"><label>PLU</label><input id="prodPlu" /></div><div class="field"><label>Tipo de venta</label><select id="prodTipo"><option value="unidad">Unidad</option><option value="peso">Peso</option></select></div><div class="field"><label>Costo</label><input id="prodCosto" type="number" step="0.01" /></div><div class="field"><label>% Ganancia</label><input id="prodGanancia" type="number" step="0.01" /></div><div class="field"><label>Precio de venta</label><input id="prodPrecio" type="number" step="0.01" /></div><div class="field"><label>Stock inicial</label><input id="prodStock" type="number" step="0.001" value="0" /></div><div class="field"><label>Stock mínimo</label><input id="prodStockMin" type="number" step="0.001" value="0" /></div></div><div class="row"><button class="btn btn-primary" onclick="crearProducto()">Guardar producto</button><button class="btn btn-secondary" onclick="calcularPrecioSugerido()">Calcular precio por %</button></div><div class="message hidden" id="productoMsg"></div></div><div class="card"><h3>Listado</h3><div class="row" style="margin-bottom:12px;"><input id="buscarProducto" placeholder="Buscar por nombre / código / plu" oninput="cargarProductos()" /></div><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Código</th><th>PLU</th><th>Tipo</th><th>Costo</th><th>Ganancia</th><th>Precio</th><th>Stock</th><th>Mínimo</th></tr></thead><tbody id="productosBody"></tbody></table></div></div></section>
 <section id="page-compras" class="page"><div class="topbar"><div><h1 class="page-title">Compras</h1><div class="page-subtitle">Ingreso de mercadería con stock automático.</div></div></div><div class="split"><div class="card"><h3>Agregar producto a la compra</h3><div class="row"><div class="field"><label>Escanear / Código / PLU</label><input id="compraCodigo" placeholder="Escaneá y enter" onkeypress="handleCodigoCompra(event)" /></div><div class="field"><label>Proveedor</label><select id="compraProveedor"></select></div></div><div class="message hidden" id="compraMsg"></div><div class="scroll-x"><table><thead><tr><th>Producto</th><th>Cant.</th><th>Costo Unit.</th><th>Subtotal</th><th></th></tr></thead><tbody id="comprasBody"></tbody></table></div></div><div class="card"><h3>Guardar compra</h3><div style="margin-bottom:10px;" class="muted">Total compra</div><div class="total-box">$<span id="compraTotal">0.00</span></div><div class="field"><label>Observaciones</label><textarea id="compraObs"></textarea></div><button class="btn btn-success" style="width:100%; margin-bottom:10px;" onclick="guardarCompra()">Guardar compra</button><button class="btn btn-secondary" style="width:100%" onclick="limpiarCompra()">Vaciar compra</button></div></div></section>
 <section id="page-caja" class="page"><div class="topbar"><div><h1 class="page-title">Caja</h1><div class="page-subtitle">Apertura, retiros, ingresos y cierre.</div></div></div><div class="grid-3"><div class="card"><h3>Abrir caja</h3><div class="field"><label>Monto inicial</label><input id="cajaMontoInicial" type="number" step="0.01" /></div><div class="field"><label>Observaciones</label><input id="cajaObsApertura" /></div><button class="btn btn-primary" onclick="abrirCaja()">Abrir caja</button></div><div class="card"><h3>Movimiento</h3><div class="field"><label>Tipo</label><select id="cajaTipoMovimiento"><option value="retiro">Retiro</option><option value="ingreso">Ingreso</option></select></div><div class="field"><label>Monto</label><input id="cajaMontoMovimiento" type="number" step="0.01" /></div><div class="field"><label>Motivo</label><input id="cajaMotivoMovimiento" /></div><button class="btn btn-secondary" onclick="registrarMovimientoCaja()">Guardar movimiento</button></div><div class="card"><h3>Cerrar caja</h3><div class="field"><label>Efectivo real</label><input id="cajaEfectivoReal" type="number" step="0.01" /></div><div class="field"><label>Observaciones</label><input id="cajaObsCierre" /></div><button class="btn btn-danger" onclick="cerrarCaja()">Cerrar caja</button></div></div><div class="card"><h3>Estado actual</h3><pre id="cajaEstadoPre">Cargando...</pre></div></section>
+<section id="page-historial-ventas" class="page">
+  <div class="topbar">
+    <div>
+      <h1 class="page-title">Historial de ventas</h1>
+      <div class="page-subtitle">Buscá, filtrá y reimprimí comprobantes.</div>
+    </div>
+    <div class="pill" id="historialResumenPill">Cargando...</div>
+  </div>
+
+  <div class="card">
+    <div class="grid-4">
+      <div class="field">
+        <label>Desde</label>
+        <input type="date" id="historialDesde" />
+      </div>
+      <div class="field">
+        <label>Hasta</label>
+        <input type="date" id="historialHasta" />
+      </div>
+      <div class="field">
+        <label>Forma de pago</label>
+        <select id="historialFormaPago">
+          <option value="">Todas</option>
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option>
+          <option value="debito">Débito</option>
+          <option value="credito">Crédito</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Buscar</label>
+        <input id="historialBuscar" placeholder="N° venta / cajero / observación" />
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="btn btn-primary" onclick="cargarHistorialVentas()">Buscar ventas</button>
+      <button class="btn btn-secondary" onclick="limpiarFiltrosHistorial()">Limpiar filtros</button>
+    </div>
+  </div>
+
+  <div class="grid-4">
+    <div class="card">
+      <div class="metric" id="historialMetricVentas">0</div>
+      <div class="muted">Ventas filtradas</div>
+    </div>
+    <div class="card">
+      <div class="metric" id="historialMetricMonto">$0.00</div>
+      <div class="muted">Monto total filtrado</div>
+    </div>
+    <div class="card">
+      <div class="metric" id="historialMetricEfectivo">$0.00</div>
+      <div class="muted">Efectivo</div>
+    </div>
+    <div class="card">
+      <div class="metric" id="historialMetricTransferencia">$0.00</div>
+      <div class="muted">Transferencia</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Ventas</h3>
+    <div class="scroll-x">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Cajero</th>
+            <th>Forma pago</th>
+            <th>Total</th>
+            <th>Observaciones</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="historialVentasBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Detalle de venta</h3>
+    <pre id="historialVentaDetalle">Seleccioná una venta para ver el detalle.</pre>
+  </div>
+</section>
 <section id="page-reportes" class="page"><div class="topbar"><div><h1 class="page-title">Reportes</h1><div class="page-subtitle">Ventas y stock.</div></div></div><div class="row" style="margin-bottom:14px;"><button class="btn btn-primary" onclick="cargarReporteVentasDiarias()">Ventas diarias</button><button class="btn btn-primary" onclick="cargarReporteVentasPorProducto()">Ventas por producto</button><button class="btn btn-primary" onclick="cargarReporteVentasPorEmpleado()">Ventas por empleado</button><button class="btn btn-primary" onclick="cargarReporteStockBajo()">Stock bajo</button></div><div class="card"><h3>Resultado</h3><pre id="reportesPre">Todavía no cargaste ningún reporte.</pre></div></section>
 <section id="page-configuracion" class="page"><div class="topbar"><div><h1 class="page-title">Configuración</h1><div class="page-subtitle">Usuarios y permisos.</div></div></div><div class="split"><div class="card"><h3 id="configTituloForm">Nuevo usuario</h3><input type="hidden" id="cfgEmpleadoId" /><div class="grid-2"><div class="field"><label>Nombre</label><input id="cfgNombre" /></div><div class="field"><label>Usuario</label><input id="cfgUsuario" /></div><div class="field"><label>Contraseña</label><input id="cfgPassword" /></div><div class="field"><label>Rol</label><select id="cfgRol"><option value="cajero">Cajero</option><option value="encargado">Encargado</option><option value="admin">Admin</option></select></div></div><div class="field"><label>Estado</label><select id="cfgActivo"><option value="true">Activo</option><option value="false">Inactivo</option></select></div><h3 style="margin-top:18px;">Permisos</h3><div class="checks"><div class="check-item"><label><input type="checkbox" id="permInicio" /> Inicio</label></div><div class="check-item"><label><input type="checkbox" id="permVentas" /> Ventas</label></div><div class="check-item"><label><input type="checkbox" id="permProductos" /> Productos</label></div><div class="check-item"><label><input type="checkbox" id="permCompras" /> Compras</label></div><div class="check-item"><label><input type="checkbox" id="permCaja" /> Caja</label></div><div class="check-item"><label><input type="checkbox" id="permReportes" /> Reportes</label></div><div class="check-item"><label><input type="checkbox" id="permConfiguracion" /> Configuración</label></div></div><div class="row" style="margin-top:16px;"><button class="btn btn-primary" id="btnGuardarUsuario" onclick="guardarUsuario()">Guardar usuario</button><button class="btn btn-secondary" onclick="limpiarFormularioUsuario()">Limpiar</button></div><div class="message hidden" id="configMsg"></div></div><div class="card"><h3>Usuarios</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Activo</th><th>Permisos</th><th></th></tr></thead><tbody id="usuariosBody"></tbody></table></div></div></div></section>
 </main></div></div>
