@@ -681,6 +681,8 @@ app.post("/api/compras", async (req, res) => {
     await client.query("BEGIN");
 
     let totalCompra = 0;
+    const preciosActualizados = [];
+
     for (const item of items) totalCompra += n2(item.subtotal);
 
     const compraResult = await client.query(
@@ -705,6 +707,26 @@ app.post("/api/compras", async (req, res) => {
       const costoUnitario = n2(item.costo_unitario);
       const subtotal = n2(item.subtotal);
 
+      const productoResult = await client.query(
+        `
+        SELECT *
+        FROM productos
+        WHERE id = $1
+        LIMIT 1
+        `,
+        [productoId]
+      );
+
+      if (productoResult.rows.length === 0) {
+        throw new Error(`Producto ${productoId} no encontrado`);
+      }
+
+      const producto = productoResult.rows[0];
+      const porcentajeGanancia = n2(producto.porcentaje_ganancia || 0);
+      const precioVentaActual = n2(producto.precio_venta || 0);
+      const precioSugeridoNuevo = n2(costoUnitario * (1 + porcentajeGanancia / 100));
+      const debeActualizarPrecio = precioSugeridoNuevo > precioVentaActual;
+
       await client.query(
         `
         INSERT INTO compras_detalle (compra_id, producto_id, cantidad, costo_unitario, subtotal)
@@ -719,11 +741,26 @@ app.post("/api/compras", async (req, res) => {
         SET
           stock_actual = stock_actual + $1,
           costo = $2,
+          precio_venta = CASE
+            WHEN $3 > precio_venta THEN $3
+            ELSE precio_venta
+          END,
           updated_at = NOW()
-        WHERE id = $3
+        WHERE id = $4
         `,
-        [cantidad, costoUnitario, productoId]
+        [cantidad, costoUnitario, precioSugeridoNuevo, productoId]
       );
+
+      if (debeActualizarPrecio) {
+        preciosActualizados.push({
+          producto_id: producto.id,
+          nombre: producto.nombre,
+          precio_anterior: precioVentaActual,
+          precio_nuevo: precioSugeridoNuevo,
+          costo_nuevo: costoUnitario,
+          porcentaje_ganancia: porcentajeGanancia
+        });
+      }
 
       await client.query(
         `
@@ -737,11 +774,19 @@ app.post("/api/compras", async (req, res) => {
     }
 
     await client.query("COMMIT");
-    res.json({ ok: true, compra_id: compra.id, compra });
+    res.json({
+      ok: true,
+      compra_id: compra.id,
+      compra,
+      precios_actualizados: preciosActualizados,
+      mensaje: preciosActualizados.length
+        ? `Compra guardada. Se actualizaron ${preciosActualizados.length} precio(s) de venta automáticamente.`
+        : "Compra guardada. No hizo falta actualizar precios de venta."
+    });
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Error crear compra:", error);
-    res.status(500).json({ error: "Error al guardar compra" });
+    res.status(500).json({ error: error.message || "Error al guardar compra" });
   } finally {
     client.release();
   }
