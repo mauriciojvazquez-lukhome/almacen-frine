@@ -1379,6 +1379,238 @@ app.get("/api/reportes/stock-bajo", async (req, res) => {
   }
 });
 
+app.get("/api/reportes/compras", async (req, res) => {
+  try {
+    const { desde, hasta, proveedor_id, producto_id, q } = req.query;
+
+    const columnasFecha = await pool.query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'compras'
+        AND column_name IN ('fecha', 'created_at')
+    `);
+
+    const nombresColumnas = columnasFecha.rows.map(r => r.column_name);
+    const fechaColumna = nombresColumnas.includes('fecha')
+      ? 'fecha'
+      : nombresColumnas.includes('created_at')
+      ? 'created_at'
+      : null;
+
+    const condiciones = [];
+    const valores = [];
+    let i = 1;
+
+    if (desde && fechaColumna) {
+      condiciones.push(`DATE(c.${fechaColumna}) >= $${i++}`);
+      valores.push(desde);
+    }
+
+    if (hasta && fechaColumna) {
+      condiciones.push(`DATE(c.${fechaColumna}) <= $${i++}`);
+      valores.push(hasta);
+    }
+
+    if (proveedor_id) {
+      condiciones.push(`c.proveedor_id = $${i++}`);
+      valores.push(proveedor_id);
+    }
+
+    if (producto_id) {
+      condiciones.push(`cd.producto_id = $${i++}`);
+      valores.push(producto_id);
+    }
+
+    if (q) {
+      condiciones.push(`(
+        COALESCE(pr.nombre, '') ILIKE $${i}
+        OR COALESCE(p.nombre, '') ILIKE $${i}
+        OR COALESCE(c.observaciones, '') ILIKE $${i}
+        OR CAST(c.id AS TEXT) ILIKE $${i}
+      )`);
+      valores.push(`%${String(q).trim()}%`);
+      i++;
+    }
+
+    const where = condiciones.length ? `WHERE ${condiciones.join(" AND ")}` : "";
+    const campoFecha = fechaColumna ? `c.${fechaColumna}` : `NULL::timestamp`;
+    const ordenFecha = fechaColumna ? `c.${fechaColumna} DESC,` : "";
+
+    const result = await pool.query(
+      `
+      SELECT
+        c.id AS compra_id,
+        ${campoFecha} AS fecha,
+        c.total AS compra_total,
+        c.observaciones,
+        pr.id AS proveedor_id,
+        pr.nombre AS proveedor_nombre,
+        p.id AS producto_id,
+        p.nombre AS producto_nombre,
+        cd.cantidad,
+        cd.costo_unitario,
+        cd.subtotal,
+        e.nombre AS empleado_nombre
+      FROM compras c
+      INNER JOIN compras_detalle cd ON cd.compra_id = c.id
+      LEFT JOIN proveedores pr ON pr.id = c.proveedor_id
+      LEFT JOIN productos p ON p.id = cd.producto_id
+      LEFT JOIN empleados e ON e.id = c.empleado_id
+      ${where}
+      ORDER BY ${ordenFecha} c.id DESC, cd.id DESC
+      `,
+      valores
+    );
+
+    const movimientos = result.rows;
+    const comprasUnicas = new Set();
+    const proveedoresUnicos = new Set();
+    const productosUnicos = new Set();
+    let totalGastado = 0;
+
+    movimientos.forEach(r => {
+      comprasUnicas.add(r.compra_id);
+      if (r.proveedor_id) proveedoresUnicos.add(r.proveedor_id);
+      if (r.producto_id) productosUnicos.add(r.producto_id);
+      totalGastado += Number(r.subtotal || 0);
+    });
+
+    const mapaProveedor = new Map();
+    const mapaProducto = new Map();
+    const mapaComparativa = new Map();
+
+    movimientos.forEach(r => {
+      const keyProv = r.proveedor_id || 'sin-proveedor';
+      if (!mapaProveedor.has(keyProv)) {
+        mapaProveedor.set(keyProv, {
+          proveedor_id: r.proveedor_id,
+          proveedor_nombre: r.proveedor_nombre || 'Sin proveedor',
+          compras: new Set(),
+          total_comprado: 0,
+          ultimo_precio: Number(r.costo_unitario || 0),
+          ultima_fecha: r.fecha || null,
+          ultimo_ts: r.fecha ? new Date(r.fecha).getTime() : 0
+        });
+      }
+      const prov = mapaProveedor.get(keyProv);
+      prov.compras.add(r.compra_id);
+      prov.total_comprado += Number(r.subtotal || 0);
+      const provTs = r.fecha ? new Date(r.fecha).getTime() : 0;
+      if (provTs >= prov.ultimo_ts) {
+        prov.ultimo_ts = provTs;
+        prov.ultimo_precio = Number(r.costo_unitario || 0);
+        prov.ultima_fecha = r.fecha || null;
+      }
+
+      const keyProd = r.producto_id || 'sin-producto';
+      if (!mapaProducto.has(keyProd)) {
+        mapaProducto.set(keyProd, {
+          producto_id: r.producto_id,
+          producto_nombre: r.producto_nombre || '-',
+          veces_comprado: 0,
+          cantidad_total: 0,
+          total_comprado: 0,
+          ultimo_precio: Number(r.costo_unitario || 0),
+          ultima_fecha: r.fecha || null,
+          ultimo_ts: r.fecha ? new Date(r.fecha).getTime() : 0
+        });
+      }
+      const prod = mapaProducto.get(keyProd);
+      prod.veces_comprado += 1;
+      prod.cantidad_total += Number(r.cantidad || 0);
+      prod.total_comprado += Number(r.subtotal || 0);
+      const prodTs = r.fecha ? new Date(r.fecha).getTime() : 0;
+      if (prodTs >= prod.ultimo_ts) {
+        prod.ultimo_ts = prodTs;
+        prod.ultimo_precio = Number(r.costo_unitario || 0);
+        prod.ultima_fecha = r.fecha || null;
+      }
+
+      if (producto_id && String(r.producto_id || '') === String(producto_id)) {
+        const keyComp = r.proveedor_id || 'sin-proveedor';
+        if (!mapaComparativa.has(keyComp)) {
+          mapaComparativa.set(keyComp, {
+            proveedor_id: r.proveedor_id,
+            proveedor_nombre: r.proveedor_nombre || 'Sin proveedor',
+            veces_comprado: 0,
+            suma_precios: 0,
+            precio_minimo: Number(r.costo_unitario || 0),
+            precio_maximo: Number(r.costo_unitario || 0),
+            ultimo_precio: Number(r.costo_unitario || 0),
+            ultima_fecha: r.fecha || null,
+            ultimo_ts: prodTs
+          });
+        }
+        const comp = mapaComparativa.get(keyComp);
+        const precio = Number(r.costo_unitario || 0);
+        comp.veces_comprado += 1;
+        comp.suma_precios += precio;
+        comp.precio_minimo = Math.min(comp.precio_minimo, precio);
+        comp.precio_maximo = Math.max(comp.precio_maximo, precio);
+        if (prodTs >= comp.ultimo_ts) {
+          comp.ultimo_ts = prodTs;
+          comp.ultimo_precio = precio;
+          comp.ultima_fecha = r.fecha || null;
+        }
+      }
+    });
+
+    const por_proveedor = Array.from(mapaProveedor.values())
+      .map(r => ({
+        proveedor_id: r.proveedor_id,
+        proveedor_nombre: r.proveedor_nombre,
+        cantidad_compras: r.compras.size,
+        total_comprado: n2(r.total_comprado),
+        ultimo_precio: n2(r.ultimo_precio),
+        ultima_fecha: r.ultima_fecha
+      }))
+      .sort((a, b) => b.total_comprado - a.total_comprado);
+
+    const por_producto = Array.from(mapaProducto.values())
+      .map(r => ({
+        producto_id: r.producto_id,
+        producto_nombre: r.producto_nombre,
+        veces_comprado: r.veces_comprado,
+        cantidad_total: n3(r.cantidad_total),
+        total_comprado: n2(r.total_comprado),
+        precio_promedio: r.cantidad_total ? n2(r.total_comprado / r.cantidad_total) : 0,
+        ultimo_precio: n2(r.ultimo_precio),
+        ultima_fecha: r.ultima_fecha
+      }))
+      .sort((a, b) => b.total_comprado - a.total_comprado);
+
+    const comparativa_producto = Array.from(mapaComparativa.values())
+      .map(r => ({
+        proveedor_id: r.proveedor_id,
+        proveedor_nombre: r.proveedor_nombre,
+        veces_comprado: r.veces_comprado,
+        precio_promedio: r.veces_comprado ? n2(r.suma_precios / r.veces_comprado) : 0,
+        precio_minimo: n2(r.precio_minimo),
+        precio_maximo: n2(r.precio_maximo),
+        ultimo_precio: n2(r.ultimo_precio),
+        ultima_fecha: r.ultima_fecha
+      }))
+      .sort((a, b) => a.precio_promedio - b.precio_promedio);
+
+    res.json({
+      resumen: {
+        compras_unicas: comprasUnicas.size,
+        total_gastado: n2(totalGastado),
+        proveedores_unicos: proveedoresUnicos.size,
+        productos_unicos: productosUnicos.size
+      },
+      movimientos,
+      por_proveedor,
+      por_producto,
+      comparativa_producto
+    });
+  } catch (error) {
+    console.error("Error reporte compras:", error);
+    res.status(500).json({ error: "Error al obtener reporte de compras" });
+  }
+});
+
 app.get("/api/reportes/caja/:caja_sesion_id", async (req, res) => {
   try {
     const { caja_sesion_id } = req.params;
