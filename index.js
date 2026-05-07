@@ -1110,6 +1110,7 @@ app.get("/api/ventas/:id", async (req, res) => {
 
 app.post("/api/ventas", async (req, res) => {
   const client = await pool.connect();
+  let transactionStarted = false;
 
   try {
     const { empleado_id, forma_pago, observaciones, items } = req.body;
@@ -1122,6 +1123,9 @@ app.post("/api/ventas", async (req, res) => {
       ? String(forma_pago).toLowerCase()
       : "efectivo";
 
+    // VENTAS PRO V2:
+    // Desde ahora TODA venta necesita una caja abierta.
+    // Antes solo se exigía caja para efectivo, pero eso dejaba ventas fuera del cierre.
     const cajaAbiertaResult = await client.query(`
       SELECT *
       FROM caja_sesiones
@@ -1132,52 +1136,47 @@ app.post("/api/ventas", async (req, res) => {
 
     const cajaAbierta = cajaAbiertaResult.rows[0] || null;
 
-    if (formaPagoNormalizada === "efectivo" && !cajaAbierta) {
-      return res.status(400).json({ error: "No hay caja abierta para cobrar una venta en efectivo" });
+    if (!cajaAbierta) {
+      return res.status(400).json({ error: "No hay caja abierta. Abrí caja antes de vender." });
     }
 
     await client.query("BEGIN");
+    transactionStarted = true;
 
     let totalVenta = 0;
-    for (const item of items) {
-      totalVenta += n2(item.subtotal);
-    }
 
-    const ventaResult = await client.query(
-      `
-      INSERT INTO ventas (caja_sesion_id, empleado_id, total, forma_pago, observaciones)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *
-      `,
-      [
-        cajaAbierta ? cajaAbierta.id : null,
-        empleado_id || null,
-        n2(totalVenta),
-        formaPagoNormalizada,
-        observaciones || ""
-      ]
-    );
-
-    const venta = ventaResult.rows[0];
-
+    // Primera pasada: validar cantidades, productos y stock actual.
     for (const item of items) {
       const productoId = item.producto_id;
       const cantidad = n3(item.cantidad);
       const precioUnitario = n2(item.precio_unitario);
       const subtotal = n2(item.subtotal);
 
+      if (!productoId) {
+        throw new Error("Hay un producto inválido en el ticket");
+      }
+
+      if (cantidad <= 0) {
+        throw new Error("La cantidad debe ser mayor a cero");
+      }
+
+      if (precioUnitario < 0 || subtotal < 0) {
+        throw new Error("Hay precios inválidos en el ticket");
+      }
+
       const productoResult = await client.query(
         `
         SELECT *
         FROM productos
         WHERE id = $1
+          AND activo = true
         LIMIT 1
         `,
         [productoId]
       );
 
       if (productoResult.rows.length === 0) {
-        throw new Error(`Producto ${productoId} no encontrado`);
+        throw new Error(`Producto ${productoId} no encontrado o inactivo`);
       }
 
       const producto = productoResult.rows[0];
@@ -1187,6 +1186,46 @@ app.post("/api/ventas", async (req, res) => {
         throw new Error(`Stock insuficiente para ${producto.nombre}`);
       }
 
+      totalVenta += subtotal;
+    }
+
+    const ventaResult = await client.query(
+      `
+      INSERT INTO ventas (caja_sesion_id, empleado_id, total, forma_pago, observaciones)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+      `,
+      [
+        cajaAbierta.id,
+        empleado_id || null,
+        n2(totalVenta),
+        formaPagoNormalizada,
+        observaciones || ""
+      ]
+    );
+
+    const venta = ventaResult.rows[0];
+
+    // Segunda pasada: insertar detalle y descontar stock de forma blindada.
+    // El UPDATE con "stock_actual >= cantidad" evita stock negativo si dos cajas venden a la vez.
+    for (const item of items) {
+      const productoId = item.producto_id;
+      const cantidad = n3(item.cantidad);
+      const precioUnitario = n2(item.precio_unitario);
+      const subtotal = n2(item.subtotal);
+
+      const productoResult = await client.query(
+        `
+        SELECT nombre
+        FROM productos
+        WHERE id = $1
+        LIMIT 1
+        `,
+        [productoId]
+      );
+
+      const nombreProducto = productoResult.rows[0]?.nombre || `Producto ${productoId}`;
+
       await client.query(
         `
         INSERT INTO ventas_detalle (venta_id, producto_id, cantidad, precio_unitario, subtotal)
@@ -1195,16 +1234,23 @@ app.post("/api/ventas", async (req, res) => {
         [venta.id, productoId, cantidad, precioUnitario, subtotal]
       );
 
-      await client.query(
+      const stockUpdate = await client.query(
         `
         UPDATE productos
         SET
           stock_actual = stock_actual - $1,
           updated_at = NOW()
         WHERE id = $2
+          AND activo = true
+          AND stock_actual >= $1
+        RETURNING id, stock_actual
         `,
         [cantidad, productoId]
       );
+
+      if (stockUpdate.rows.length === 0) {
+        throw new Error(`No se pudo descontar stock de ${nombreProducto}. Puede haber una venta simultánea.`);
+      }
 
       await client.query(
         `
@@ -1217,7 +1263,9 @@ app.post("/api/ventas", async (req, res) => {
       );
     }
 
-    if (formaPagoNormalizada === "efectivo" && cajaAbierta) {
+    // El saldo de caja solo suma efectivo. Transferencia/débito/crédito quedan en ventas con caja_sesion_id,
+    // pero no inflan el efectivo real del cierre.
+    if (formaPagoNormalizada === "efectivo") {
       await client.query(
         `
         INSERT INTO caja_movimientos (caja_sesion_id, tipo, monto, motivo, empleado_id, venta_id)
@@ -1228,6 +1276,7 @@ app.post("/api/ventas", async (req, res) => {
     }
 
     await client.query("COMMIT");
+    transactionStarted = false;
 
     const respuesta = {
       ok: true,
@@ -1251,7 +1300,9 @@ app.post("/api/ventas", async (req, res) => {
 
     res.json(respuesta);
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (transactionStarted) {
+      await client.query("ROLLBACK");
+    }
     console.error("Error crear venta:", error);
     res.status(500).json({ error: error.message || "Error al guardar venta" });
   } finally {
