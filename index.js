@@ -487,28 +487,107 @@ app.get("/api/productos/:id", async (req, res) => {
 app.get("/api/productos/codigo/:codigo", async (req, res) => {
   try {
     const { codigo } = req.params;
+    const codigoBuscado = String(codigo || "").trim();
 
+    if (vacio(codigoBuscado)) {
+      return res.status(400).json({ error: "Código obligatorio" });
+    }
+
+    // 1) Primero busca presentaciones: docena, maple, pack, etc.
+    const presentacionResult = await pool.query(
+      `
+      SELECT
+        p.*,
+        c.nombre AS categoria_nombre,
+        pp.id AS presentacion_id,
+        pp.nombre AS presentacion_nombre,
+        pp.factor AS factor_presentacion,
+        pp.precio_venta AS precio_venta_presentacion,
+        pp.es_compra,
+        pp.es_venta,
+        'presentacion' AS tipo_codigo_encontrado
+      FROM producto_presentaciones pp
+      INNER JOIN productos p ON p.id = pp.producto_id
+      LEFT JOIN categorias c ON c.id = p.categoria_id
+      WHERE p.activo = true
+        AND pp.activo = true
+        AND (
+          pp.codigo_barras = $1
+          OR pp.plu = $1
+        )
+      LIMIT 1
+      `,
+      [codigoBuscado]
+    );
+
+    if (presentacionResult.rows.length > 0) {
+      const row = presentacionResult.rows[0];
+      row.precio_venta = Number(row.precio_venta_presentacion || row.precio_venta || 0);
+      row.factor_presentacion = Number(row.factor_presentacion || 1);
+      return res.json(row);
+    }
+
+    // 2) Después busca códigos múltiples extra del producto.
+    const codigoExtraResult = await pool.query(
+      `
+      SELECT
+        p.*,
+        c.nombre AS categoria_nombre,
+        NULL::integer AS presentacion_id,
+        NULL::varchar AS presentacion_nombre,
+        1::numeric AS factor_presentacion,
+        p.precio_venta AS precio_venta_presentacion,
+        true AS es_compra,
+        true AS es_venta,
+        'codigo_extra' AS tipo_codigo_encontrado
+      FROM producto_codigos pc
+      INNER JOIN productos p ON p.id = pc.producto_id
+      LEFT JOIN categorias c ON c.id = p.categoria_id
+      WHERE p.activo = true
+        AND pc.activo = true
+        AND pc.codigo = $1
+      LIMIT 1
+      `,
+      [codigoBuscado]
+    );
+
+    if (codigoExtraResult.rows.length > 0) {
+      const row = codigoExtraResult.rows[0];
+      row.factor_presentacion = Number(row.factor_presentacion || 1);
+      return res.json(row);
+    }
+
+    // 3) Por último busca código / PLU principal del producto.
     const result = await pool.query(
       `
       SELECT
         p.*,
-        c.nombre AS categoria_nombre
+        c.nombre AS categoria_nombre,
+        NULL::integer AS presentacion_id,
+        NULL::varchar AS presentacion_nombre,
+        1::numeric AS factor_presentacion,
+        p.precio_venta AS precio_venta_presentacion,
+        true AS es_compra,
+        true AS es_venta,
+        'producto' AS tipo_codigo_encontrado
       FROM productos p
       LEFT JOIN categorias c ON c.id = p.categoria_id
       WHERE p.activo = true
         AND (p.codigo_barras = $1 OR p.plu = $1)
       LIMIT 1
       `,
-      [codigo]
+      [codigoBuscado]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Producto no encontrado" });
     }
 
-    res.json(result.rows[0]);
+    const row = result.rows[0];
+    row.factor_presentacion = Number(row.factor_presentacion || 1);
+    res.json(row);
   } catch (error) {
-    console.error("Error buscar por código/plu:", error);
+    console.error("Error buscar por código/plu/presentación:", error);
     res.status(500).json({ error: "Error al buscar producto" });
   }
 });
@@ -644,6 +723,364 @@ app.put("/api/productos/:id", async (req, res) => {
   }
 });
 
+// ==========================================
+// PRODUCTOS PRO v2 - PRESENTACIONES / CODIGOS / STOCK
+// ==========================================
+app.get("/api/productos/:id/presentaciones", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM producto_presentaciones
+      WHERE producto_id = $1
+      ORDER BY activo DESC, factor ASC, nombre ASC
+      `,
+      [id]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error presentaciones:", error);
+    res.status(500).json({ error: "Error al obtener presentaciones" });
+  }
+});
+
+app.post("/api/productos/:id/presentaciones", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, codigo_barras, plu, factor, precio_venta, es_compra, es_venta, activo } = req.body;
+
+    if (vacio(nombre)) {
+      return res.status(400).json({ error: "El nombre de la presentación es obligatorio" });
+    }
+
+    if (Number(factor || 0) <= 0) {
+      return res.status(400).json({ error: "El factor debe ser mayor a 0" });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO producto_presentaciones (
+        producto_id, nombre, codigo_barras, plu, factor, precio_venta, es_compra, es_venta, activo
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      RETURNING *
+      `,
+      [
+        id,
+        String(nombre).trim(),
+        vacio(codigo_barras) ? null : String(codigo_barras).trim(),
+        vacio(plu) ? null : String(plu).trim(),
+        n3(factor),
+        n2(precio_venta),
+        es_compra === false ? false : true,
+        es_venta === false ? false : true,
+        activo === false ? false : true
+      ]
+    );
+
+    await pool.query(
+      `
+      UPDATE productos
+      SET permite_presentaciones = true, updated_at = NOW()
+      WHERE id = $1
+      `,
+      [id]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error crear presentación:", error);
+    res.status(500).json({ error: error.message || "Error al crear presentación" });
+  }
+});
+
+app.put("/api/productos/:id/presentaciones/:presentacion_id", async (req, res) => {
+  try {
+    const { id, presentacion_id } = req.params;
+    const { nombre, codigo_barras, plu, factor, precio_venta, es_compra, es_venta, activo } = req.body;
+
+    if (vacio(nombre)) {
+      return res.status(400).json({ error: "El nombre de la presentación es obligatorio" });
+    }
+
+    if (Number(factor || 0) <= 0) {
+      return res.status(400).json({ error: "El factor debe ser mayor a 0" });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE producto_presentaciones
+      SET
+        nombre = $1,
+        codigo_barras = $2,
+        plu = $3,
+        factor = $4,
+        precio_venta = $5,
+        es_compra = $6,
+        es_venta = $7,
+        activo = $8,
+        updated_at = NOW()
+      WHERE id = $9
+        AND producto_id = $10
+      RETURNING *
+      `,
+      [
+        String(nombre).trim(),
+        vacio(codigo_barras) ? null : String(codigo_barras).trim(),
+        vacio(plu) ? null : String(plu).trim(),
+        n3(factor),
+        n2(precio_venta),
+        es_compra === false ? false : true,
+        es_venta === false ? false : true,
+        activo === false ? false : true,
+        presentacion_id,
+        id
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Presentación no encontrada" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error editar presentación:", error);
+    res.status(500).json({ error: error.message || "Error al editar presentación" });
+  }
+});
+
+app.delete("/api/productos/:id/presentaciones/:presentacion_id", async (req, res) => {
+  try {
+    const { id, presentacion_id } = req.params;
+
+    const result = await pool.query(
+      `
+      UPDATE producto_presentaciones
+      SET activo = false, updated_at = NOW()
+      WHERE id = $1
+        AND producto_id = $2
+      RETURNING *
+      `,
+      [presentacion_id, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Presentación no encontrada" });
+    }
+
+    res.json({ ok: true, presentacion: result.rows[0] });
+  } catch (error) {
+    console.error("Error baja presentación:", error);
+    res.status(500).json({ error: "Error al dar de baja presentación" });
+  }
+});
+
+app.get("/api/productos/:id/codigos", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM producto_codigos
+      WHERE producto_id = $1
+      ORDER BY activo DESC, codigo ASC
+      `,
+      [id]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error códigos producto:", error);
+    res.status(500).json({ error: "Error al obtener códigos" });
+  }
+});
+
+app.post("/api/productos/:id/codigos", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { codigo, tipo, descripcion, activo } = req.body;
+
+    if (vacio(codigo)) {
+      return res.status(400).json({ error: "El código es obligatorio" });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO producto_codigos (producto_id, codigo, tipo, descripcion, activo)
+      VALUES ($1,$2,$3,$4,$5)
+      RETURNING *
+      `,
+      [
+        id,
+        String(codigo).trim(),
+        vacio(tipo) ? "barra" : String(tipo).trim(),
+        descripcion || "",
+        activo === false ? false : true
+      ]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error crear código:", error);
+    res.status(500).json({ error: error.message || "Error al crear código" });
+  }
+});
+
+app.delete("/api/productos/:id/codigos/:codigo_id", async (req, res) => {
+  try {
+    const { id, codigo_id } = req.params;
+
+    const result = await pool.query(
+      `
+      UPDATE producto_codigos
+      SET activo = false
+      WHERE id = $1
+        AND producto_id = $2
+      RETURNING *
+      `,
+      [codigo_id, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Código no encontrado" });
+    }
+
+    res.json({ ok: true, codigo: result.rows[0] });
+  } catch (error) {
+    console.error("Error baja código:", error);
+    res.status(500).json({ error: "Error al dar de baja código" });
+  }
+});
+
+app.post("/api/productos/:id/ajustar-stock", async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const { id } = req.params;
+    const { empleado_id, tipo, cantidad, motivo } = req.body;
+
+    const cantidadNum = n3(cantidad);
+
+    if (!["sumar", "restar", "fijar"].includes(tipo)) {
+      return res.status(400).json({ error: "Tipo inválido. Usá sumar, restar o fijar." });
+    }
+
+    if (cantidadNum < 0) {
+      return res.status(400).json({ error: "La cantidad no puede ser negativa" });
+    }
+
+    await client.query("BEGIN");
+
+    const productoResult = await client.query(
+      `
+      SELECT *
+      FROM productos
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [id]
+    );
+
+    if (productoResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+
+    const producto = productoResult.rows[0];
+    const stockAnterior = n3(producto.stock_actual);
+    let stockNuevo = stockAnterior;
+
+    if (tipo === "sumar") stockNuevo = n3(stockAnterior + cantidadNum);
+    if (tipo === "restar") stockNuevo = n3(stockAnterior - cantidadNum);
+    if (tipo === "fijar") stockNuevo = cantidadNum;
+
+    if (stockNuevo < 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "El ajuste dejaría el stock en negativo" });
+    }
+
+    const updateResult = await client.query(
+      `
+      UPDATE productos
+      SET stock_actual = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING *
+      `,
+      [stockNuevo, id]
+    );
+
+    await client.query(
+      `
+      INSERT INTO stock_ajustes (
+        producto_id, empleado_id, tipo, cantidad, stock_anterior, stock_nuevo, motivo
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `,
+      [id, empleado_id || null, tipo, cantidadNum, stockAnterior, stockNuevo, motivo || ""]
+    );
+
+    await client.query(
+      `
+      INSERT INTO stock_movimientos (
+        producto_id, tipo, cantidad, referencia_tabla, referencia_id, empleado_id, observaciones
+      )
+      VALUES ($1, 'ajuste', $2, 'stock_ajustes', NULL, $3, $4)
+      `,
+      [id, stockNuevo - stockAnterior, empleado_id || null, motivo || `Ajuste de stock: ${tipo}`]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({
+      ok: true,
+      producto: updateResult.rows[0],
+      stock_anterior: stockAnterior,
+      stock_nuevo: stockNuevo
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error ajustar stock:", error);
+    res.status(500).json({ error: error.message || "Error al ajustar stock" });
+  } finally {
+    client.release();
+  }
+});
+
+app.post("/api/productos/:id/dar-baja", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { motivo } = req.body;
+
+    const result = await pool.query(
+      `
+      UPDATE productos
+      SET
+        activo = false,
+        motivo_baja = $1,
+        fecha_baja = NOW(),
+        updated_at = NOW()
+      WHERE id = $2
+      RETURNING *
+      `,
+      [motivo || "", id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+
+    res.json({ ok: true, producto: result.rows[0] });
+  } catch (error) {
+    console.error("Error dar de baja producto:", error);
+    res.status(500).json({ error: "Error al dar de baja producto" });
+  }
+});
+
+
 
 // ==========================================
 // COMPRAS
@@ -703,9 +1140,35 @@ app.post("/api/compras", async (req, res) => {
 
     for (const item of items) {
       const productoId = item.producto_id;
-      const cantidad = n3(item.cantidad);
-      const costoUnitario = n2(item.costo_unitario);
+      const cantidadIngresada = n3(item.cantidad);
+      const costoUnitarioIngresado = n2(item.costo_unitario);
       const subtotal = n2(item.subtotal);
+      let factorPresentacion = 1;
+      let presentacionNombre = "";
+
+      if (item.presentacion_id) {
+        const presentacionResult = await client.query(
+          `
+          SELECT *
+          FROM producto_presentaciones
+          WHERE id = $1
+            AND producto_id = $2
+            AND activo = true
+          LIMIT 1
+          `,
+          [item.presentacion_id, productoId]
+        );
+
+        if (presentacionResult.rows.length === 0) {
+          throw new Error(`Presentación ${item.presentacion_id} no encontrada`);
+        }
+
+        factorPresentacion = Number(presentacionResult.rows[0].factor || 1);
+        presentacionNombre = presentacionResult.rows[0].nombre || "";
+      }
+
+      const cantidadBase = n3(cantidadIngresada * factorPresentacion);
+      const costoUnitarioBase = cantidadBase > 0 ? n2(subtotal / cantidadBase) : costoUnitarioIngresado;
 
       const productoResult = await client.query(
         `
@@ -724,7 +1187,7 @@ app.post("/api/compras", async (req, res) => {
       const producto = productoResult.rows[0];
       const porcentajeGanancia = n2(producto.porcentaje_ganancia || 0);
       const precioVentaActual = n2(producto.precio_venta || 0);
-      const precioSugeridoNuevo = n2(costoUnitario * (1 + porcentajeGanancia / 100));
+      const precioSugeridoNuevo = n2(costoUnitarioBase * (1 + porcentajeGanancia / 100));
       const debeActualizarPrecio = precioSugeridoNuevo > precioVentaActual;
 
       await client.query(
@@ -732,7 +1195,7 @@ app.post("/api/compras", async (req, res) => {
         INSERT INTO compras_detalle (compra_id, producto_id, cantidad, costo_unitario, subtotal)
         VALUES ($1, $2, $3, $4, $5)
         `,
-        [compra.id, productoId, cantidad, costoUnitario, subtotal]
+        [compra.id, productoId, cantidadBase, costoUnitarioBase, subtotal]
       );
 
       await client.query(
@@ -748,7 +1211,7 @@ app.post("/api/compras", async (req, res) => {
           updated_at = NOW()
         WHERE id = $4
         `,
-        [cantidad, costoUnitario, precioSugeridoNuevo, productoId]
+        [cantidadBase, costoUnitarioBase, precioSugeridoNuevo, productoId]
       );
 
       if (debeActualizarPrecio) {
@@ -757,7 +1220,7 @@ app.post("/api/compras", async (req, res) => {
           nombre: producto.nombre,
           precio_anterior: precioVentaActual,
           precio_nuevo: precioSugeridoNuevo,
-          costo_nuevo: costoUnitario,
+          costo_nuevo: costoUnitarioBase,
           porcentaje_ganancia: porcentajeGanancia
         });
       }
@@ -769,7 +1232,15 @@ app.post("/api/compras", async (req, res) => {
         )
         VALUES ($1, 'compra', $2, 'compras', $3, $4, $5)
         `,
-        [productoId, cantidad, compra.id, empleado_id || null, observaciones || ""]
+        [
+          productoId,
+          cantidadBase,
+          compra.id,
+          empleado_id || null,
+          presentacionNombre
+            ? `${observaciones || ""} | Compra por presentación: ${cantidadIngresada} x ${presentacionNombre} (factor ${factorPresentacion})`
+            : observaciones || ""
+        ]
       );
     }
 
@@ -1110,7 +1581,6 @@ app.get("/api/ventas/:id", async (req, res) => {
 
 app.post("/api/ventas", async (req, res) => {
   const client = await pool.connect();
-  let transactionStarted = false;
 
   try {
     const { empleado_id, forma_pago, observaciones, items } = req.body;
@@ -1123,9 +1593,6 @@ app.post("/api/ventas", async (req, res) => {
       ? String(forma_pago).toLowerCase()
       : "efectivo";
 
-    // VENTAS PRO V2:
-    // Desde ahora TODA venta necesita una caja abierta.
-    // Antes solo se exigía caja para efectivo, pero eso dejaba ventas fuera del cierre.
     const cajaAbiertaResult = await client.query(`
       SELECT *
       FROM caja_sesiones
@@ -1136,57 +1603,17 @@ app.post("/api/ventas", async (req, res) => {
 
     const cajaAbierta = cajaAbiertaResult.rows[0] || null;
 
+    // POS PRO: desde ahora ninguna venta se guarda sin caja abierta.
+    // Aunque sea transferencia, débito o crédito, queda asociada a una caja.
     if (!cajaAbierta) {
       return res.status(400).json({ error: "No hay caja abierta. Abrí caja antes de vender." });
     }
 
     await client.query("BEGIN");
-    transactionStarted = true;
 
     let totalVenta = 0;
-
-    // Primera pasada: validar cantidades, productos y stock actual.
     for (const item of items) {
-      const productoId = item.producto_id;
-      const cantidad = n3(item.cantidad);
-      const precioUnitario = n2(item.precio_unitario);
-      const subtotal = n2(item.subtotal);
-
-      if (!productoId) {
-        throw new Error("Hay un producto inválido en el ticket");
-      }
-
-      if (cantidad <= 0) {
-        throw new Error("La cantidad debe ser mayor a cero");
-      }
-
-      if (precioUnitario < 0 || subtotal < 0) {
-        throw new Error("Hay precios inválidos en el ticket");
-      }
-
-      const productoResult = await client.query(
-        `
-        SELECT *
-        FROM productos
-        WHERE id = $1
-          AND activo = true
-        LIMIT 1
-        `,
-        [productoId]
-      );
-
-      if (productoResult.rows.length === 0) {
-        throw new Error(`Producto ${productoId} no encontrado o inactivo`);
-      }
-
-      const producto = productoResult.rows[0];
-      const stockActual = Number(producto.stock_actual || 0);
-
-      if (stockActual < cantidad) {
-        throw new Error(`Stock insuficiente para ${producto.nombre}`);
-      }
-
-      totalVenta += subtotal;
+      totalVenta += n2(item.subtotal);
     }
 
     const ventaResult = await client.query(
@@ -1206,34 +1633,72 @@ app.post("/api/ventas", async (req, res) => {
 
     const venta = ventaResult.rows[0];
 
-    // Segunda pasada: insertar detalle y descontar stock de forma blindada.
-    // El UPDATE con "stock_actual >= cantidad" evita stock negativo si dos cajas venden a la vez.
     for (const item of items) {
       const productoId = item.producto_id;
-      const cantidad = n3(item.cantidad);
-      const precioUnitario = n2(item.precio_unitario);
+      const cantidadIngresada = n3(item.cantidad);
+      const precioUnitarioIngresado = n2(item.precio_unitario);
       const subtotal = n2(item.subtotal);
+      let factorPresentacion = Number(item.factor_presentacion || 1);
+      let presentacionNombre = item.presentacion_nombre || "";
+
+      if (item.presentacion_id) {
+        const presentacionResult = await client.query(
+          `
+          SELECT *
+          FROM producto_presentaciones
+          WHERE id = $1
+            AND producto_id = $2
+            AND activo = true
+            AND es_venta = true
+          LIMIT 1
+          `,
+          [item.presentacion_id, productoId]
+        );
+
+        if (presentacionResult.rows.length === 0) {
+          throw new Error(`Presentación ${item.presentacion_id} no encontrada o no habilitada para venta`);
+        }
+
+        factorPresentacion = Number(presentacionResult.rows[0].factor || 1);
+        presentacionNombre = presentacionResult.rows[0].nombre || "";
+      }
+
+      if (!factorPresentacion || factorPresentacion <= 0) {
+        factorPresentacion = 1;
+      }
+
+      const cantidadBase = n3(cantidadIngresada * factorPresentacion);
+      const precioUnitarioBase = cantidadBase > 0 ? n2(subtotal / cantidadBase) : precioUnitarioIngresado;
 
       const productoResult = await client.query(
         `
-        SELECT nombre
+        SELECT *
         FROM productos
         WHERE id = $1
-        LIMIT 1
+        FOR UPDATE
         `,
         [productoId]
       );
 
-      const nombreProducto = productoResult.rows[0]?.nombre || `Producto ${productoId}`;
+      if (productoResult.rows.length === 0) {
+        throw new Error(`Producto ${productoId} no encontrado`);
+      }
+
+      const producto = productoResult.rows[0];
+
+      if (Number(producto.stock_actual || 0) < cantidadBase) {
+        throw new Error(`Stock insuficiente para ${producto.nombre}`);
+      }
 
       await client.query(
         `
         INSERT INTO ventas_detalle (venta_id, producto_id, cantidad, precio_unitario, subtotal)
         VALUES ($1, $2, $3, $4, $5)
         `,
-        [venta.id, productoId, cantidad, precioUnitario, subtotal]
+        [venta.id, productoId, cantidadBase, precioUnitarioBase, subtotal]
       );
 
+      // Stock blindado: evita stock negativo incluso con dos cajas vendiendo al mismo tiempo.
       const stockUpdate = await client.query(
         `
         UPDATE productos
@@ -1241,15 +1706,14 @@ app.post("/api/ventas", async (req, res) => {
           stock_actual = stock_actual - $1,
           updated_at = NOW()
         WHERE id = $2
-          AND activo = true
           AND stock_actual >= $1
-        RETURNING id, stock_actual
+        RETURNING *
         `,
-        [cantidad, productoId]
+        [cantidadBase, productoId]
       );
 
       if (stockUpdate.rows.length === 0) {
-        throw new Error(`No se pudo descontar stock de ${nombreProducto}. Puede haber una venta simultánea.`);
+        throw new Error(`No se pudo descontar stock de ${producto.nombre}. Probable venta simultánea.`);
       }
 
       await client.query(
@@ -1259,24 +1723,35 @@ app.post("/api/ventas", async (req, res) => {
         )
         VALUES ($1, 'venta', $2, 'ventas', $3, $4, $5)
         `,
-        [productoId, cantidad, venta.id, empleado_id || null, observaciones || ""]
+        [
+          productoId,
+          cantidadBase,
+          venta.id,
+          empleado_id || null,
+          presentacionNombre
+            ? `${observaciones || ""} | Venta por presentación: ${cantidadIngresada} x ${presentacionNombre} (factor ${factorPresentacion})`
+            : observaciones || ""
+        ]
       );
     }
 
-    // El saldo de caja solo suma efectivo. Transferencia/débito/crédito quedan en ventas con caja_sesion_id,
-    // pero no inflan el efectivo real del cierre.
-    if (formaPagoNormalizada === "efectivo") {
-      await client.query(
-        `
-        INSERT INTO caja_movimientos (caja_sesion_id, tipo, monto, motivo, empleado_id, venta_id)
-        VALUES ($1, 'venta_efectivo', $2, $3, $4, $5)
-        `,
-        [cajaAbierta.id, n2(totalVenta), "Venta en efectivo", empleado_id || null, venta.id]
-      );
-    }
+    // Registra en caja todos los medios de pago, no solo efectivo.
+    const tipoMovimientoCaja =
+      formaPagoNormalizada === "efectivo" ? "venta_efectivo" :
+      formaPagoNormalizada === "transferencia" ? "venta_transferencia" :
+      formaPagoNormalizada === "debito" ? "venta_debito" :
+      formaPagoNormalizada === "credito" ? "venta_credito" :
+      "venta";
+
+    await client.query(
+      `
+      INSERT INTO caja_movimientos (caja_sesion_id, tipo, monto, motivo, empleado_id, venta_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      `,
+      [cajaAbierta.id, tipoMovimientoCaja, n2(totalVenta), `Venta ${formaPagoNormalizada}`, empleado_id || null, venta.id]
+    );
 
     await client.query("COMMIT");
-    transactionStarted = false;
 
     const respuesta = {
       ok: true,
@@ -1300,9 +1775,7 @@ app.post("/api/ventas", async (req, res) => {
 
     res.json(respuesta);
   } catch (error) {
-    if (transactionStarted) {
-      await client.query("ROLLBACK");
-    }
+    await client.query("ROLLBACK");
     console.error("Error crear venta:", error);
     res.status(500).json({ error: error.message || "Error al guardar venta" });
   } finally {
