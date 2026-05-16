@@ -11,9 +11,15 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
+function normalizarCertificado(valor) {
+  return String(valor || "").replace(/\\n/g, "\n").trim();
+}
+
 const afip = new Afip({
-  CUIT: 20920936300,
+  CUIT: Number(process.env.AFIP_CUIT || 20920936300),
   access_token: process.env.AFIPSDK_ACCESS_TOKEN,
+  cert: normalizarCertificado(process.env.AFIP_CERT),
+  key: normalizarCertificado(process.env.AFIP_KEY),
   production: true
 });
 
@@ -2396,9 +2402,12 @@ app.post("/api/facturar", async (req, res) => {
 
     console.error("ERROR AFIP:", error);
 
+    const detalleAfip = error?.response?.data || error?.data || null;
+
     res.status(500).json({
       ok: false,
-      error: error.message
+      error: error.message,
+      detalle: detalleAfip
     });
 
   }
