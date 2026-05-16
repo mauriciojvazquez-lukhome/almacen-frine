@@ -2362,11 +2362,11 @@ app.post("/api/facturar", async (req, res) => {
       doc_nro
     } = req.body;
 
-    const ultimo = await afip.ElectronicBilling.getLastVoucher(11, 6);
+    const ultimo = await afip.ElectronicBilling.getLastVoucher(11, 2);
 
     const data = {
       CantReg: 1,
-      PtoVta: 6,
+      PtoVta: 2,
       CbteTipo: 11,
       Concepto: 1,
       DocTipo: doc_tipo || 99,
