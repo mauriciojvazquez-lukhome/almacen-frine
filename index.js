@@ -1,3 +1,4 @@
+const Afip = require("@afipsdk/afip.js");
 const express = require("express");
 const path = require("path");
 const { Pool } = require("pg");
@@ -8,6 +9,12 @@ const PORT = process.env.PORT || 3000;
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
+});
+
+const afip = new Afip({
+  CUIT: 20920936300,
+  access_token: process.env.AFIPSDK_ACCESS_TOKEN,
+  production: true
 });
 
 app.use(express.json({ limit: "10mb" }));
@@ -2333,6 +2340,67 @@ app.get("/api/dashboard/inicio-pro", async (req, res) => {
   } catch (error) {
     console.error("Error dashboard inicio pro:", error);
     res.status(500).json({ error: "Error al cargar dashboard del inicio" });
+  }
+});
+
+// ==========================================
+// FACTURA AFIP
+// ==========================================
+
+app.post("/api/facturar", async (req, res) => {
+  try {
+
+    const {
+      total,
+      doc_tipo,
+      doc_nro
+    } = req.body;
+
+    const ultimo = await afip.ElectronicBilling.getLastVoucher(11, 6);
+
+    const data = {
+      CantReg: 1,
+      PtoVta: 6,
+      CbteTipo: 11,
+      Concepto: 1,
+      DocTipo: doc_tipo || 99,
+      DocNro: doc_nro || 0,
+      CbteDesde: ultimo + 1,
+      CbteHasta: ultimo + 1,
+      CbteFch: parseInt(
+        new Date()
+          .toISOString()
+          .slice(0,10)
+          .replace(/-/g, '')
+      ),
+      ImpTotal: Number(total),
+      ImpTotConc: 0,
+      ImpNeto: Number(total),
+      ImpOpEx: 0,
+      ImpIVA: 0,
+      ImpTrib: 0,
+      MonId: "PES",
+      MonCotiz: 1
+    };
+
+    const respuesta = await afip.ElectronicBilling.createVoucher(data);
+
+    res.json({
+      ok: true,
+      cae: respuesta.CAE,
+      vencimiento: respuesta.CAEFchVto,
+      comprobante: ultimo + 1
+    });
+
+  } catch (error) {
+
+    console.error("ERROR AFIP:", error);
+
+    res.status(500).json({
+      ok: false,
+      error: error.message
+    });
+
   }
 });
 
