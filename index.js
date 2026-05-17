@@ -35,14 +35,29 @@ function n3(valor) {
   return Number(Number(valor || 0).toFixed(3));
 }
 
-function calcularPrecioVenta(costo, porcentajeGanancia, precioVentaInformado) {
+function redondearPrecio(valor) {
+  const precio = Number(valor || 0);
+  if (!Number.isFinite(precio) || precio <= 0) return 0;
+  const base = Math.floor(precio / 100) * 100;
+  const resto = precio - base;
+  return resto <= 30 ? base : base + 100;
+}
+
+function costoUnitarioDesdeBulto(costo, cantidadBulto) {
   const costoNum = n2(costo);
+  let bulto = n3(cantidadBulto || 1);
+  if (!Number.isFinite(bulto) || bulto <= 0) bulto = 1;
+  return n2(costoNum / bulto);
+}
+
+function calcularPrecioVenta(costo, porcentajeGanancia, precioVentaInformado, cantidadBulto = 1) {
+  const costoUnitario = costoUnitarioDesdeBulto(costo, cantidadBulto);
   const gananciaNum = n2(porcentajeGanancia);
   const precioInformado = n2(precioVentaInformado);
 
   if (precioInformado > 0) return precioInformado;
-  if (costoNum > 0 && gananciaNum >= 0) {
-    return n2(costoNum * (1 + gananciaNum / 100));
+  if (costoUnitario > 0 && gananciaNum >= 0) {
+    return n2(redondearPrecio(costoUnitario * (1 + gananciaNum / 100)));
   }
   return 0;
 }
@@ -76,6 +91,20 @@ async function buscarCajaAbierta() {
     LIMIT 1
   `);
   return result.rows[0] || null;
+}
+
+
+async function asegurarColumnasAlmacen() {
+  await pool.query(`
+    ALTER TABLE productos
+    ADD COLUMN IF NOT EXISTS cantidad_bulto NUMERIC DEFAULT 1
+  `);
+
+  await pool.query(`
+    UPDATE productos
+    SET cantidad_bulto = 1
+    WHERE cantidad_bulto IS NULL OR cantidad_bulto <= 0
+  `);
 }
 
 function permisosDesdeBody(body = {}) {
@@ -643,6 +672,7 @@ app.post("/api/productos", async (req, res) => {
       tipo_venta,
       costo,
       porcentaje_ganancia,
+      cantidad_bulto,
       precio_venta,
       stock_actual,
       stock_minimo,
@@ -654,7 +684,7 @@ app.post("/api/productos", async (req, res) => {
     }
 
     const tipo = tipo_venta === "peso" ? "peso" : "unidad";
-    const precioVentaFinal = calcularPrecioVenta(costo, porcentaje_ganancia, precio_venta);
+    const precioVentaFinal = calcularPrecioVenta(costo, porcentaje_ganancia, precio_venta, cantidad_bulto);
 
     const result = await pool.query(
       `
@@ -666,12 +696,13 @@ app.post("/api/productos", async (req, res) => {
         tipo_venta,
         costo,
         porcentaje_ganancia,
+        cantidad_bulto,
         precio_venta,
         stock_actual,
         stock_minimo,
         permite_decimal
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
       RETURNING *
       `,
       [
@@ -682,6 +713,7 @@ app.post("/api/productos", async (req, res) => {
         tipo,
         n2(costo),
         n2(porcentaje_ganancia),
+        n3(cantidad_bulto || 1),
         precioVentaFinal,
         n3(stock_actual),
         n3(stock_minimo),
@@ -707,6 +739,7 @@ app.put("/api/productos/:id", async (req, res) => {
       tipo_venta,
       costo,
       porcentaje_ganancia,
+      cantidad_bulto,
       precio_venta,
       stock_minimo,
       permite_decimal,
@@ -718,7 +751,7 @@ app.put("/api/productos/:id", async (req, res) => {
     }
 
     const tipo = tipo_venta === "peso" ? "peso" : "unidad";
-    const precioVentaFinal = calcularPrecioVenta(costo, porcentaje_ganancia, precio_venta);
+    const precioVentaFinal = calcularPrecioVenta(costo, porcentaje_ganancia, precio_venta, cantidad_bulto);
 
     const result = await pool.query(
       `
@@ -731,12 +764,13 @@ app.put("/api/productos/:id", async (req, res) => {
         tipo_venta = $5,
         costo = $6,
         porcentaje_ganancia = $7,
-        precio_venta = $8,
-        stock_minimo = $9,
-        permite_decimal = $10,
-        activo = $11,
+        cantidad_bulto = $8,
+        precio_venta = $9,
+        stock_minimo = $10,
+        permite_decimal = $11,
+        activo = $12,
         updated_at = NOW()
-      WHERE id = $12
+      WHERE id = $13
       RETURNING *
       `,
       [
@@ -747,6 +781,7 @@ app.put("/api/productos/:id", async (req, res) => {
         tipo,
         n2(costo),
         n2(porcentaje_ganancia),
+        n3(cantidad_bulto || 1),
         precioVentaFinal,
         n3(stock_minimo),
         Boolean(permite_decimal),
@@ -1220,8 +1255,8 @@ app.post("/api/compras", async (req, res) => {
         presentacionNombre = presentacionResult.rows[0].nombre || "";
       }
 
-      const cantidadBase = n3(cantidadIngresada * factorPresentacion);
-      const costoUnitarioBase = cantidadBase > 0 ? n2(subtotal / cantidadBase) : costoUnitarioIngresado;
+      let cantidadBase = n3(cantidadIngresada * factorPresentacion);
+      let costoUnitarioBase = cantidadBase > 0 ? n2(subtotal / cantidadBase) : costoUnitarioIngresado;
 
       const productoResult = await client.query(
         `
@@ -1238,9 +1273,18 @@ app.post("/api/compras", async (req, res) => {
       }
 
       const producto = productoResult.rows[0];
+
+      const bultoProductoCompra = item.presentacion_id ? 1 : n3(producto.cantidad_bulto || 1);
+      if (bultoProductoCompra > 1) {
+        cantidadBase = n3(cantidadBase * bultoProductoCompra);
+        costoUnitarioBase = cantidadBase > 0 ? n2(subtotal / cantidadBase) : costoUnitarioIngresado;
+      }
+
       const porcentajeGanancia = n2(producto.porcentaje_ganancia || 0);
       const precioVentaActual = n2(producto.precio_venta || 0);
-      const precioSugeridoNuevo = n2(costoUnitarioBase * (1 + porcentajeGanancia / 100));
+      const costoParaVenta = costoUnitarioBase;
+      const costoProductoParaGuardar = item.presentacion_id ? costoUnitarioBase : costoUnitarioIngresado;
+      const precioSugeridoNuevo = n2(redondearPrecio(costoParaVenta * (1 + porcentajeGanancia / 100)));
       const debeActualizarPrecio = precioSugeridoNuevo > precioVentaActual;
 
       await client.query(
@@ -1265,7 +1309,7 @@ app.post("/api/compras", async (req, res) => {
         WHERE id = $4
         RETURNING precio_venta
         `,
-        [cantidadBase, costoUnitarioBase, precioSugeridoNuevo, productoId]
+        [cantidadBase, costoProductoParaGuardar, precioSugeridoNuevo, productoId]
       );
 
       await recalcularPresentacionesProducto(client, productoId, updateProductoCompra.rows[0]?.precio_venta || precioVentaActual);
@@ -1276,7 +1320,7 @@ app.post("/api/compras", async (req, res) => {
           nombre: producto.nombre,
           precio_anterior: precioVentaActual,
           precio_nuevo: precioSugeridoNuevo,
-          costo_nuevo: costoUnitarioBase,
+          costo_nuevo: costoProductoParaGuardar,
           porcentaje_ganancia: porcentajeGanancia
         });
       }
@@ -2456,6 +2500,15 @@ app.post("/api/facturar", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor Almacén Frine corriendo en puerto ${PORT}`);
-});
+asegurarColumnasAlmacen()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Servidor Almacén Frine corriendo en puerto ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Error preparando columnas de almacén:", error);
+    app.listen(PORT, () => {
+      console.log(`Servidor Almacén Frine corriendo en puerto ${PORT}`);
+    });
+  });
