@@ -35,6 +35,34 @@ function n3(valor) {
   return Number(Number(valor || 0).toFixed(3));
 }
 
+function calcularPrecioVenta(costo, porcentajeGanancia, precioVentaInformado) {
+  const costoNum = n2(costo);
+  const gananciaNum = n2(porcentajeGanancia);
+  const precioInformado = n2(precioVentaInformado);
+
+  if (precioInformado > 0) return precioInformado;
+  if (costoNum > 0 && gananciaNum >= 0) {
+    return n2(costoNum * (1 + gananciaNum / 100));
+  }
+  return 0;
+}
+
+async function recalcularPresentacionesProducto(clientOrPool, productoId, precioBase) {
+  const precio = n2(precioBase);
+  await clientOrPool.query(
+    `
+    UPDATE producto_presentaciones
+    SET
+      precio_venta = ROUND(($1::numeric * factor)::numeric, 2),
+      updated_at = NOW()
+    WHERE producto_id = $2
+      AND activo = true
+      AND es_venta = true
+    `,
+    [precio, productoId]
+  );
+}
+
 function vacio(valor) {
   return valor === undefined || valor === null || String(valor).trim() === "";
 }
@@ -626,6 +654,7 @@ app.post("/api/productos", async (req, res) => {
     }
 
     const tipo = tipo_venta === "peso" ? "peso" : "unidad";
+    const precioVentaFinal = calcularPrecioVenta(costo, porcentaje_ganancia, precio_venta);
 
     const result = await pool.query(
       `
@@ -653,7 +682,7 @@ app.post("/api/productos", async (req, res) => {
         tipo,
         n2(costo),
         n2(porcentaje_ganancia),
-        n2(precio_venta),
+        precioVentaFinal,
         n3(stock_actual),
         n3(stock_minimo),
         Boolean(permite_decimal)
@@ -689,6 +718,7 @@ app.put("/api/productos/:id", async (req, res) => {
     }
 
     const tipo = tipo_venta === "peso" ? "peso" : "unidad";
+    const precioVentaFinal = calcularPrecioVenta(costo, porcentaje_ganancia, precio_venta);
 
     const result = await pool.query(
       `
@@ -717,7 +747,7 @@ app.put("/api/productos/:id", async (req, res) => {
         tipo,
         n2(costo),
         n2(porcentaje_ganancia),
-        n2(precio_venta),
+        precioVentaFinal,
         n3(stock_minimo),
         Boolean(permite_decimal),
         activo === false ? false : true,
@@ -728,6 +758,8 @@ app.put("/api/productos/:id", async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Producto no encontrado" });
     }
+
+    await recalcularPresentacionesProducto(pool, id, precioVentaFinal);
 
     res.json(result.rows[0]);
   } catch (error) {
@@ -773,6 +805,10 @@ app.post("/api/productos/:id/presentaciones", async (req, res) => {
       return res.status(400).json({ error: "El factor debe ser mayor a 0" });
     }
 
+    const productoBaseResult = await pool.query("SELECT precio_venta FROM productos WHERE id = $1 LIMIT 1", [id]);
+    const precioBaseProducto = n2(productoBaseResult.rows[0]?.precio_venta || 0);
+    const precioPresentacionFinal = n2(precioBaseProducto * n3(factor));
+
     const result = await pool.query(
       `
       INSERT INTO producto_presentaciones (
@@ -787,7 +823,7 @@ app.post("/api/productos/:id/presentaciones", async (req, res) => {
         vacio(codigo_barras) ? null : String(codigo_barras).trim(),
         vacio(plu) ? null : String(plu).trim(),
         n3(factor),
-        n2(precio_venta),
+        precioPresentacionFinal,
         es_compra === false ? false : true,
         es_venta === false ? false : true,
         activo === false ? false : true
@@ -823,6 +859,10 @@ app.put("/api/productos/:id/presentaciones/:presentacion_id", async (req, res) =
       return res.status(400).json({ error: "El factor debe ser mayor a 0" });
     }
 
+    const productoBaseResult = await pool.query("SELECT precio_venta FROM productos WHERE id = $1 LIMIT 1", [id]);
+    const precioBaseProducto = n2(productoBaseResult.rows[0]?.precio_venta || 0);
+    const precioPresentacionFinal = n2(precioBaseProducto * n3(factor));
+
     const result = await pool.query(
       `
       UPDATE producto_presentaciones
@@ -845,7 +885,7 @@ app.put("/api/productos/:id/presentaciones/:presentacion_id", async (req, res) =
         vacio(codigo_barras) ? null : String(codigo_barras).trim(),
         vacio(plu) ? null : String(plu).trim(),
         n3(factor),
-        n2(precio_venta),
+        precioPresentacionFinal,
         es_compra === false ? false : true,
         es_venta === false ? false : true,
         activo === false ? false : true,
@@ -1211,7 +1251,7 @@ app.post("/api/compras", async (req, res) => {
         [compra.id, productoId, cantidadBase, costoUnitarioBase, subtotal]
       );
 
-      await client.query(
+      const updateProductoCompra = await client.query(
         `
         UPDATE productos
         SET
@@ -1223,9 +1263,12 @@ app.post("/api/compras", async (req, res) => {
           END,
           updated_at = NOW()
         WHERE id = $4
+        RETURNING precio_venta
         `,
         [cantidadBase, costoUnitarioBase, precioSugeridoNuevo, productoId]
       );
+
+      await recalcularPresentacionesProducto(client, productoId, updateProductoCompra.rows[0]?.precio_venta || precioVentaActual);
 
       if (debeActualizarPrecio) {
         preciosActualizados.push({
