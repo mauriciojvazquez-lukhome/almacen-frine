@@ -2362,7 +2362,7 @@ app.post("/api/facturar", async (req, res) => {
       doc_nro
     } = req.body;
 
-    const ultimo = await afip.ElectronicBilling.getLastVoucher(11, 2);
+    const ultimo = await afip.ElectronicBilling.getLastVoucher(2, 11);
 
     const data = {
       CantReg: 1,
