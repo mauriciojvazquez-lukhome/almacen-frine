@@ -105,6 +105,91 @@ async function asegurarColumnasAlmacen() {
     SET cantidad_bulto = 1
     WHERE cantidad_bulto IS NULL OR cantidad_bulto <= 0
   `);
+
+  await pool.query(`
+    ALTER TABLE caja_sesiones
+    ADD COLUMN IF NOT EXISTS caja_esperada NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS ventas_efectivo NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS ventas_transferencia NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS ventas_debito NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS ventas_credito NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS ingresos_manuales NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS retiros NUMERIC DEFAULT 0
+  `);
+}
+
+async function calcularResumenCaja(clientOrPool, cajaSesionId) {
+  const cajaResult = await clientOrPool.query(
+    `
+    SELECT
+      cs.*,
+      ea.nombre AS empleado_apertura_nombre,
+      ec.nombre AS empleado_cierre_nombre
+    FROM caja_sesiones cs
+    LEFT JOIN empleados ea ON ea.id = cs.empleado_apertura_id
+    LEFT JOIN empleados ec ON ec.id = cs.empleado_cierre_id
+    WHERE cs.id = $1
+    LIMIT 1
+    `,
+    [cajaSesionId]
+  );
+
+  const caja = cajaResult.rows[0] || null;
+  if (!caja) return null;
+
+  const movimientosResult = await clientOrPool.query(
+    `
+    SELECT
+      COALESCE(SUM(CASE WHEN tipo = 'venta_efectivo' THEN monto ELSE 0 END), 0) AS ventas_efectivo,
+      COALESCE(SUM(CASE WHEN tipo = 'venta_transferencia' THEN monto ELSE 0 END), 0) AS ventas_transferencia,
+      COALESCE(SUM(CASE WHEN tipo = 'venta_debito' THEN monto ELSE 0 END), 0) AS ventas_debito,
+      COALESCE(SUM(CASE WHEN tipo = 'venta_credito' THEN monto ELSE 0 END), 0) AS ventas_credito,
+      COALESCE(SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE 0 END), 0) AS ingresos_manuales,
+      COALESCE(SUM(CASE WHEN tipo = 'retiro' THEN monto ELSE 0 END), 0) AS retiros
+    FROM caja_movimientos
+    WHERE caja_sesion_id = $1
+    `,
+    [cajaSesionId]
+  );
+
+  const m = movimientosResult.rows[0] || {};
+  const apertura = n2(caja.monto_inicial);
+  const ventasEfectivo = n2(m.ventas_efectivo);
+  const ventasTransferencia = n2(m.ventas_transferencia);
+  const ventasDebito = n2(m.ventas_debito);
+  const ventasCredito = n2(m.ventas_credito);
+  const ingresosManuales = n2(m.ingresos_manuales);
+  const retiros = n2(m.retiros);
+
+  const cajaEsperada = n2(
+    apertura +
+    ventasEfectivo +
+    ventasTransferencia +
+    ventasDebito +
+    ventasCredito +
+    ingresosManuales -
+    retiros
+  );
+
+  const efectivoReal = caja.estado === "cerrada" ? n2(caja.efectivo_real) : 0;
+  const diferencia = caja.estado === "cerrada" ? n2(efectivoReal - cajaEsperada) : null;
+
+  return {
+    caja,
+    resumen: {
+      apertura,
+      ventas_efectivo: ventasEfectivo,
+      ventas_transferencia: ventasTransferencia,
+      ventas_debito: ventasDebito,
+      ventas_credito: ventasCredito,
+      ingresos_manuales: ingresosManuales,
+      retiros,
+      caja_esperada: cajaEsperada,
+      efectivo_real: efectivoReal,
+      diferencia,
+      estado_diferencia: diferencia === null ? "abierta" : diferencia > 0 ? "sobrante" : diferencia < 0 ? "faltante" : "exacta"
+    }
+  };
 }
 
 function permisosDesdeBody(body = {}) {
@@ -1370,7 +1455,10 @@ app.post("/api/compras", async (req, res) => {
 app.get("/api/caja/abierta", async (req, res) => {
   try {
     const caja = await buscarCajaAbierta();
-    res.json(caja || null);
+    if (!caja) return res.json(null);
+
+    const detalle = await calcularResumenCaja(pool, caja.id);
+    res.json(detalle || { caja, resumen: null });
   } catch (error) {
     console.error("Error caja abierta:", error);
     res.status(500).json({ error: "Error al buscar caja abierta" });
@@ -1490,40 +1578,21 @@ app.post("/api/caja/cerrar", async (req, res) => {
 
     await client.query("BEGIN");
 
-    const cajaResult = await client.query(
-      `
-      SELECT *
-      FROM caja_sesiones
-      WHERE id = $1
-      LIMIT 1
-      `,
-      [caja_sesion_id]
-    );
+    const detalleCaja = await calcularResumenCaja(client, caja_sesion_id);
 
-    if (cajaResult.rows.length === 0) {
+    if (!detalleCaja) {
       await client.query("ROLLBACK");
       return res.status(404).json({ error: "Caja no encontrada" });
     }
 
-    const movimientosResult = await client.query(
-      `
-      SELECT
-        COALESCE(SUM(
-          CASE
-            WHEN tipo IN ('apertura', 'ingreso', 'venta_efectivo') THEN monto
-            WHEN tipo IN ('retiro', 'cierre') THEN -monto
-            ELSE 0
-          END
-        ), 0) AS saldo_sistema
-      FROM caja_movimientos
-      WHERE caja_sesion_id = $1
-      `,
-      [caja_sesion_id]
-    );
+    if (detalleCaja.caja.estado !== "abierta") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "La caja ya está cerrada" });
+    }
 
-    const saldoSistema = n2(movimientosResult.rows[0].saldo_sistema);
+    const resumen = detalleCaja.resumen;
     const efectivoReal = n2(efectivo_real);
-    const diferencia = n2(efectivoReal - saldoSistema);
+    const diferencia = n2(efectivoReal - resumen.caja_esperada);
 
     const updateResult = await client.query(
       `
@@ -1533,15 +1602,29 @@ app.post("/api/caja/cerrar", async (req, res) => {
         fecha_cierre = NOW(),
         efectivo_real = $2,
         diferencia = $3,
+        caja_esperada = $4,
+        ventas_efectivo = $5,
+        ventas_transferencia = $6,
+        ventas_debito = $7,
+        ventas_credito = $8,
+        ingresos_manuales = $9,
+        retiros = $10,
         estado = 'cerrada',
-        observaciones = COALESCE(observaciones, '') || $4
-      WHERE id = $5
+        observaciones = COALESCE(observaciones, '') || $11
+      WHERE id = $12
       RETURNING *
       `,
       [
         empleado_cierre_id || null,
         efectivoReal,
         diferencia,
+        resumen.caja_esperada,
+        resumen.ventas_efectivo,
+        resumen.ventas_transferencia,
+        resumen.ventas_debito,
+        resumen.ventas_credito,
+        resumen.ingresos_manuales,
+        resumen.retiros,
         observaciones ? ` | ${observaciones}` : "",
         caja_sesion_id
       ]
@@ -1560,9 +1643,12 @@ app.post("/api/caja/cerrar", async (req, res) => {
     res.json({
       ok: true,
       caja: updateResult.rows[0],
-      saldo_sistema: saldoSistema,
-      efectivo_real: efectivoReal,
-      diferencia
+      resumen: {
+        ...resumen,
+        efectivo_real: efectivoReal,
+        diferencia,
+        estado_diferencia: diferencia > 0 ? "sobrante" : diferencia < 0 ? "faltante" : "exacta"
+      }
     });
   } catch (error) {
     await client.query("ROLLBACK");
@@ -2232,6 +2318,110 @@ app.get("/api/reportes/compras", async (req, res) => {
   } catch (error) {
     console.error("Error reporte compras:", error);
     res.status(500).json({ error: "Error al obtener reporte de compras" });
+  }
+});
+
+
+app.get("/api/reportes/cajeros", async (req, res) => {
+  try {
+    const { desde, hasta, empleado_id } = req.query;
+
+    const condiciones = ["cs.estado = 'cerrada'"];
+    const valores = [];
+    let i = 1;
+
+    if (desde) {
+      condiciones.push(`DATE(cs.fecha_cierre) >= $${i++}`);
+      valores.push(desde);
+    }
+
+    if (hasta) {
+      condiciones.push(`DATE(cs.fecha_cierre) <= $${i++}`);
+      valores.push(hasta);
+    }
+
+    if (empleado_id) {
+      condiciones.push(`cs.empleado_apertura_id = $${i++}`);
+      valores.push(empleado_id);
+    }
+
+    const where = `WHERE ${condiciones.join(" AND ")}`;
+
+    const result = await pool.query(
+      `
+      SELECT
+        cs.id,
+        cs.fecha_apertura,
+        cs.fecha_cierre,
+        cs.monto_inicial,
+        cs.caja_esperada,
+        cs.ventas_efectivo,
+        cs.ventas_transferencia,
+        cs.ventas_debito,
+        cs.ventas_credito,
+        cs.ingresos_manuales,
+        cs.retiros,
+        cs.efectivo_real,
+        cs.diferencia,
+        cs.observaciones,
+        ea.id AS empleado_id,
+        ea.nombre AS cajero_nombre,
+        ec.nombre AS empleado_cierre_nombre
+      FROM caja_sesiones cs
+      LEFT JOIN empleados ea ON ea.id = cs.empleado_apertura_id
+      LEFT JOIN empleados ec ON ec.id = cs.empleado_cierre_id
+      ${where}
+      ORDER BY cs.fecha_cierre DESC, cs.id DESC
+      `,
+      valores
+    );
+
+    const cierres = result.rows.map(r => {
+      const totalVentas = n2(
+        Number(r.ventas_efectivo || 0) +
+        Number(r.ventas_transferencia || 0) +
+        Number(r.ventas_debito || 0) +
+        Number(r.ventas_credito || 0)
+      );
+      const diferencia = n2(r.diferencia);
+      return {
+        ...r,
+        monto_inicial: n2(r.monto_inicial),
+        ventas_efectivo: n2(r.ventas_efectivo),
+        ventas_transferencia: n2(r.ventas_transferencia),
+        ventas_debito: n2(r.ventas_debito),
+        ventas_credito: n2(r.ventas_credito),
+        total_ventas: totalVentas,
+        ingresos_manuales: n2(r.ingresos_manuales),
+        retiros: n2(r.retiros),
+        caja_esperada: n2(r.caja_esperada),
+        efectivo_real: n2(r.efectivo_real),
+        diferencia,
+        estado_diferencia: diferencia > 0 ? "sobrante" : diferencia < 0 ? "faltante" : "exacta"
+      };
+    });
+
+    const resumen = cierres.reduce((acc, c) => {
+      acc.cantidad_cierres += 1;
+      acc.total_esperado = n2(acc.total_esperado + Number(c.caja_esperada || 0));
+      acc.total_real = n2(acc.total_real + Number(c.efectivo_real || 0));
+      acc.total_diferencia = n2(acc.total_diferencia + Number(c.diferencia || 0));
+      if (Number(c.diferencia || 0) < 0) acc.total_faltantes = n2(acc.total_faltantes + Math.abs(Number(c.diferencia)));
+      if (Number(c.diferencia || 0) > 0) acc.total_sobrantes = n2(acc.total_sobrantes + Number(c.diferencia));
+      return acc;
+    }, {
+      cantidad_cierres: 0,
+      total_esperado: 0,
+      total_real: 0,
+      total_diferencia: 0,
+      total_faltantes: 0,
+      total_sobrantes: 0
+    });
+
+    res.json({ resumen, cierres });
+  } catch (error) {
+    console.error("Error reporte cajeros:", error);
+    res.status(500).json({ error: "Error al obtener reporte de cajeros" });
   }
 });
 
