@@ -2089,6 +2089,76 @@ app.get("/api/reportes/stock-bajo", async (req, res) => {
   }
 });
 
+
+app.get("/api/reportes/inventario-resumen", async (req, res) => {
+  try {
+    const { estado, q } = req.query;
+    const condiciones = ["p.activo = true"];
+    const valores = [];
+    let i = 1;
+
+    if (q && String(q).trim()) {
+      valores.push(`%${String(q).trim()}%`);
+      condiciones.push(`(
+        p.nombre ILIKE $${i}
+        OR COALESCE(p.codigo_barras, '') ILIKE $${i}
+        OR COALESCE(p.plu, '') ILIKE $${i}
+      )`);
+      i++;
+    }
+
+    if (estado === "sin") {
+      condiciones.push("COALESCE(p.stock_actual, 0) <= 0");
+    } else if (estado === "bajo") {
+      condiciones.push("COALESCE(p.stock_actual, 0) > 0 AND COALESCE(p.stock_actual, 0) <= COALESCE(p.stock_minimo, 0)");
+    } else if (estado === "ok") {
+      condiciones.push("COALESCE(p.stock_actual, 0) > COALESCE(p.stock_minimo, 0)");
+    }
+
+    const where = condiciones.join(" AND ");
+
+    const result = await pool.query(
+      `
+      SELECT
+        p.id,
+        p.nombre,
+        p.codigo_barras,
+        p.plu,
+        p.tipo_venta,
+        COALESCE(p.costo, 0) AS costo,
+        COALESCE(p.precio_venta, 0) AS precio_venta,
+        COALESCE(p.porcentaje_ganancia, 0) AS porcentaje_ganancia,
+        COALESCE(p.stock_actual, 0) AS stock_actual,
+        COALESCE(p.stock_minimo, 0) AS stock_minimo,
+        ROUND((COALESCE(p.stock_actual, 0) * COALESCE(p.costo, 0))::numeric, 2) AS total_costo,
+        ROUND((COALESCE(p.stock_actual, 0) * COALESCE(p.precio_venta, 0))::numeric, 2) AS total_venta,
+        ROUND((COALESCE(p.stock_actual, 0) * (COALESCE(p.precio_venta, 0) - COALESCE(p.costo, 0)))::numeric, 2) AS total_ganancia
+      FROM productos p
+      WHERE ${where}
+      ORDER BY p.nombre ASC
+      `,
+      valores
+    );
+
+    const resumen = result.rows.reduce((acc, p) => {
+      acc.productos += 1;
+      acc.total_costo += Number(p.total_costo || 0);
+      acc.total_venta += Number(p.total_venta || 0);
+      acc.total_ganancia += Number(p.total_ganancia || 0);
+      return acc;
+    }, { productos: 0, total_costo: 0, total_venta: 0, total_ganancia: 0 });
+
+    resumen.total_costo = n2(resumen.total_costo);
+    resumen.total_venta = n2(resumen.total_venta);
+    resumen.total_ganancia = n2(resumen.total_ganancia);
+
+    res.json({ items: result.rows, resumen });
+  } catch (error) {
+    console.error("Error resumen inventario:", error);
+    res.status(500).json({ error: "Error al obtener resumen de inventario" });
+  }
+});
+
 app.get("/api/reportes/compras", async (req, res) => {
   try {
     const { desde, hasta, proveedor_id, producto_id, q } = req.query;
