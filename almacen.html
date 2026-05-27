@@ -331,7 +331,36 @@ function imprimirTexto(html,titulo){
     .t-obs { margin-top: 1mm; word-break: break-word; }
     @media screen { body { background:#eee; } .ticket { background:#fff; min-height: 20mm; } }
     @media print { html, body { width: 58mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-  </style></head><body>${html}</body></html>`);
+  </style></head><body>${html}
+<script>
+// FIX FRINE: evita que el foco automático del scanner cierre los desplegables.
+// Si el usuario está usando un select/input/textarea, no se fuerza el foco al scanner.
+(function(){
+  if (window.__frineFocusFixAplicado) return;
+  window.__frineFocusFixAplicado = true;
+
+  window.frinePuedeEnfocarScanner = function() {
+    const activo = document.activeElement;
+    if (!activo) return true;
+
+    const tag = activo.tagName;
+    if (tag === "SELECT" || tag === "TEXTAREA") return false;
+    if (tag === "INPUT" && activo.id !== "ventaCodigo") return false;
+
+    return true;
+  };
+
+  const focusOriginal = HTMLElement.prototype.focus;
+  HTMLElement.prototype.focus = function(...args) {
+    if (this && this.id === "ventaCodigo" && window.frinePuedeEnfocarScanner && !window.frinePuedeEnfocarScanner()) {
+      return;
+    }
+    return focusOriginal.apply(this, args);
+  };
+})();
+</script>
+
+</body></html>`);
   w.document.close();
   w.focus();
   setTimeout(()=>w.print(),350);
@@ -614,5 +643,34 @@ mostrarConfigSubtab=function(nombre){mostrarConfigSubtabOriginal(nombre);if(nomb
 
 restaurarSesion();
 </script>
+
+<script>
+// FIX FRINE: evita que el foco automático del scanner cierre los desplegables.
+// Si el usuario está usando un select/input/textarea, no se fuerza el foco al scanner.
+(function(){
+  if (window.__frineFocusFixAplicado) return;
+  window.__frineFocusFixAplicado = true;
+
+  window.frinePuedeEnfocarScanner = function() {
+    const activo = document.activeElement;
+    if (!activo) return true;
+
+    const tag = activo.tagName;
+    if (tag === "SELECT" || tag === "TEXTAREA") return false;
+    if (tag === "INPUT" && activo.id !== "ventaCodigo") return false;
+
+    return true;
+  };
+
+  const focusOriginal = HTMLElement.prototype.focus;
+  HTMLElement.prototype.focus = function(...args) {
+    if (this && this.id === "ventaCodigo" && window.frinePuedeEnfocarScanner && !window.frinePuedeEnfocarScanner()) {
+      return;
+    }
+    return focusOriginal.apply(this, args);
+  };
+})();
+</script>
+
 </body>
 </html>
