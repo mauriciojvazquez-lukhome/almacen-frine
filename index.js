@@ -1882,7 +1882,8 @@ app.post("/api/ventas", async (req, res) => {
         empleado_id || null,
         n2(totalVenta),
         formaPagoNormalizada,
-        observaciones || ""
+        observaciones || "",
+        clienteIdFinal
       ]
     );
 
