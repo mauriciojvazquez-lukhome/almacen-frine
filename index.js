@@ -2772,3 +2772,26 @@ asegurarColumnasAlmacen()
       console.log(`Servidor Almacén Frine corriendo en puerto ${PORT}`);
     });
   });
+
+// ==========================================
+// OCULTAR MODULOS PARA CAJEROS (FRONTEND)
+// ==========================================
+// PEGAR ESTE BLOQUE EN EL INDEX.JS DEL FRONTEND,
+// JUSTO DESPUES DE:
+// usuarioActual = data;
+
+if (usuarioActual.rol === "cajero") {
+
+  const ocultar = [
+    "btnNavHistorialVentas",
+    "btnNavReportes",
+    "btnNavConfiguracion",
+    "btnNavInicio"
+  ];
+
+  ocultar.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+
+}
