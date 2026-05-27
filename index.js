@@ -107,10 +107,43 @@ async function asegurarColumnasAlmacen() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS clientes (
+      id SERIAL PRIMARY KEY,
+      nombre VARCHAR(255) NOT NULL,
+      telefono VARCHAR(80) DEFAULT '',
+      direccion TEXT DEFAULT '',
+      limite_credito NUMERIC DEFAULT 0,
+      activo BOOLEAN DEFAULT true,
+      observaciones TEXT DEFAULT '',
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS cuenta_corriente_movimientos (
+      id SERIAL PRIMARY KEY,
+      cliente_id INTEGER REFERENCES clientes(id),
+      venta_id INTEGER,
+      tipo VARCHAR(30) NOT NULL,
+      monto NUMERIC NOT NULL DEFAULT 0,
+      observaciones TEXT DEFAULT '',
+      empleado_id INTEGER,
+      fecha TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    ALTER TABLE ventas
+    ADD COLUMN IF NOT EXISTS cliente_id INTEGER
+  `);
+
+  await pool.query(`
     ALTER TABLE caja_sesiones
     ADD COLUMN IF NOT EXISTS caja_esperada NUMERIC DEFAULT 0,
     ADD COLUMN IF NOT EXISTS ventas_efectivo NUMERIC DEFAULT 0,
     ADD COLUMN IF NOT EXISTS ventas_transferencia NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS ventas_cuenta_corriente NUMERIC DEFAULT 0,
     ADD COLUMN IF NOT EXISTS transferencia_real NUMERIC DEFAULT 0,
     ADD COLUMN IF NOT EXISTS ventas_debito NUMERIC DEFAULT 0,
     ADD COLUMN IF NOT EXISTS ventas_credito NUMERIC DEFAULT 0,
@@ -143,6 +176,7 @@ async function calcularResumenCaja(clientOrPool, cajaSesionId) {
     SELECT
       COALESCE(SUM(CASE WHEN tipo = 'venta_efectivo' THEN monto ELSE 0 END), 0) AS ventas_efectivo,
       COALESCE(SUM(CASE WHEN tipo = 'venta_transferencia' THEN monto ELSE 0 END), 0) AS ventas_transferencia,
+      COALESCE(SUM(CASE WHEN tipo = 'venta_cuenta_corriente' THEN monto ELSE 0 END), 0) AS ventas_cuenta_corriente,
       COALESCE(SUM(CASE WHEN tipo = 'venta_debito' THEN monto ELSE 0 END), 0) AS ventas_debito,
       COALESCE(SUM(CASE WHEN tipo = 'venta_credito' THEN monto ELSE 0 END), 0) AS ventas_credito,
       COALESCE(SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE 0 END), 0) AS ingresos_manuales,
@@ -157,6 +191,7 @@ async function calcularResumenCaja(clientOrPool, cajaSesionId) {
   const apertura = n2(caja.monto_inicial);
   const ventasEfectivo = n2(m.ventas_efectivo);
   const ventasTransferencia = n2(m.ventas_transferencia);
+  const ventasCuentaCorriente = n2(m.ventas_cuenta_corriente);
   const ventasDebito = n2(m.ventas_debito);
   const ventasCredito = n2(m.ventas_credito);
   const ingresosManuales = n2(m.ingresos_manuales);
@@ -183,6 +218,7 @@ async function calcularResumenCaja(clientOrPool, cajaSesionId) {
       apertura,
       ventas_efectivo: ventasEfectivo,
       ventas_transferencia: ventasTransferencia,
+      ventas_cuenta_corriente: ventasCuentaCorriente,
       ventas_debito: ventasDebito,
       ventas_credito: ventasCredito,
       ingresos_manuales: ingresosManuales,
@@ -558,7 +594,8 @@ app.post("/api/proveedores", async (req, res) => {
         String(nombre).trim(),
         telefono || "",
         direccion || "",
-        observaciones || ""
+        observaciones || "",
+        clienteIdFinal
       ]
     );
 
@@ -1575,7 +1612,7 @@ app.post("/api/caja/cerrar", async (req, res) => {
   const client = await pool.connect();
 
   try {
-    const { caja_sesion_id, empleado_cierre_id, efectivo_real, observaciones } = req.body;
+    const { caja_sesion_id, empleado_cierre_id, efectivo_real, transferencia_real, observaciones } = req.body;
 
     if (!caja_sesion_id) {
       return res.status(400).json({ error: "Caja no informada" });
@@ -1597,7 +1634,9 @@ app.post("/api/caja/cerrar", async (req, res) => {
 
     const resumen = detalleCaja.resumen;
     const efectivoReal = n2(efectivo_real);
+    const transferenciaReal = n2(transferencia_real);
     const diferencia = n2(efectivoReal - resumen.caja_esperada);
+    const diferenciaTransferencia = n2(transferenciaReal - resumen.ventas_transferencia);
 
     const updateResult = await client.query(
       `
@@ -1606,26 +1645,30 @@ app.post("/api/caja/cerrar", async (req, res) => {
         empleado_cierre_id = $1,
         fecha_cierre = NOW(),
         efectivo_real = $2,
-        diferencia = $3,
-        caja_esperada = $4,
-        ventas_efectivo = $5,
-        ventas_transferencia = $6,
-        ventas_debito = $7,
-        ventas_credito = $8,
-        ingresos_manuales = $9,
-        retiros = $10,
+        transferencia_real = $3,
+        diferencia = $4,
+        caja_esperada = $5,
+        ventas_efectivo = $6,
+        ventas_transferencia = $7,
+        ventas_cuenta_corriente = $8,
+        ventas_debito = $9,
+        ventas_credito = $10,
+        ingresos_manuales = $11,
+        retiros = $12,
         estado = 'cerrada',
-        observaciones = COALESCE(observaciones, '') || $11
-      WHERE id = $12
+        observaciones = COALESCE(observaciones, '') || $13
+      WHERE id = $14
       RETURNING *
       `,
       [
         empleado_cierre_id || null,
         efectivoReal,
+        transferenciaReal,
         diferencia,
         resumen.caja_esperada,
         resumen.ventas_efectivo,
         resumen.ventas_transferencia,
+        resumen.ventas_cuenta_corriente,
         resumen.ventas_debito,
         resumen.ventas_credito,
         resumen.ingresos_manuales,
@@ -1651,7 +1694,9 @@ app.post("/api/caja/cerrar", async (req, res) => {
       resumen: {
         ...resumen,
         efectivo_real: efectivoReal,
+        transferencia_real: transferenciaReal,
         diferencia,
+        diferencia_transferencia: diferenciaTransferencia,
         estado_diferencia: diferencia > 0 ? "sobrante" : diferencia < 0 ? "faltante" : "exacta"
       }
     });
@@ -1696,6 +1741,7 @@ app.get("/api/ventas", async (req, res) => {
       condiciones.push(`(
         CAST(v.id AS TEXT) ILIKE $${i}
         OR COALESCE(e.nombre, '') ILIKE $${i}
+        OR COALESCE(c.nombre, '') ILIKE $${i}
         OR COALESCE(v.observaciones, '') ILIKE $${i}
       )`);
       valores.push(`%${String(q).trim()}%`);
@@ -1708,9 +1754,11 @@ app.get("/api/ventas", async (req, res) => {
       `
       SELECT
         v.*,
-        e.nombre AS empleado_nombre
+        e.nombre AS empleado_nombre,
+        c.nombre AS cliente_nombre
       FROM ventas v
       LEFT JOIN empleados e ON e.id = v.empleado_id
+      LEFT JOIN clientes c ON c.id = v.cliente_id
       ${where}
       ORDER BY v.id DESC
       `,
@@ -1733,9 +1781,11 @@ app.get("/api/ventas/:id", async (req, res) => {
       `
       SELECT
         v.*,
-        e.nombre AS empleado_nombre
+        e.nombre AS empleado_nombre,
+        c.nombre AS cliente_nombre
       FROM ventas v
       LEFT JOIN empleados e ON e.id = v.empleado_id
+      LEFT JOIN clientes c ON c.id = v.cliente_id
       WHERE v.id = $1
       LIMIT 1
       `,
@@ -1774,15 +1824,29 @@ app.post("/api/ventas", async (req, res) => {
   const client = await pool.connect();
 
   try {
-    const { empleado_id, forma_pago, observaciones, items } = req.body;
+    const { empleado_id, forma_pago, observaciones, items, cliente_id } = req.body;
 
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "La venta debe tener al menos un producto" });
     }
 
-    const formaPagoNormalizada = ["efectivo", "transferencia", "debito", "credito"].includes(String(forma_pago || "").toLowerCase())
+    const formaPagoNormalizada = ["efectivo", "transferencia", "cuenta_corriente"].includes(String(forma_pago || "").toLowerCase())
       ? String(forma_pago).toLowerCase()
       : "efectivo";
+
+    let clienteIdFinal = cliente_id || null;
+    if (formaPagoNormalizada === "cuenta_corriente") {
+      if (!clienteIdFinal) {
+        return res.status(400).json({ error: "Para cuenta corriente tenés que seleccionar un cliente." });
+      }
+      const clienteResult = await client.query(
+        "SELECT * FROM clientes WHERE id = $1 AND activo = true LIMIT 1",
+        [clienteIdFinal]
+      );
+      if (clienteResult.rows.length === 0) {
+        return res.status(400).json({ error: "Cliente no encontrado o inactivo." });
+      }
+    }
 
     const cajaAbiertaResult = await client.query(`
       SELECT *
@@ -1809,8 +1873,8 @@ app.post("/api/ventas", async (req, res) => {
 
     const ventaResult = await client.query(
       `
-      INSERT INTO ventas (caja_sesion_id, empleado_id, total, forma_pago, observaciones)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO ventas (caja_sesion_id, empleado_id, total, forma_pago, observaciones, cliente_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
       `,
       [
@@ -1930,8 +1994,7 @@ app.post("/api/ventas", async (req, res) => {
     const tipoMovimientoCaja =
       formaPagoNormalizada === "efectivo" ? "venta_efectivo" :
       formaPagoNormalizada === "transferencia" ? "venta_transferencia" :
-      formaPagoNormalizada === "debito" ? "venta_debito" :
-      formaPagoNormalizada === "credito" ? "venta_credito" :
+      formaPagoNormalizada === "cuenta_corriente" ? "venta_cuenta_corriente" :
       "venta";
 
     await client.query(
@@ -1941,6 +2004,16 @@ app.post("/api/ventas", async (req, res) => {
       `,
       [cajaAbierta.id, tipoMovimientoCaja, n2(totalVenta), `Venta ${formaPagoNormalizada}`, empleado_id || null, venta.id]
     );
+
+    if (formaPagoNormalizada === "cuenta_corriente") {
+      await client.query(
+        `
+        INSERT INTO cuenta_corriente_movimientos (cliente_id, venta_id, tipo, monto, observaciones, empleado_id)
+        VALUES ($1, $2, 'deuda', $3, $4, $5)
+        `,
+        [clienteIdFinal, venta.id, n2(totalVenta), observaciones || "Venta en cuenta corriente", empleado_id || null]
+      );
+    }
 
     await client.query("COMMIT");
 
@@ -1959,6 +2032,9 @@ app.post("/api/ventas", async (req, res) => {
       respuesta.comprobante_tipo = "factura_afip_pendiente";
       respuesta.afip_estado = "pendiente_backend";
       respuesta.mensaje = "Venta guardada. La factura AFIP real requiere integración adicional en el backend.";
+    } else if (formaPagoNormalizada === "cuenta_corriente") {
+      respuesta.comprobante_tipo = "cuenta_corriente";
+      respuesta.mensaje = "Venta guardada en Cuenta Corriente. No afecta efectivo ni transferencia de caja.";
     } else {
       respuesta.comprobante_tipo = "registro_interno";
       respuesta.mensaje = "Venta guardada correctamente.";
@@ -1971,6 +2047,92 @@ app.post("/api/ventas", async (req, res) => {
     res.status(500).json({ error: error.message || "Error al guardar venta" });
   } finally {
     client.release();
+  }
+});
+
+
+// ==========================================
+// CLIENTES / CUENTA CORRIENTE
+// ==========================================
+app.get("/api/clientes", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        c.*,
+        COALESCE(SUM(CASE WHEN m.tipo = 'deuda' THEN m.monto ELSE -m.monto END), 0) AS saldo
+      FROM clientes c
+      LEFT JOIN cuenta_corriente_movimientos m ON m.cliente_id = c.id
+      WHERE c.activo = true
+      GROUP BY c.id
+      ORDER BY c.nombre ASC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error clientes:", error);
+    res.status(500).json({ error: "Error al obtener clientes" });
+  }
+});
+
+app.post("/api/clientes", async (req, res) => {
+  try {
+    const { nombre, telefono, direccion, limite_credito, observaciones } = req.body;
+    if (vacio(nombre)) return res.status(400).json({ error: "El nombre del cliente es obligatorio" });
+    const result = await pool.query(
+      `
+      INSERT INTO clientes (nombre, telefono, direccion, limite_credito, observaciones)
+      VALUES ($1,$2,$3,$4,$5)
+      RETURNING *
+      `,
+      [String(nombre).trim(), telefono || "", direccion || "", n2(limite_credito), observaciones || ""]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error crear cliente:", error);
+    res.status(500).json({ error: "Error al crear cliente" });
+  }
+});
+
+app.post("/api/clientes/:id/pagos", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { monto, observaciones, empleado_id } = req.body;
+    const montoNum = n2(monto);
+    if (montoNum <= 0) return res.status(400).json({ error: "El monto del pago debe ser mayor a 0" });
+    const cliente = await pool.query("SELECT * FROM clientes WHERE id=$1 AND activo=true LIMIT 1", [id]);
+    if (!cliente.rows.length) return res.status(404).json({ error: "Cliente no encontrado" });
+    const result = await pool.query(
+      `
+      INSERT INTO cuenta_corriente_movimientos (cliente_id, tipo, monto, observaciones, empleado_id)
+      VALUES ($1, 'pago', $2, $3, $4)
+      RETURNING *
+      `,
+      [id, montoNum, observaciones || "Pago cuenta corriente", empleado_id || null]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error pago cliente:", error);
+    res.status(500).json({ error: "Error al registrar pago" });
+  }
+});
+
+app.get("/api/clientes/:id/movimientos", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `
+      SELECT m.*, v.total AS venta_total, e.nombre AS empleado_nombre
+      FROM cuenta_corriente_movimientos m
+      LEFT JOIN ventas v ON v.id = m.venta_id
+      LEFT JOIN empleados e ON e.id = m.empleado_id
+      WHERE m.cliente_id = $1
+      ORDER BY m.fecha DESC, m.id DESC
+      `,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error movimientos cliente:", error);
+    res.status(500).json({ error: "Error al obtener movimientos" });
   }
 });
 
