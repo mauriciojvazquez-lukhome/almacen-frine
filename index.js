@@ -111,6 +111,7 @@ async function asegurarColumnasAlmacen() {
     ADD COLUMN IF NOT EXISTS caja_esperada NUMERIC DEFAULT 0,
     ADD COLUMN IF NOT EXISTS ventas_efectivo NUMERIC DEFAULT 0,
     ADD COLUMN IF NOT EXISTS ventas_transferencia NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS transferencia_real NUMERIC DEFAULT 0,
     ADD COLUMN IF NOT EXISTS ventas_debito NUMERIC DEFAULT 0,
     ADD COLUMN IF NOT EXISTS ventas_credito NUMERIC DEFAULT 0,
     ADD COLUMN IF NOT EXISTS ingresos_manuales NUMERIC DEFAULT 0,
@@ -164,15 +165,17 @@ async function calcularResumenCaja(clientOrPool, cajaSesionId) {
   const cajaEsperada = n2(
     apertura +
     ventasEfectivo +
-    ventasTransferencia +
-    ventasDebito +
-    ventasCredito +
     ingresosManuales -
     retiros
   );
 
   const efectivoReal = caja.estado === "cerrada" ? n2(caja.efectivo_real) : 0;
+  const transferenciaReal = caja.estado === "cerrada" ? n2(caja.transferencia_real) : 0;
+
   const diferencia = caja.estado === "cerrada" ? n2(efectivoReal - cajaEsperada) : null;
+  const diferenciaTransferencia = caja.estado === "cerrada"
+    ? n2(transferenciaReal - ventasTransferencia)
+    : null;
 
   return {
     caja,
@@ -186,7 +189,9 @@ async function calcularResumenCaja(clientOrPool, cajaSesionId) {
       retiros,
       caja_esperada: cajaEsperada,
       efectivo_real: efectivoReal,
+      transferencia_real: transferenciaReal,
       diferencia,
+      diferencia_transferencia: diferenciaTransferencia,
       estado_diferencia: diferencia === null ? "abierta" : diferencia > 0 ? "sobrante" : diferencia < 0 ? "faltante" : "exacta"
     }
   };
