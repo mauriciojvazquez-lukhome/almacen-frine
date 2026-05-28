@@ -136,6 +136,29 @@ async function asegurarColumnasAlmacen() {
     SET cantidad_bulto = 1
     WHERE cantidad_bulto IS NULL OR cantidad_bulto <= 0
   `);
+  await pool.query(`
+    DO $$
+    DECLARE
+      r RECORD;
+    BEGIN
+      FOR r IN
+        SELECT conname
+        FROM pg_constraint
+        WHERE conrelid = 'productos'::regclass
+          AND contype = 'c'
+          AND pg_get_constraintdef(oid) ILIKE '%tipo_venta%'
+      LOOP
+        EXECUTE format('ALTER TABLE productos DROP CONSTRAINT IF EXISTS %I', r.conname);
+      END LOOP;
+    END $$;
+  `);
+
+  await pool.query(`
+    ALTER TABLE productos
+    ADD CONSTRAINT productos_tipo_venta_check
+    CHECK (tipo_venta IN ('unidad', 'peso', 'receta'))
+  `).catch(() => {});
+
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS clientes (
@@ -851,7 +874,7 @@ app.post("/api/productos", async (req, res) => {
       return res.status(400).json({ error: "El nombre es obligatorio" });
     }
 
-    const tipo = tipo_venta === "peso" ? "peso" : "unidad";
+    const tipo = tipo_venta === "peso" ? "peso" : (tipo_venta === "receta" ? "receta" : "unidad");
     const precioVentaFinal = calcularPrecioVenta(costo, porcentaje_ganancia, precio_venta, cantidad_bulto);
 
     const result = await pool.query(
@@ -918,7 +941,7 @@ app.put("/api/productos/:id", async (req, res) => {
       return res.status(400).json({ error: "El nombre es obligatorio" });
     }
 
-    const tipo = tipo_venta === "peso" ? "peso" : "unidad";
+    const tipo = tipo_venta === "peso" ? "peso" : (tipo_venta === "receta" ? "receta" : "unidad");
     const precioVentaFinal = calcularPrecioVenta(costo, porcentaje_ganancia, precio_venta, cantidad_bulto);
 
     const result = await pool.query(
@@ -3024,8 +3047,9 @@ app.post("/api/recetas/producir", async (req, res) => {
 
     await client.query("BEGIN");
 
-    const finalResult = await client.query("SELECT id, nombre FROM productos WHERE id = $1 AND activo = true LIMIT 1", [productoFinalId]);
+    const finalResult = await client.query("SELECT id, nombre, tipo_venta FROM productos WHERE id = $1 AND activo = true LIMIT 1", [productoFinalId]);
     if (finalResult.rows.length === 0) throw new Error("Producto final no encontrado");
+    if (String(finalResult.rows[0].tipo_venta || "") !== "receta") throw new Error("El producto final debe estar creado como tipo Receta / producido");
 
     for (const item of listaInsumos) {
       const insumoId = Number(item.producto_id || 0);
