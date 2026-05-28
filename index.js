@@ -96,6 +96,37 @@ async function buscarCajaAbierta() {
 
 async function asegurarColumnasAlmacen() {
   await pool.query(`
+    ALTER TABLE empleados
+    ADD COLUMN IF NOT EXISTS puede_recetas BOOLEAN DEFAULT false
+  `);
+
+  await pool.query(`
+    UPDATE empleados
+    SET puede_recetas = true
+    WHERE rol = 'admin' OR puede_configuracion = true
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS recetas_producciones (
+      id SERIAL PRIMARY KEY,
+      producto_final_id INTEGER REFERENCES productos(id),
+      cantidad_final NUMERIC NOT NULL DEFAULT 0,
+      empleado_id INTEGER REFERENCES empleados(id),
+      observaciones TEXT DEFAULT '',
+      fecha TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS recetas_produccion_detalle (
+      id SERIAL PRIMARY KEY,
+      produccion_id INTEGER REFERENCES recetas_producciones(id) ON DELETE CASCADE,
+      producto_insumo_id INTEGER REFERENCES productos(id),
+      cantidad NUMERIC NOT NULL DEFAULT 0
+    )
+  `);
+
+  await pool.query(`
     ALTER TABLE productos
     ADD COLUMN IF NOT EXISTS cantidad_bulto NUMERIC DEFAULT 1
   `);
@@ -241,7 +272,8 @@ function permisosDesdeBody(body = {}) {
     puede_compras: body.puede_compras === true,
     puede_caja: body.puede_caja === true,
     puede_reportes: body.puede_reportes === true,
-    puede_configuracion: body.puede_configuracion === true
+    puede_configuracion: body.puede_configuracion === true,
+    puede_recetas: body.puede_recetas === true
   };
 }
 
@@ -283,6 +315,7 @@ app.post("/api/login", async (req, res) => {
         puede_ventas,
         puede_productos,
         puede_compras,
+        puede_recetas,
         puede_caja,
         puede_reportes,
         puede_configuracion
@@ -324,6 +357,7 @@ app.get("/api/empleados", async (req, res) => {
         puede_ventas,
         puede_productos,
         puede_compras,
+        puede_recetas,
         puede_caja,
         puede_reportes,
         puede_configuracion,
@@ -356,6 +390,7 @@ app.get("/api/empleados/:id", async (req, res) => {
         puede_ventas,
         puede_productos,
         puede_compras,
+        puede_recetas,
         puede_caja,
         puede_reportes,
         puede_configuracion,
@@ -399,11 +434,12 @@ app.post("/api/empleados", async (req, res) => {
         puede_ventas,
         puede_productos,
         puede_compras,
+        puede_recetas,
         puede_caja,
         puede_reportes,
         puede_configuracion
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
       RETURNING
         id,
         nombre,
@@ -415,6 +451,7 @@ app.post("/api/empleados", async (req, res) => {
         puede_ventas,
         puede_productos,
         puede_compras,
+        puede_recetas,
         puede_caja,
         puede_reportes,
         puede_configuracion,
@@ -430,6 +467,7 @@ app.post("/api/empleados", async (req, res) => {
         permisos.puede_ventas,
         permisos.puede_productos,
         permisos.puede_compras,
+        permisos.puede_recetas,
         permisos.puede_caja,
         permisos.puede_reportes,
         permisos.puede_configuracion
@@ -466,10 +504,11 @@ app.put("/api/empleados/:id", async (req, res) => {
         puede_ventas = $7,
         puede_productos = $8,
         puede_compras = $9,
-        puede_caja = $10,
-        puede_reportes = $11,
-        puede_configuracion = $12
-      WHERE id = $13
+        puede_recetas = $10,
+        puede_caja = $11,
+        puede_reportes = $12,
+        puede_configuracion = $13
+      WHERE id = $14
       RETURNING
         id,
         nombre,
@@ -481,6 +520,7 @@ app.put("/api/empleados/:id", async (req, res) => {
         puede_ventas,
         puede_productos,
         puede_compras,
+        puede_recetas,
         puede_caja,
         puede_reportes,
         puede_configuracion,
@@ -496,6 +536,7 @@ app.put("/api/empleados/:id", async (req, res) => {
         permisos.puede_ventas,
         permisos.puede_productos,
         permisos.puede_compras,
+        permisos.puede_recetas,
         permisos.puede_caja,
         permisos.puede_reportes,
         permisos.puede_configuracion,
@@ -2925,6 +2966,121 @@ app.post("/api/facturar", async (req, res) => {
       detalle: detalleAfip
     });
 
+  }
+});
+
+
+// ==========================================
+// RECETAS / PRODUCCION
+// ==========================================
+app.get("/api/recetas/historial", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        rp.id,
+        rp.fecha,
+        rp.cantidad_final,
+        rp.observaciones,
+        pf.nombre AS producto_final_nombre,
+        e.nombre AS empleado_nombre,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'producto_id', pi.id,
+              'nombre', pi.nombre,
+              'cantidad', rpd.cantidad
+            )
+            ORDER BY pi.nombre
+          ) FILTER (WHERE rpd.id IS NOT NULL),
+          '[]'
+        ) AS insumos
+      FROM recetas_producciones rp
+      LEFT JOIN productos pf ON pf.id = rp.producto_final_id
+      LEFT JOIN empleados e ON e.id = rp.empleado_id
+      LEFT JOIN recetas_produccion_detalle rpd ON rpd.produccion_id = rp.id
+      LEFT JOIN productos pi ON pi.id = rpd.producto_insumo_id
+      GROUP BY rp.id, pf.nombre, e.nombre
+      ORDER BY rp.id DESC
+      LIMIT 100
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error historial recetas:", error);
+    res.status(500).json({ error: "Error al obtener historial de recetas" });
+  }
+});
+
+app.post("/api/recetas/producir", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { producto_final_id, cantidad_final, empleado_id, observaciones, insumos } = req.body;
+    const productoFinalId = Number(producto_final_id || 0);
+    const cantidadFinal = n3(cantidad_final);
+    const listaInsumos = Array.isArray(insumos) ? insumos : [];
+
+    if (!productoFinalId) return res.status(400).json({ error: "Elegí el producto final" });
+    if (!Number.isFinite(cantidadFinal) || cantidadFinal <= 0) return res.status(400).json({ error: "La cantidad a producir debe ser mayor a 0" });
+    if (!listaInsumos.length) return res.status(400).json({ error: "Agregá al menos un insumo" });
+
+    await client.query("BEGIN");
+
+    const finalResult = await client.query("SELECT id, nombre FROM productos WHERE id = $1 AND activo = true LIMIT 1", [productoFinalId]);
+    if (finalResult.rows.length === 0) throw new Error("Producto final no encontrado");
+
+    for (const item of listaInsumos) {
+      const insumoId = Number(item.producto_id || 0);
+      const cantidad = n3(item.cantidad);
+      if (!insumoId || !Number.isFinite(cantidad) || cantidad <= 0) throw new Error("Hay un insumo con cantidad inválida");
+      if (insumoId === productoFinalId) throw new Error("El producto final no puede ser también insumo de la misma producción");
+
+      const stockResult = await client.query(
+        "SELECT id, nombre, stock_actual FROM productos WHERE id = $1 AND activo = true FOR UPDATE",
+        [insumoId]
+      );
+      if (stockResult.rows.length === 0) throw new Error("Insumo no encontrado");
+      const prod = stockResult.rows[0];
+      if (Number(prod.stock_actual || 0) < cantidad) {
+        throw new Error(`Stock insuficiente de ${prod.nombre}. Stock actual: ${n3(prod.stock_actual)}, necesita: ${cantidad}`);
+      }
+    }
+
+    const produccionResult = await client.query(
+      `
+      INSERT INTO recetas_producciones (producto_final_id, cantidad_final, empleado_id, observaciones)
+      VALUES ($1,$2,$3,$4)
+      RETURNING *
+      `,
+      [productoFinalId, cantidadFinal, empleado_id || null, observaciones || ""]
+    );
+
+    const produccion = produccionResult.rows[0];
+
+    for (const item of listaInsumos) {
+      const insumoId = Number(item.producto_id || 0);
+      const cantidad = n3(item.cantidad);
+      await client.query(
+        "UPDATE productos SET stock_actual = stock_actual - $1, updated_at = NOW() WHERE id = $2",
+        [cantidad, insumoId]
+      );
+      await client.query(
+        "INSERT INTO recetas_produccion_detalle (produccion_id, producto_insumo_id, cantidad) VALUES ($1,$2,$3)",
+        [produccion.id, insumoId, cantidad]
+      );
+    }
+
+    await client.query(
+      "UPDATE productos SET stock_actual = stock_actual + $1, updated_at = NOW() WHERE id = $2",
+      [cantidadFinal, productoFinalId]
+    );
+
+    await client.query("COMMIT");
+    res.json({ ok: true, produccion });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error producir receta:", error);
+    res.status(500).json({ error: error.message || "Error al producir receta" });
+  } finally {
+    client.release();
   }
 });
 
