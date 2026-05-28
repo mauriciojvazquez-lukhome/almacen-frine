@@ -675,6 +675,168 @@ editarUsuario=async function(id){await editarUsuarioRecetasBase(id);try{const re
 const cargarUsuariosRecetasBase=cargarUsuarios;
 cargarUsuarios=async function(){await cargarUsuariosRecetasBase();try{const res=await fetch('/api/empleados'),data=await res.json(),body=document.getElementById('usuariosBody');if(!body||!Array.isArray(data))return;body.innerHTML='';data.forEach(u=>{const permisos=[];if(u.puede_inicio)permisos.push('Inicio');if(u.puede_ventas)permisos.push('Ventas');if(u.puede_productos)permisos.push('Productos');if(u.puede_compras)permisos.push('Compras');if(u.puede_recetas)permisos.push('Recetas');if(u.puede_caja)permisos.push('Caja');if(u.puede_reportes)permisos.push('Reportes');if(u.puede_configuracion)permisos.push('Config');const tr=document.createElement('tr');tr.innerHTML=`<td>${u.id}</td><td>${u.nombre}</td><td>${u.usuario}</td><td>${u.rol}</td><td>${u.activo?'<span class="tag tag-green">Sí</span>':'<span class="tag tag-red">No</span>'}</td><td>${permisos.join(', ')}</td><td><button class="btn btn-secondary" onclick="editarUsuario(${u.id})">Editar</button></td>`;body.appendChild(tr)})}catch(e){}}
 
+
+/* FIX REPORTES COMPRAS */
+async function cargarFiltrosReporteCompras(){
+  try{
+    const selProv=document.getElementById("repComprasProveedor");
+    const selProd=document.getElementById("repComprasProducto");
+    if(selProv && selProv.options.length<=1){
+      const res=await fetch("/api/proveedores");
+      const data=await res.json();
+      selProv.innerHTML='<option value="">Todos</option>';
+      (Array.isArray(data)?data:[]).forEach(p=>{
+        const op=document.createElement("option");
+        op.value=p.id;
+        op.textContent=p.nombre||("Proveedor #"+p.id);
+        selProv.appendChild(op);
+      });
+    }
+    if(selProd && selProd.options.length<=1){
+      const res=await fetch("/api/productos");
+      const data=await res.json();
+      selProd.innerHTML='<option value="">Todos</option>';
+      (Array.isArray(data)?data:[]).forEach(p=>{
+        const op=document.createElement("option");
+        op.value=p.id;
+        op.textContent=(p.nombre||("Producto #"+p.id))+(p.plu?" · PLU "+p.plu:"");
+        selProd.appendChild(op);
+      });
+    }
+  }catch(e){ console.warn("No se pudieron cargar filtros de compras",e); }
+}
+
+async function mostrarReporteCompras(){
+  const titulo=document.getElementById("reportesTituloResultado");
+  const resultado=document.getElementById("reportesResultado");
+  const pre=document.getElementById("reportesPre");
+  const wrap=document.getElementById("reportesComprasWrap");
+  if(titulo)titulo.textContent="Resultado · Compras";
+  if(resultado)resultado.innerHTML='<div class="reporte-empty">Cargando reporte de compras...</div>';
+  if(pre){pre.classList.add("hidden");pre.textContent="";}
+  if(wrap)wrap.classList.remove("hidden");
+  await cargarFiltrosReporteCompras();
+  await cargarReporteCompras();
+}
+
+function limpiarFiltrosReporteCompras(){
+  ["repComprasDesde","repComprasHasta","repComprasBuscar"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  ["repComprasProveedor","repComprasProducto"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  cargarReporteCompras();
+}
+
+function listaComprasDesdeRespuesta(data){
+  if(Array.isArray(data))return data;
+  return data?.historial||data?.compras||data?.items||data?.detalle||[];
+}
+
+function nombreProveedorCompra(c){return c.proveedor_nombre||c.proveedor||c.nombre_proveedor||"-";}
+function nombreProductoCompra(c){return c.producto_nombre||c.producto||c.nombre_producto||c.nombre||"-";}
+function fechaCompra(c){return c.fecha||c.fecha_compra||c.created_at||c.fecha_creacion||"";}
+function subtotalCompra(c){return Number(c.subtotal??c.total_item??c.total??0);}
+function costoUnitCompra(c){return Number(c.costo_unitario??c.costo??c.precio_costo??0);}
+function cantidadCompra(c){return Number(c.cantidad??0);}
+
+async function cargarReporteCompras(){
+  const resultado=document.getElementById("reportesResultado");
+  const wrap=document.getElementById("reportesComprasWrap");
+  if(wrap)wrap.classList.remove("hidden");
+  if(resultado)resultado.innerHTML='<div class="reporte-empty">Buscando compras...</div>';
+  try{
+    const params=new URLSearchParams();
+    const desde=document.getElementById("repComprasDesde")?.value||"";
+    const hasta=document.getElementById("repComprasHasta")?.value||"";
+    const proveedor=document.getElementById("repComprasProveedor")?.value||"";
+    const producto=document.getElementById("repComprasProducto")?.value||"";
+    const q=document.getElementById("repComprasBuscar")?.value.trim()||"";
+    if(desde)params.set("desde",desde);
+    if(hasta)params.set("hasta",hasta);
+    if(proveedor)params.set("proveedor_id",proveedor);
+    if(producto)params.set("producto_id",producto);
+    if(q)params.set("q",q);
+    const url="/api/reportes/compras"+(params.toString()?"?"+params.toString():"");
+    const res=await fetch(url);
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error||"Error al cargar compras");
+
+    const compras=listaComprasDesdeRespuesta(data);
+    let total=0;
+    const proveedores=new Set(), productos=new Set();
+    let filas="";
+    compras.forEach(c=>{
+      const prov=nombreProveedorCompra(c), prod=nombreProductoCompra(c), cant=cantidadCompra(c), costo=costoUnitCompra(c), sub=subtotalCompra(c);
+      total+=sub;
+      if(prov&&prov!=="-")proveedores.add(prov);
+      if(prod&&prod!=="-")productos.add(prod);
+      filas+=`<tr><td>${fechaCorta(fechaCompra(c))}</td><td>#${c.compra_id||c.id||"-"}</td><td>${escapeHtml(prov)}</td><td><strong>${escapeHtml(prod)}</strong></td><td>${qty(cant)}</td><td>${formatoDinero(costo)}</td><td><strong>${formatoDinero(sub)}</strong></td><td>${escapeHtml(c.observaciones||c.obs||"")}</td></tr>`;
+    });
+    if(!filas)filas='<tr><td colspan="8"><div class="reporte-empty">No hay compras para los filtros elegidos.</div></td></tr>';
+
+    document.getElementById("repComprasMetricCompras").textContent=compras.length;
+    document.getElementById("repComprasMetricMonto").textContent=formatoDinero(total);
+    document.getElementById("repComprasMetricProveedores").textContent=proveedores.size;
+    document.getElementById("repComprasMetricProductos").textContent=productos.size;
+    document.getElementById("repComprasHistorialBody").innerHTML=filas;
+
+    renderResumenComprasProveedor(compras);
+    renderResumenComprasProducto(compras);
+    renderComparativaComprasProducto(compras);
+    if(resultado)resultado.innerHTML='<div class="reporte-empty">Reporte de compras cargado. Usá los filtros de abajo para buscar por proveedor, producto o fecha.</div>';
+  }catch(error){
+    if(resultado)resultado.innerHTML='<div class="reporte-empty">No se pudo cargar el reporte de compras. Revisá que el backend tenga activo <strong>/api/reportes/compras</strong>.</div>';
+    const body=document.getElementById("repComprasHistorialBody");
+    if(body)body.innerHTML='<tr><td colspan="8" class="muted">'+escapeHtml(error.message||"Error de conexión")+'</td></tr>';
+  }
+}
+
+function renderResumenComprasProveedor(compras){
+  const mapa={};
+  compras.forEach(c=>{
+    const k=nombreProveedorCompra(c);
+    if(!mapa[k])mapa[k]={nombre:k,compras:0,total:0,ultimo:0,fecha:""};
+    mapa[k].compras++;
+    mapa[k].total+=subtotalCompra(c);
+    const f=fechaCompra(c);
+    if(!mapa[k].fecha || String(f)>String(mapa[k].fecha)){mapa[k].fecha=f;mapa[k].ultimo=costoUnitCompra(c);}
+  });
+  const filas=Object.values(mapa).sort((a,b)=>b.total-a.total).map(r=>`<tr><td><strong>${escapeHtml(r.nombre)}</strong></td><td>${r.compras}</td><td>${formatoDinero(r.total)}</td><td>${formatoDinero(r.ultimo)}</td><td>${fechaCorta(r.fecha)}</td></tr>`).join("");
+  document.getElementById("repComprasProveedorBody").innerHTML=filas||'<tr><td colspan="5" class="muted">Sin datos.</td></tr>';
+}
+
+function renderResumenComprasProducto(compras){
+  const mapa={};
+  compras.forEach(c=>{
+    const k=nombreProductoCompra(c);
+    if(!mapa[k])mapa[k]={nombre:k,veces:0,cant:0,totalCosto:0,ultimo:0,fecha:""};
+    mapa[k].veces++;
+    mapa[k].cant+=cantidadCompra(c);
+    mapa[k].totalCosto+=subtotalCompra(c);
+    const f=fechaCompra(c);
+    if(!mapa[k].fecha || String(f)>String(mapa[k].fecha)){mapa[k].fecha=f;mapa[k].ultimo=costoUnitCompra(c);}
+  });
+  const filas=Object.values(mapa).sort((a,b)=>b.totalCosto-a.totalCosto).map(r=>`<tr><td><strong>${escapeHtml(r.nombre)}</strong></td><td>${r.veces}</td><td>${qty(r.cant)}</td><td>${formatoDinero(r.cant?r.totalCosto/r.cant:0)}</td><td>${formatoDinero(r.ultimo)}</td></tr>`).join("");
+  document.getElementById("repComprasProductoBody").innerHTML=filas||'<tr><td colspan="5" class="muted">Sin datos.</td></tr>';
+}
+
+function renderComparativaComprasProducto(compras){
+  const productoFiltro=document.getElementById("repComprasProducto")?.value||"";
+  const tbody=document.getElementById("repComprasComparativaBody");
+  if(!tbody)return;
+  if(!productoFiltro){tbody.innerHTML='<tr><td colspan="7" class="muted">Elegí un producto para comparar proveedores.</td></tr>';return;}
+  const mapa={};
+  compras.forEach(c=>{
+    const prov=nombreProveedorCompra(c), costo=costoUnitCompra(c), f=fechaCompra(c);
+    if(!mapa[prov])mapa[prov]={proveedor:prov,veces:0,total:0,min:costo,max:costo,ultimo:costo,fecha:f};
+    mapa[prov].veces++;
+    mapa[prov].total+=costo;
+    mapa[prov].min=Math.min(mapa[prov].min,costo);
+    mapa[prov].max=Math.max(mapa[prov].max,costo);
+    if(String(f)>String(mapa[prov].fecha)){mapa[prov].fecha=f;mapa[prov].ultimo=costo;}
+  });
+  const filas=Object.values(mapa).sort((a,b)=>a.ultimo-b.ultimo).map(r=>`<tr><td><strong>${escapeHtml(r.proveedor)}</strong></td><td>${r.veces}</td><td>${formatoDinero(r.total/r.veces)}</td><td>${formatoDinero(r.min)}</td><td>${formatoDinero(r.max)}</td><td>${formatoDinero(r.ultimo)}</td><td>${fechaCorta(r.fecha)}</td></tr>`).join("");
+  tbody.innerHTML=filas||'<tr><td colspan="7" class="muted">Sin datos para comparar.</td></tr>';
+}
+
 </script>
 </body>
 </html>
