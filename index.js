@@ -6,6 +6,25 @@ const { Pool } = require("pg");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const TZ_ARGENTINA = "America/Argentina/Buenos_Aires";
+const SQL_HOY_ARGENTINA = "(CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')::date";
+
+function fechaArgentinaISO() {
+  const partes = new Intl.DateTimeFormat("es-AR", {
+    timeZone: TZ_ARGENTINA,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+
+  const mapa = Object.fromEntries(partes.map(p => [p.type, p.value]));
+  return `${mapa.year}-${mapa.month}-${mapa.day}`;
+}
+
+function fechaAfipArgentina() {
+  return Number(fechaArgentinaISO().replace(/-/g, ""));
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
@@ -1787,12 +1806,12 @@ app.get("/api/ventas", async (req, res) => {
     let i = 1;
 
     if (desde) {
-      condiciones.push(`DATE(v.fecha) >= $${i++}`);
+      condiciones.push(`((v.fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) >= $${i++}`);
       valores.push(desde);
     }
 
     if (hasta) {
-      condiciones.push(`DATE(v.fecha) <= $${i++}`);
+      condiciones.push(`((v.fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) <= $${i++}`);
       valores.push(hasta);
     }
 
@@ -2210,13 +2229,13 @@ app.get("/api/reportes/resumen", async (req, res) => {
     const ventasHoy = await pool.query(`
       SELECT COALESCE(SUM(total), 0) AS total
       FROM ventas
-      WHERE DATE(fecha) = CURRENT_DATE
+      WHERE ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
     `);
 
     const cantidadVentasHoy = await pool.query(`
       SELECT COUNT(*) AS cantidad
       FROM ventas
-      WHERE DATE(fecha) = CURRENT_DATE
+      WHERE ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
     `);
 
     const productosBajoStock = await pool.query(`
@@ -2286,12 +2305,12 @@ app.get("/api/reportes/ventas-diarias", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        DATE(fecha) AS fecha,
+        ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) AS fecha,
         COUNT(*) AS cantidad_ventas,
         COALESCE(SUM(total), 0) AS total_vendido
       FROM ventas
-      GROUP BY DATE(fecha)
-      ORDER BY DATE(fecha) DESC
+      GROUP BY ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date)
+      ORDER BY ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) DESC
     `);
 
     res.json(result.rows);
@@ -2415,12 +2434,12 @@ app.get("/api/reportes/compras", async (req, res) => {
     let i = 1;
 
     if (desde && fechaColumna) {
-      condiciones.push(`DATE(c.${fechaColumna}) >= $${i++}`);
+      condiciones.push(`((c.${fechaColumna} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) >= $${i++}`);
       valores.push(desde);
     }
 
     if (hasta && fechaColumna) {
-      condiciones.push(`DATE(c.${fechaColumna}) <= $${i++}`);
+      condiciones.push(`((c.${fechaColumna} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) <= $${i++}`);
       valores.push(hasta);
     }
 
@@ -2633,12 +2652,12 @@ app.get("/api/reportes/cajeros", async (req, res) => {
     let i = 1;
 
     if (desde) {
-      condiciones.push(`DATE(cs.fecha_cierre) >= $${i++}`);
+      condiciones.push(`((cs.fecha_cierre AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) >= $${i++}`);
       valores.push(desde);
     }
 
     if (hasta) {
-      condiciones.push(`DATE(cs.fecha_cierre) <= $${i++}`);
+      condiciones.push(`((cs.fecha_cierre AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) <= $${i++}`);
       valores.push(hasta);
     }
 
@@ -2775,7 +2794,7 @@ app.get("/api/dashboard/inicio-pro", async (req, res) => {
         COALESCE(SUM(total), 0) AS ventas_hoy,
         COUNT(*) AS cantidad_ventas_hoy
       FROM ventas
-      WHERE DATE(fecha) = CURRENT_DATE
+      WHERE ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
     `);
 
     const topProductosResult = await pool.query(`
@@ -2792,13 +2811,13 @@ app.get("/api/dashboard/inicio-pro", async (req, res) => {
 
     const ventas7DiasResult = await pool.query(`
       SELECT
-        TO_CHAR(DATE(fecha), 'DD/MM') AS dia,
-        DATE(fecha) AS fecha_real,
+        TO_CHAR(((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date), 'DD/MM') AS dia,
+        ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) AS fecha_real,
         COALESCE(SUM(total), 0) AS total
       FROM ventas
-      WHERE fecha >= CURRENT_DATE - INTERVAL '6 days'
-      GROUP BY DATE(fecha)
-      ORDER BY DATE(fecha) ASC
+      WHERE fecha >= (CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '6 days'
+      GROUP BY ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date)
+      ORDER BY ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) ASC
     `);
 
     const ultimasVentasResult = await pool.query(`
@@ -2952,12 +2971,7 @@ app.post("/api/facturar", async (req, res) => {
       DocNro: doc_nro || 0,
       CbteDesde: ultimo + 1,
       CbteHasta: ultimo + 1,
-      CbteFch: parseInt(
-        new Date()
-          .toISOString()
-          .slice(0,10)
-          .replace(/-/g, '')
-      ),
+      CbteFch: fechaAfipArgentina(),
       ImpTotal: Number(total),
       ImpTotConc: 0,
       ImpNeto: Number(total),
