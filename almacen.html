@@ -677,7 +677,7 @@ cargarUsuarios=async function(){await cargarUsuariosRecetasBase();try{const res=
 
 
 /* FIX REPORTES COMPRAS */
-async function cargarFiltrosReporteCompras(){
+async async function cargarFiltrosReporteCompras(){
   try{
     const selProv=document.getElementById("repComprasProveedor");
     const selProd=document.getElementById("repComprasProducto");
@@ -706,7 +706,7 @@ async function cargarFiltrosReporteCompras(){
   }catch(e){ console.warn("No se pudieron cargar filtros de compras",e); }
 }
 
-async function mostrarReporteCompras(){
+async async function mostrarReporteCompras(){
   const titulo=document.getElementById("reportesTituloResultado");
   const resultado=document.getElementById("reportesResultado");
   const pre=document.getElementById("reportesPre");
@@ -727,7 +727,7 @@ function limpiarFiltrosReporteCompras(){
 
 function listaComprasDesdeRespuesta(data){
   if(Array.isArray(data))return data;
-  return data?.historial||data?.compras||data?.items||data?.detalle||[];
+  return data?.movimientos||data?.historial||data?.compras||data?.items||data?.detalle||[];
 }
 
 function nombreProveedorCompra(c){return c.proveedor_nombre||c.proveedor||c.nombre_proveedor||"-";}
