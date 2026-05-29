@@ -250,8 +250,8 @@
     <pre id="historialVentaDetalle">Seleccioná una venta para ver el detalle.</pre>
   </div>
 </section>
-<section id="page-reportes" class="page"><div class="topbar"><div><h1 class="page-title">Reportes</h1><div class="page-subtitle">Ventas, stock y compras.</div></div></div><div class="row" style="margin-bottom:14px;"><button class="btn btn-primary" onclick="cargarReporteVentasPorProducto()">Ventas por producto</button><button class="btn btn-primary" onclick="cargarReporteVentasPorEmpleado()">Ventas por empleado</button><button class="btn btn-primary" onclick="mostrarReporteInventario()">Inventario</button><button class="btn btn-primary" onclick="cargarReporteCajeros()">Reporte de cajeros</button><button class="btn btn-primary" onclick="mostrarReporteCompras()">Compras</button></div><div class="card"><h3 id="reportesTituloResultado">Resultado</h3><div id="reportesResultado"><div class="reporte-empty">Elegí un reporte para ver la información.</div></div><pre id="reportesPre" class="hidden">Todavía no cargaste ningún reporte.</pre></div><div id="reportesComprasWrap" class="hidden"><div class="card"><h3>Filtros de compras</h3><div class="grid-4"><div class="field"><label>Desde</label><input type="date" id="repComprasDesde" /></div><div class="field"><label>Hasta</label><input type="date" id="repComprasHasta" /></div><div class="field"><label>Proveedor</label><select id="repComprasProveedor"><option value="">Todos</option></select></div><div class="field"><label>Producto</label><select id="repComprasProducto"><option value="">Todos</option></select></div></div><div class="row"><input id="repComprasBuscar" placeholder="Buscar por proveedor, producto, observación o N° compra" /><button class="btn btn-primary" onclick="cargarReporteCompras()">Buscar compras</button><button class="btn btn-secondary" onclick="limpiarFiltrosReporteCompras()">Limpiar filtros</button></div></div><div class="grid-4"><div class="card"><div class="metric" id="repComprasMetricCompras">0</div><div class="muted">Compras encontradas</div></div><div class="card"><div class="metric" id="repComprasMetricMonto">$0.00</div><div class="muted">Total comprado</div></div><div class="card"><div class="metric" id="repComprasMetricProveedores">0</div><div class="muted">Proveedores</div></div><div class="card"><div class="metric" id="repComprasMetricProductos">0</div><div class="muted">Productos</div></div></div><div class="card"><h3>Historial de compras</h3><div class="scroll-x"><table><thead><tr><th>Fecha</th><th>Compra</th><th>Proveedor</th><th>Producto</th><th>Cantidad</th><th>Costo unit.</th><th>Subtotal</th><th>Obs.</th></tr></thead><tbody id="repComprasHistorialBody"><tr><td colspan="8" class="muted">Todavía no cargaste ningún reporte de compras.</td></tr></tbody></table></div></div><div class="grid-2"><div class="card"><h3>Resumen por proveedor</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Compras</th><th>Total</th><th>Últ. precio</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasProveedorBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div><div class="card"><h3>Resumen por producto</h3><div class="scroll-x"><table><thead><tr><th>Producto</th><th>Veces</th><th>Cant. total</th><th>Promedio</th><th>Últ. precio</th></tr></thead><tbody id="repComprasProductoBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div></div><div class="card"><h3>Comparativa del producto filtrado</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Veces</th><th>Promedio</th><th>Mínimo</th><th>Máximo</th><th>Últ. precio</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasComparativaBody"><tr><td colspan="7" class="muted">Elegí un producto para comparar proveedores.</td></tr></tbody></table></div></div></div></section>
-<section id="page-configuracion" class="page"><div class="topbar"><div><h1 class="page-title">Configuración</h1><div class="page-subtitle">Usuarios, permisos, proveedores y clientes.</div></div></div><div class="subtabs"><button id="btnConfigTabUsuarios" class="subtab-btn active" onclick="mostrarConfigSubtab('usuarios')">Usuarios</button><button id="btnConfigTabProveedores" class="subtab-btn" onclick="mostrarConfigSubtab('proveedores')">Proveedores</button><button id="btnConfigTabClientes" class="subtab-btn" onclick="mostrarConfigSubtab('clientes')">Clientes</button></div><div id="configSubpageUsuarios" class="config-subpage active"><div class="split"><div class="card"><h3 id="configTituloForm">Nuevo usuario</h3><input type="hidden" id="cfgEmpleadoId" /><div class="grid-2"><div class="field"><label>Nombre</label><input id="cfgNombre" /></div><div class="field"><label>Usuario</label><input id="cfgUsuario" /></div><div class="field"><label>Contraseña</label><input id="cfgPassword" /></div><div class="field"><label>Rol</label><select id="cfgRol"><option value="cajero">Cajero</option><option value="encargado">Encargado</option><option value="admin">Admin</option></select></div></div><div class="field"><label>Estado</label><select id="cfgActivo"><option value="true">Activo</option><option value="false">Inactivo</option></select></div><h3 style="margin-top:18px;">Permisos</h3><div class="checks"><div class="check-item"><label><input type="checkbox" id="permInicio" /> Inicio</label></div><div class="check-item"><label><input type="checkbox" id="permVentas" /> Ventas</label></div><div class="check-item"><label><input type="checkbox" id="permProductos" /> Productos</label></div><div class="check-item"><label><input type="checkbox" id="permCompras" /> Compras</label></div><div class="check-item"><label><input type="checkbox" id="permRecetas" /> Recetas</label></div><div class="check-item"><label><input type="checkbox" id="permCaja" /> Caja</label></div><div class="check-item"><label><input type="checkbox" id="permReportes" /> Reportes</label></div><div class="check-item"><label><input type="checkbox" id="permConfiguracion" /> Configuración</label></div></div><div class="row" style="margin-top:16px;"><button class="btn btn-primary" id="btnGuardarUsuario" onclick="guardarUsuario()">Guardar usuario</button><button class="btn btn-secondary" onclick="limpiarFormularioUsuario()">Limpiar</button></div><div class="message hidden" id="configMsg"></div></div><div class="card"><h3>Usuarios</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Activo</th><th>Permisos</th><th></th></tr></thead><tbody id="usuariosBody"></tbody></table></div></div></div></div><div id="configSubpageProveedores" class="config-subpage"><div class="split"><div class="card"><h3>Nuevo proveedor</h3><div class="grid-2"><div class="field"><label>Nombre</label><input id="provNombre" /></div><div class="field"><label>Teléfono</label><input id="provTelefono" /></div></div><div class="field"><label>Dirección</label><input id="provDireccion" /></div><div class="field"><label>Observaciones</label><textarea id="provObservaciones"></textarea></div><div class="row"><button class="btn btn-primary" onclick="guardarProveedor()">Guardar proveedor</button><button class="btn btn-secondary" onclick="limpiarFormularioProveedor()">Limpiar</button></div><div class="message hidden" id="proveedorMsg"></div></div><div class="card"><h3>Proveedores</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th>Observaciones</th></tr></thead><tbody id="proveedoresConfigBody"></tbody></table></div></div></div></div><div id="configSubpageClientes" class="config-subpage"><div class="split"><div class="card"><h3>Nuevo cliente</h3><div class="grid-2"><div class="field"><label>Nombre</label><input id="cliNombre" /></div><div class="field"><label>Teléfono</label><input id="cliTelefono" /></div></div><div class="field"><label>Dirección</label><input id="cliDireccion" /></div><div class="field"><label>Límite de crédito</label><input id="cliLimite" type="number" step="0.01" value="0" /></div><div class="field"><label>Observaciones</label><textarea id="cliObservaciones"></textarea></div><div class="row"><button class="btn btn-primary" onclick="guardarCliente()">Guardar cliente</button><button class="btn btn-secondary" onclick="limpiarFormularioCliente()">Limpiar</button></div><div class="message hidden" id="clienteMsg"></div></div><div class="card"><h3>Clientes / Cuenta Corriente</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Saldo</th><th>Acciones</th></tr></thead><tbody id="clientesConfigBody"></tbody></table></div></div></div></div></section>
+<section id="page-reportes" class="page"><div class="topbar"><div><h1 class="page-title">Reportes</h1><div class="page-subtitle">Ventas, stock y compras.</div></div></div><div class="row" style="margin-bottom:14px;"><button class="btn btn-primary" onclick="cargarReporteVentasPorProducto()">Ventas por producto</button><button class="btn btn-primary" onclick="cargarReporteVentasPorEmpleado()">Ventas por empleado</button><button class="btn btn-primary" onclick="mostrarReporteInventario()">Inventario</button><button class="btn btn-primary" onclick="cargarReporteCajeros()">Reporte de cajeros</button><button class="btn btn-primary" onclick="mostrarReporteCompras()">Compras</button><button class="btn btn-primary" onclick="mostrarReporteCuentaCorriente()">Cuenta corriente</button></div><div class="card"><h3 id="reportesTituloResultado">Resultado</h3><div id="reportesResultado"><div class="reporte-empty">Elegí un reporte para ver la información.</div></div><pre id="reportesPre" class="hidden">Todavía no cargaste ningún reporte.</pre></div><div id="reportesComprasWrap" class="hidden"><div class="card"><h3>Filtros de compras</h3><div class="grid-4"><div class="field"><label>Desde</label><input type="date" id="repComprasDesde" /></div><div class="field"><label>Hasta</label><input type="date" id="repComprasHasta" /></div><div class="field"><label>Proveedor</label><select id="repComprasProveedor"><option value="">Todos</option></select></div><div class="field"><label>Producto</label><select id="repComprasProducto"><option value="">Todos</option></select></div></div><div class="row"><input id="repComprasBuscar" placeholder="Buscar por proveedor, producto, observación o N° compra" /><button class="btn btn-primary" onclick="cargarReporteCompras()">Buscar compras</button><button class="btn btn-secondary" onclick="limpiarFiltrosReporteCompras()">Limpiar filtros</button></div></div><div class="grid-4"><div class="card"><div class="metric" id="repComprasMetricCompras">0</div><div class="muted">Compras encontradas</div></div><div class="card"><div class="metric" id="repComprasMetricMonto">$0.00</div><div class="muted">Total comprado</div></div><div class="card"><div class="metric" id="repComprasMetricProveedores">0</div><div class="muted">Proveedores</div></div><div class="card"><div class="metric" id="repComprasMetricProductos">0</div><div class="muted">Productos</div></div></div><div class="card"><h3>Historial de compras</h3><div class="scroll-x"><table><thead><tr><th>Fecha</th><th>Compra</th><th>Proveedor</th><th>Producto</th><th>Cantidad</th><th>Costo unit.</th><th>Subtotal</th><th>Obs.</th></tr></thead><tbody id="repComprasHistorialBody"><tr><td colspan="8" class="muted">Todavía no cargaste ningún reporte de compras.</td></tr></tbody></table></div></div><div class="grid-2"><div class="card"><h3>Resumen por proveedor</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Compras</th><th>Total</th><th>Últ. precio</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasProveedorBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div><div class="card"><h3>Resumen por producto</h3><div class="scroll-x"><table><thead><tr><th>Producto</th><th>Veces</th><th>Cant. total</th><th>Promedio</th><th>Últ. precio</th></tr></thead><tbody id="repComprasProductoBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div></div><div class="card"><h3>Comparativa del producto filtrado</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Veces</th><th>Promedio</th><th>Mínimo</th><th>Máximo</th><th>Últ. precio</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasComparativaBody"><tr><td colspan="7" class="muted">Elegí un producto para comparar proveedores.</td></tr></tbody></table></div></div></div></section>
+<section id="page-configuracion" class="page"><div class="topbar"><div><h1 class="page-title">Configuración</h1><div class="page-subtitle">Usuarios, permisos, proveedores y clientes.</div></div></div><div class="subtabs"><button id="btnConfigTabUsuarios" class="subtab-btn active" onclick="mostrarConfigSubtab('usuarios')">Usuarios</button><button id="btnConfigTabProveedores" class="subtab-btn" onclick="mostrarConfigSubtab('proveedores')">Proveedores</button><button id="btnConfigTabClientes" class="subtab-btn" onclick="mostrarConfigSubtab('clientes')">Clientes</button></div><div id="configSubpageUsuarios" class="config-subpage active"><div class="split"><div class="card"><h3 id="configTituloForm">Nuevo usuario</h3><input type="hidden" id="cfgEmpleadoId" /><div class="grid-2"><div class="field"><label>Nombre</label><input id="cfgNombre" /></div><div class="field"><label>Usuario</label><input id="cfgUsuario" /></div><div class="field"><label>Contraseña</label><input id="cfgPassword" /></div><div class="field"><label>Rol</label><select id="cfgRol"><option value="cajero">Cajero</option><option value="encargado">Encargado</option><option value="admin">Admin</option></select></div></div><div class="field"><label>Estado</label><select id="cfgActivo"><option value="true">Activo</option><option value="false">Inactivo</option></select></div><h3 style="margin-top:18px;">Permisos</h3><div class="checks"><div class="check-item"><label><input type="checkbox" id="permInicio" /> Inicio</label></div><div class="check-item"><label><input type="checkbox" id="permVentas" /> Ventas</label></div><div class="check-item"><label><input type="checkbox" id="permProductos" /> Productos</label></div><div class="check-item"><label><input type="checkbox" id="permCompras" /> Compras</label></div><div class="check-item"><label><input type="checkbox" id="permRecetas" /> Recetas</label></div><div class="check-item"><label><input type="checkbox" id="permCaja" /> Caja</label></div><div class="check-item"><label><input type="checkbox" id="permReportes" /> Reportes</label></div><div class="check-item"><label><input type="checkbox" id="permConfiguracion" /> Configuración</label></div></div><div class="row" style="margin-top:16px;"><button class="btn btn-primary" id="btnGuardarUsuario" onclick="guardarUsuario()">Guardar usuario</button><button class="btn btn-secondary" onclick="limpiarFormularioUsuario()">Limpiar</button></div><div class="message hidden" id="configMsg"></div></div><div class="card"><h3>Usuarios</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Activo</th><th>Permisos</th><th></th></tr></thead><tbody id="usuariosBody"></tbody></table></div></div></div></div><div id="configSubpageProveedores" class="config-subpage"><div class="split"><div class="card"><h3>Nuevo proveedor</h3><div class="grid-2"><div class="field"><label>Nombre</label><input id="provNombre" /></div><div class="field"><label>Teléfono</label><input id="provTelefono" /></div></div><div class="field"><label>Dirección</label><input id="provDireccion" /></div><div class="field"><label>Observaciones</label><textarea id="provObservaciones"></textarea></div><div class="row"><button class="btn btn-primary" onclick="guardarProveedor()">Guardar proveedor</button><button class="btn btn-secondary" onclick="limpiarFormularioProveedor()">Limpiar</button></div><div class="message hidden" id="proveedorMsg"></div></div><div class="card"><h3>Proveedores</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th>Observaciones</th></tr></thead><tbody id="proveedoresConfigBody"></tbody></table></div></div></div></div><div id="configSubpageClientes" class="config-subpage"><div class="split"><div class="card"><h3>Nuevo cliente</h3><div class="grid-2"><div class="field"><label>Nombre</label><input id="cliNombre" /></div><div class="field"><label>Teléfono</label><input id="cliTelefono" /></div></div><div class="field"><label>Dirección</label><input id="cliDireccion" /></div><div class="field"><label>Límite de crédito</label><input id="cliLimite" type="number" step="0.01" value="0" /></div><div class="field"><label>Observaciones</label><textarea id="cliObservaciones"></textarea></div><div class="row"><button class="btn btn-primary" onclick="guardarCliente()">Guardar cliente</button><button class="btn btn-secondary" onclick="limpiarFormularioCliente()">Limpiar</button></div><div class="message hidden" id="clienteMsg"></div></div><div class="card"><h3>Clientes</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Saldo CC</th></tr></thead><tbody id="clientesConfigBody"></tbody></table></div></div></div></div></section>
 
 <div id="modalProducto" class="modal-backdrop hidden">
   <div class="modal-card">
@@ -835,6 +835,153 @@ function renderComparativaComprasProducto(compras){
   });
   const filas=Object.values(mapa).sort((a,b)=>a.ultimo-b.ultimo).map(r=>`<tr><td><strong>${escapeHtml(r.proveedor)}</strong></td><td>${r.veces}</td><td>${formatoDinero(r.total/r.veces)}</td><td>${formatoDinero(r.min)}</td><td>${formatoDinero(r.max)}</td><td>${formatoDinero(r.ultimo)}</td><td>${fechaCorta(r.fecha)}</td></tr>`).join("");
   tbody.innerHTML=filas||'<tr><td colspan="7" class="muted">Sin datos para comparar.</td></tr>';
+}
+
+
+/* CUENTA CORRIENTE EN REPORTES - FIX PRO */
+async function cargarClientesConfig(){
+  try{
+    const res=await fetch("/api/clientes");
+    const data=await res.json();
+    const body=document.getElementById("clientesConfigBody");
+    if(!body)return;
+    body.innerHTML="";
+    (Array.isArray(data)?data:[]).forEach(c=>{
+      const saldo=Number(c.saldo||0);
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>${c.id}</td><td>${escapeHtml(c.nombre||"")}</td><td>${escapeHtml(c.telefono||"")}</td><td><strong class="${saldo>0?'stock-alerta':'stock-normal'}">$${money(saldo)}</strong></td>`;
+      body.appendChild(tr);
+    });
+    if(!body.innerHTML)body.innerHTML='<tr><td colspan="4" class="muted">Sin clientes.</td></tr>';
+  }catch(e){
+    const body=document.getElementById("clientesConfigBody");
+    if(body)body.innerHTML='<tr><td colspan="4" class="muted">Error al cargar clientes.</td></tr>';
+  }
+}
+
+async function cargarClientesReporteCC(){
+  try{
+    const sel=document.getElementById("repCCCliente");
+    if(!sel)return;
+    const actual=sel.value;
+    const res=await fetch("/api/clientes");
+    const data=await res.json();
+    sel.innerHTML='<option value="">Elegí un cliente</option>';
+    (Array.isArray(data)?data:[]).forEach(c=>{
+      const op=document.createElement("option");
+      op.value=c.id;
+      op.textContent=`${c.nombre||('Cliente #'+c.id)} · Saldo $${money(c.saldo||0)}`;
+      sel.appendChild(op);
+    });
+    if(actual)sel.value=actual;
+  }catch(e){console.warn("No se pudieron cargar clientes CC",e);}
+}
+
+async function mostrarReporteCuentaCorriente(){
+  const titulo=document.getElementById("reportesTituloResultado");
+  const resultado=document.getElementById("reportesResultado");
+  const pre=document.getElementById("reportesPre");
+  const wrapCompras=document.getElementById("reportesComprasWrap");
+  if(titulo)titulo.textContent="Resultado · Cuenta corriente";
+  if(pre){pre.classList.add("hidden");pre.textContent="";}
+  if(wrapCompras)wrapCompras.classList.add("hidden");
+  if(resultado){
+    resultado.innerHTML=`
+      <div class="card" style="box-shadow:none;margin-bottom:14px;">
+        <h3>Filtros de cuenta corriente</h3>
+        <div class="grid-4">
+          <div class="field"><label>Cliente</label><select id="repCCCliente"><option value="">Cargando clientes...</option></select></div>
+          <div class="field"><label>Desde</label><input type="date" id="repCCDesde" /></div>
+          <div class="field"><label>Hasta</label><input type="date" id="repCCHasta" /></div>
+          <div class="field"><label>Tipo</label><select id="repCCTipo"><option value="">Todos</option><option value="deuda">Compras / deudas</option><option value="pago">Pagos</option></select></div>
+        </div>
+        <div class="row">
+          <button class="btn btn-primary" onclick="cargarReporteCuentaCorriente()">Buscar</button>
+          <button class="btn btn-success" onclick="registrarPagoClienteDesdeReporte()">Registrar pago</button>
+          <button class="btn btn-secondary" onclick="limpiarReporteCuentaCorriente()">Limpiar</button>
+        </div>
+      </div>
+      <div class="grid-4">
+        <div class="card"><div class="metric" id="repCCSaldo">$0.00</div><div class="muted">Saldo actual</div></div>
+        <div class="card"><div class="metric" id="repCCDeudas">$0.00</div><div class="muted">Total compras/deudas</div></div>
+        <div class="card"><div class="metric" id="repCCPagos">$0.00</div><div class="muted">Total pagos</div></div>
+        <div class="card"><div class="metric" id="repCCMovs">0</div><div class="muted">Movimientos</div></div>
+      </div>
+      <div class="card" style="box-shadow:none;">
+        <h3>Detalle de cuenta corriente</h3>
+        <div class="scroll-x"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Monto</th><th>Venta/Compra</th><th>Empleado</th><th>Obs.</th><th>Acciones</th></tr></thead><tbody id="repCCBody"><tr><td colspan="7" class="muted">Elegí un cliente para ver el detalle.</td></tr></tbody></table></div>
+      </div>`;
+  }
+  await cargarClientesReporteCC();
+}
+
+function limpiarReporteCuentaCorriente(){
+  ["repCCCliente","repCCDesde","repCCHasta","repCCTipo"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  ["repCCSaldo","repCCDeudas","repCCPagos"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent="$0.00";});
+  const m=document.getElementById("repCCMovs");if(m)m.textContent="0";
+  const body=document.getElementById("repCCBody");if(body)body.innerHTML='<tr><td colspan="7" class="muted">Elegí un cliente para ver el detalle.</td></tr>';
+}
+
+async function cargarReporteCuentaCorriente(){
+  const clienteId=document.getElementById("repCCCliente")?.value||"";
+  const body=document.getElementById("repCCBody");
+  if(!clienteId){if(body)body.innerHTML='<tr><td colspan="7" class="muted">Primero elegí un cliente.</td></tr>';return;}
+  try{
+    if(body)body.innerHTML='<tr><td colspan="7" class="muted">Cargando movimientos...</td></tr>';
+    const res=await fetch(`/api/clientes/${clienteId}/movimientos`);
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error||"Error al cargar movimientos");
+    const desde=document.getElementById("repCCDesde")?.value||"";
+    const hasta=document.getElementById("repCCHasta")?.value||"";
+    const tipo=document.getElementById("repCCTipo")?.value||"";
+    let movs=Array.isArray(data)?data:[];
+    movs=movs.filter(m=>{
+      const fecha=String(m.fecha||"").slice(0,10);
+      if(desde && fecha<desde)return false;
+      if(hasta && fecha>hasta)return false;
+      if(tipo && String(m.tipo||"")!==tipo)return false;
+      return true;
+    });
+    let deudas=0,pagos=0,filas="";
+    movs.forEach(m=>{
+      const monto=Number(m.monto||0);
+      if(m.tipo==="deuda")deudas+=monto;else pagos+=monto;
+      const boton=m.venta_id?`<button class="btn btn-secondary" onclick="verDetalleMovimientoCC(${m.venta_id})">Ver detalle</button>`:"-";
+      filas+=`<tr><td>${formatoFechaHora(m.fecha)}</td><td>${m.tipo==='deuda'?'Compra / deuda':'Pago'}</td><td><strong>${formatoDinero(monto)}</strong></td><td>${m.venta_id?'#'+m.venta_id:'-'}</td><td>${escapeHtml(m.empleado_nombre||'')}</td><td>${escapeHtml(m.observaciones||'')}</td><td>${boton}</td></tr>`;
+    });
+    if(!filas)filas='<tr><td colspan="7" class="muted">No hay movimientos para esos filtros.</td></tr>';
+    if(body)body.innerHTML=filas;
+    const saldo=deudas-pagos;
+    document.getElementById("repCCSaldo").textContent=formatoDinero(saldo);
+    document.getElementById("repCCDeudas").textContent=formatoDinero(deudas);
+    document.getElementById("repCCPagos").textContent=formatoDinero(pagos);
+    document.getElementById("repCCMovs").textContent=movs.length;
+  }catch(e){
+    if(body)body.innerHTML='<tr><td colspan="7" class="muted">'+escapeHtml(e.message||"Error de conexión")+'</td></tr>';
+  }
+}
+
+async function registrarPagoClienteDesdeReporte(){
+  const id=document.getElementById("repCCCliente")?.value||"";
+  if(!id){alert("Primero elegí un cliente.");return;}
+  await registrarPagoCliente(id);
+  await cargarClientesReporteCC();
+  await cargarReporteCuentaCorriente();
+}
+
+async function verDetalleMovimientoCC(ventaId){
+  try{
+    const res=await fetch(`/api/ventas/${ventaId}`);
+    const data=await res.json();
+    if(!res.ok){alert(data.error||"No se pudo cargar el detalle");return;}
+    const venta=data.venta||{};
+    const detalle=Array.isArray(data.detalle)?data.detalle:[];
+    let html=`<div class="grid-2"><div class="caja-linea"><span>Fecha</span><strong>${formatoFechaHora(venta.fecha)}</strong></div><div class="caja-linea"><span>Total</span><strong>${formatoDinero(venta.total)}</strong></div><div class="caja-linea"><span>Cliente</span><strong>${escapeHtml(venta.cliente_nombre||'-')}</strong></div><div class="caja-linea"><span>Cajero</span><strong>${escapeHtml(venta.empleado_nombre||'-')}</strong></div></div>`;
+    html+=`<div class="scroll-x" style="margin-top:14px;"><table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>`;
+    detalle.forEach(i=>{html+=`<tr><td>${escapeHtml(i.nombre||'Producto')}</td><td>${qty(i.cantidad)}</td><td>${formatoDinero(i.precio_unitario)}</td><td><strong>${formatoDinero(i.subtotal)}</strong></td></tr>`;});
+    html+=`</tbody></table></div><div class="muted" style="margin-top:10px;">Obs.: ${escapeHtml(venta.observaciones||'-')}</div>`;
+    mostrarModalProducto(`Detalle cuenta corriente · Venta #${ventaId}`,html);
+  }catch(e){alert("Error de conexión");}
 }
 
 </script>
