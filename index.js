@@ -54,9 +54,19 @@ function n3(valor) {
   return Number(Number(valor || 0).toFixed(3));
 }
 
-function redondearPrecio(valor) {
+function redondearPrecio(valor, tipoRedondeo = "100") {
   const precio = Number(valor || 0);
   if (!Number.isFinite(precio) || precio <= 0) return 0;
+
+  const tipo = String(tipoRedondeo || "100");
+  if (tipo === "ninguno" || tipo === "0" || tipo === "sin") {
+    return n2(precio);
+  }
+
+  if (tipo === "50") {
+    return n2(Math.round(precio / 50) * 50);
+  }
+
   const base = Math.floor(precio / 100) * 100;
   const resto = precio - base;
   return resto <= 30 ? base : base + 100;
@@ -69,14 +79,14 @@ function costoUnitarioDesdeBulto(costo, cantidadBulto) {
   return n2(costoNum / bulto);
 }
 
-function calcularPrecioVenta(costo, porcentajeGanancia, precioVentaInformado, cantidadBulto = 1) {
+function calcularPrecioVenta(costo, porcentajeGanancia, precioVentaInformado, cantidadBulto = 1, tipoRedondeo = "100") {
   const costoUnitario = costoUnitarioDesdeBulto(costo, cantidadBulto);
   const gananciaNum = n2(porcentajeGanancia);
   const precioInformado = n2(precioVentaInformado);
 
   if (precioInformado > 0) return precioInformado;
   if (costoUnitario > 0 && gananciaNum >= 0) {
-    return n2(redondearPrecio(costoUnitario * (1 + gananciaNum / 100)));
+    return n2(redondearPrecio(costoUnitario * (1 + gananciaNum / 100), tipoRedondeo));
   }
   return 0;
 }
@@ -154,6 +164,17 @@ async function asegurarColumnasAlmacen() {
     UPDATE productos
     SET cantidad_bulto = 1
     WHERE cantidad_bulto IS NULL OR cantidad_bulto <= 0
+  `);
+
+  await pool.query(`
+    ALTER TABLE productos
+    ADD COLUMN IF NOT EXISTS tipo_redondeo VARCHAR(20) DEFAULT '100'
+  `);
+
+  await pool.query(`
+    UPDATE productos
+    SET tipo_redondeo = '100'
+    WHERE tipo_redondeo IS NULL OR tipo_redondeo = ''
   `);
   await pool.query(`
     DO $$
@@ -883,6 +904,7 @@ app.post("/api/productos", async (req, res) => {
       costo,
       porcentaje_ganancia,
       cantidad_bulto,
+      tipo_redondeo,
       precio_venta,
       stock_actual,
       stock_minimo,
@@ -894,7 +916,8 @@ app.post("/api/productos", async (req, res) => {
     }
 
     const tipo = tipo_venta === "peso" ? "peso" : (tipo_venta === "receta" ? "receta" : "unidad");
-    const precioVentaFinal = calcularPrecioVenta(costo, porcentaje_ganancia, precio_venta, cantidad_bulto);
+    const tipoRedondeoFinal = ["ninguno", "50", "100"].includes(String(tipo_redondeo || "")) ? String(tipo_redondeo) : "100";
+    const precioVentaFinal = calcularPrecioVenta(costo, porcentaje_ganancia, precio_venta, cantidad_bulto, tipoRedondeoFinal);
 
     const result = await pool.query(
       `
@@ -907,12 +930,13 @@ app.post("/api/productos", async (req, res) => {
         costo,
         porcentaje_ganancia,
         cantidad_bulto,
+        tipo_redondeo,
         precio_venta,
         stock_actual,
         stock_minimo,
         permite_decimal
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
       RETURNING *
       `,
       [
@@ -924,6 +948,7 @@ app.post("/api/productos", async (req, res) => {
         n2(costo),
         n2(porcentaje_ganancia),
         n3(cantidad_bulto || 1),
+        tipoRedondeoFinal,
         precioVentaFinal,
         n3(stock_actual),
         n3(stock_minimo),
@@ -950,6 +975,7 @@ app.put("/api/productos/:id", async (req, res) => {
       costo,
       porcentaje_ganancia,
       cantidad_bulto,
+      tipo_redondeo,
       precio_venta,
       stock_minimo,
       permite_decimal,
@@ -961,7 +987,8 @@ app.put("/api/productos/:id", async (req, res) => {
     }
 
     const tipo = tipo_venta === "peso" ? "peso" : (tipo_venta === "receta" ? "receta" : "unidad");
-    const precioVentaFinal = calcularPrecioVenta(costo, porcentaje_ganancia, precio_venta, cantidad_bulto);
+    const tipoRedondeoFinal = ["ninguno", "50", "100"].includes(String(tipo_redondeo || "")) ? String(tipo_redondeo) : "100";
+    const precioVentaFinal = calcularPrecioVenta(costo, porcentaje_ganancia, precio_venta, cantidad_bulto, tipoRedondeoFinal);
 
     const result = await pool.query(
       `
@@ -975,12 +1002,13 @@ app.put("/api/productos/:id", async (req, res) => {
         costo = $6,
         porcentaje_ganancia = $7,
         cantidad_bulto = $8,
-        precio_venta = $9,
-        stock_minimo = $10,
-        permite_decimal = $11,
-        activo = $12,
+        tipo_redondeo = $9,
+        precio_venta = $10,
+        stock_minimo = $11,
+        permite_decimal = $12,
+        activo = $13,
         updated_at = NOW()
-      WHERE id = $13
+      WHERE id = $14
       RETURNING *
       `,
       [
@@ -992,6 +1020,7 @@ app.put("/api/productos/:id", async (req, res) => {
         n2(costo),
         n2(porcentaje_ganancia),
         n3(cantidad_bulto || 1),
+        tipoRedondeoFinal,
         precioVentaFinal,
         n3(stock_minimo),
         Boolean(permite_decimal),
@@ -1494,7 +1523,8 @@ app.post("/api/compras", async (req, res) => {
       const precioVentaActual = n2(producto.precio_venta || 0);
       const costoParaVenta = costoUnitarioBase;
       const costoProductoParaGuardar = item.presentacion_id ? costoUnitarioBase : costoUnitarioIngresado;
-      const precioSugeridoNuevo = n2(redondearPrecio(costoParaVenta * (1 + porcentajeGanancia / 100)));
+      const tipoRedondeoCompra = producto.tipo_redondeo || "100";
+      const precioSugeridoNuevo = n2(redondearPrecio(costoParaVenta * (1 + porcentajeGanancia / 100), tipoRedondeoCompra));
       const debeActualizarPrecio = precioSugeridoNuevo > precioVentaActual;
 
       await client.query(
