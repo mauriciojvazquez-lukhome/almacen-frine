@@ -2789,12 +2789,17 @@ app.get("/api/reportes/caja/:caja_sesion_id", async (req, res) => {
 // ==========================================
 app.get("/api/dashboard/inicio-pro", async (req, res) => {
   try {
+    const fechaLocal = "((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date)";
+
     const resumenResult = await pool.query(`
       SELECT
-        COALESCE(SUM(total), 0) AS ventas_hoy,
-        COUNT(*) AS cantidad_ventas_hoy
+        COALESCE(SUM(CASE WHEN ${fechaLocal} = ${SQL_HOY_ARGENTINA} THEN total ELSE 0 END), 0) AS ventas_hoy,
+        COALESCE(COUNT(*) FILTER (WHERE ${fechaLocal} = ${SQL_HOY_ARGENTINA}), 0) AS cantidad_ventas_hoy,
+        COALESCE(SUM(CASE WHEN ${fechaLocal} >= DATE_TRUNC('month', ${SQL_HOY_ARGENTINA})::date THEN total ELSE 0 END), 0) AS ventas_mes,
+        COALESCE(SUM(CASE WHEN ${fechaLocal} = (${SQL_HOY_ARGENTINA} - INTERVAL '1 day')::date THEN total ELSE 0 END), 0) AS ventas_ayer,
+        COALESCE(SUM(CASE WHEN ${fechaLocal} >= (DATE_TRUNC('month', ${SQL_HOY_ARGENTINA}) - INTERVAL '1 month')::date
+                           AND ${fechaLocal} < DATE_TRUNC('month', ${SQL_HOY_ARGENTINA})::date THEN total ELSE 0 END), 0) AS ventas_mes_anterior
       FROM ventas
-      WHERE ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
     `);
 
     const topProductosResult = await pool.query(`
@@ -2804,20 +2809,50 @@ app.get("/api/dashboard/inicio-pro", async (req, res) => {
         COALESCE(SUM(vd.subtotal), 0) AS total_vendido
       FROM ventas_detalle vd
       INNER JOIN productos p ON p.id = vd.producto_id
+      INNER JOIN ventas v ON v.id = vd.venta_id
+      WHERE ${fechaLocal} >= (${SQL_HOY_ARGENTINA} - INTERVAL '30 days')::date
       GROUP BY p.id, p.nombre
-      ORDER BY total_vendido DESC
-      LIMIT 5
+      ORDER BY total_vendido DESC, cantidad_vendida DESC, p.nombre ASC
+      LIMIT 10
     `);
 
     const ventas7DiasResult = await pool.query(`
       SELECT
-        TO_CHAR(((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date), 'DD/MM') AS dia,
-        ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) AS fecha_real,
+        TO_CHAR(d.dia, 'DD/MM') AS dia,
+        d.dia AS fecha_real,
+        COALESCE(SUM(v.total), 0) AS total
+      FROM GENERATE_SERIES(
+        (${SQL_HOY_ARGENTINA} - INTERVAL '6 days')::date,
+        ${SQL_HOY_ARGENTINA},
+        INTERVAL '1 day'
+      ) d(dia)
+      LEFT JOIN ventas v ON ${fechaLocal} = d.dia
+      GROUP BY d.dia
+      ORDER BY d.dia ASC
+    `);
+
+    const ventasFormaPagoResult = await pool.query(`
+      SELECT
+        COALESCE(forma_pago, 'sin_dato') AS forma_pago,
+        COUNT(*) AS cantidad_ventas,
         COALESCE(SUM(total), 0) AS total
       FROM ventas
-      WHERE fecha >= (CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '6 days'
-      GROUP BY ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date)
-      ORDER BY ((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) ASC
+      WHERE ${fechaLocal} = ${SQL_HOY_ARGENTINA}
+      GROUP BY COALESCE(forma_pago, 'sin_dato')
+      ORDER BY total DESC
+    `);
+
+    const ventasEmpleadoResult = await pool.query(`
+      SELECT
+        COALESCE(e.nombre, 'Sin empleado') AS nombre,
+        COUNT(v.id) AS cantidad_ventas,
+        COALESCE(SUM(v.total), 0) AS total_vendido
+      FROM ventas v
+      LEFT JOIN empleados e ON e.id = v.empleado_id
+      WHERE ${fechaLocal} >= (${SQL_HOY_ARGENTINA} - INTERVAL '30 days')::date
+      GROUP BY e.id, e.nombre
+      ORDER BY total_vendido DESC, cantidad_ventas DESC
+      LIMIT 10
     `);
 
     const ultimasVentasResult = await pool.query(`
@@ -2841,8 +2876,34 @@ app.get("/api/dashboard/inicio-pro", async (req, res) => {
       FROM productos
       WHERE activo = true
         AND stock_actual <= stock_minimo
-      ORDER BY nombre ASC
-      LIMIT 5
+      ORDER BY (stock_actual - stock_minimo) ASC, nombre ASC
+      LIMIT 10
+    `);
+
+    const clientesDeudoresResult = await pool.query(`
+      SELECT
+        c.nombre,
+        c.telefono,
+        COALESCE(SUM(CASE WHEN m.tipo = 'deuda' THEN m.monto ELSE -m.monto END), 0) AS saldo
+      FROM clientes c
+      LEFT JOIN cuenta_corriente_movimientos m ON m.cliente_id = c.id
+      WHERE c.activo = true
+      GROUP BY c.id, c.nombre, c.telefono
+      HAVING COALESCE(SUM(CASE WHEN m.tipo = 'deuda' THEN m.monto ELSE -m.monto END), 0) > 0
+      ORDER BY saldo DESC, c.nombre ASC
+      LIMIT 10
+    `);
+
+    const deudaClientesResult = await pool.query(`
+      SELECT COALESCE(SUM(saldo), 0) AS deuda_total
+      FROM (
+        SELECT COALESCE(SUM(CASE WHEN m.tipo = 'deuda' THEN m.monto ELSE -m.monto END), 0) AS saldo
+        FROM clientes c
+        LEFT JOIN cuenta_corriente_movimientos m ON m.cliente_id = c.id
+        WHERE c.activo = true
+        GROUP BY c.id
+      ) x
+      WHERE saldo > 0
     `);
 
     const productosSinCodigoResult = await pool.query(`
@@ -2893,7 +2954,11 @@ app.get("/api/dashboard/inicio-pro", async (req, res) => {
     }
 
     if (stockBajoResult.rows.length > 0) {
-      alertas.push(`Hay ${stockBajoResult.rows.length} productos con stock bajo.`);
+      alertas.push(`Hay ${stockBajoResult.rows.length} productos con stock bajo o crítico.`);
+    }
+
+    if (clientesDeudoresResult.rows.length > 0) {
+      alertas.push(`Hay ${clientesDeudoresResult.rows.length} clientes con deuda en cuenta corriente.`);
     }
 
     if (Number(productosSinCodigoResult.rows[0].cantidad || 0) > 0) {
@@ -2909,12 +2974,35 @@ app.get("/api/dashboard/inicio-pro", async (req, res) => {
         ventas_hoy: Number(resumen.ventas_hoy || 0),
         cantidad_ventas_hoy: Number(resumen.cantidad_ventas_hoy || 0),
         promedio_ticket: Number(promedioTicket || 0),
+        ventas_mes: Number(resumen.ventas_mes || 0),
+        deuda_clientes: Number(deudaClientesResult.rows[0]?.deuda_total || 0),
         caja_abierta: cajaAbierta,
         productos_bajo_stock: stockBajoResult.rows.length
+      },
+      comparativo: {
+        ventas_hoy: Number(resumen.ventas_hoy || 0),
+        ventas_ayer: Number(resumen.ventas_ayer || 0),
+        ventas_mes: Number(resumen.ventas_mes || 0),
+        ventas_mes_anterior: Number(resumen.ventas_mes_anterior || 0)
       },
       ventas_7_dias: ventas7DiasResult.rows.map(r => ({
         dia: r.dia,
         total: Number(r.total || 0)
+      })),
+      ventas_forma_pago: ventasFormaPagoResult.rows.map(r => ({
+        forma_pago: r.forma_pago,
+        cantidad_ventas: Number(r.cantidad_ventas || 0),
+        total: Number(r.total || 0)
+      })),
+      ventas_empleado: ventasEmpleadoResult.rows.map(r => ({
+        nombre: r.nombre,
+        cantidad_ventas: Number(r.cantidad_ventas || 0),
+        total_vendido: Number(r.total_vendido || 0)
+      })),
+      clientes_deudores: clientesDeudoresResult.rows.map(r => ({
+        nombre: r.nombre,
+        telefono: r.telefono || "",
+        saldo: Number(r.saldo || 0)
       })),
       top_productos: topProductosResult.rows.map(r => ({
         nombre: r.nombre,
