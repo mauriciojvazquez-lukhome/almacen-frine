@@ -111,7 +111,22 @@ function vacio(valor) {
   return valor === undefined || valor === null || String(valor).trim() === "";
 }
 
-async function buscarCajaAbierta() {
+async function buscarCajaAbierta(empleadoId = null) {
+  if (empleadoId) {
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM caja_sesiones
+      WHERE estado = 'abierta'
+        AND empleado_apertura_id = $1
+      ORDER BY id DESC
+      LIMIT 1
+      `,
+      [empleadoId]
+    );
+    return result.rows[0] || null;
+  }
+
   const result = await pool.query(`
     SELECT *
     FROM caja_sesiones
@@ -122,11 +137,28 @@ async function buscarCajaAbierta() {
   return result.rows[0] || null;
 }
 
+async function registrarActividadEmpleado(clientOrPool, empleadoId) {
+  if (!empleadoId) return;
+  await clientOrPool.query(
+    `
+    UPDATE empleados
+    SET ultima_actividad = NOW()
+    WHERE id = $1
+    `,
+    [empleadoId]
+  ).catch(() => {});
+}
+
 
 async function asegurarColumnasAlmacen() {
   await pool.query(`
     ALTER TABLE empleados
     ADD COLUMN IF NOT EXISTS puede_recetas BOOLEAN DEFAULT false
+  `);
+
+  await pool.query(`
+    ALTER TABLE empleados
+    ADD COLUMN IF NOT EXISTS ultima_actividad TIMESTAMP
   `);
 
   await pool.query(`
@@ -390,6 +422,17 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+app.post("/api/actividad", async (req, res) => {
+  try {
+    const { empleado_id } = req.body || {};
+    await registrarActividadEmpleado(pool, empleado_id);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("Error actividad:", error);
+    res.status(500).json({ error: "Error al registrar actividad" });
+  }
+});
+
 
 // ==========================================
 // LOGIN
@@ -430,6 +473,9 @@ app.post("/api/login", async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
     }
+
+    await registrarActividadEmpleado(pool, result.rows[0].id);
+    result.rows[0].ultima_actividad = new Date().toISOString();
 
     res.json(result.rows[0]);
   } catch (error) {
@@ -1485,6 +1531,8 @@ app.post("/api/compras", async (req, res) => {
 
     for (const item of items) totalCompra += n2(item.subtotal);
 
+    await registrarActividadEmpleado(client, empleado_id);
+
     const compraResult = await client.query(
       `
       INSERT INTO compras (proveedor_id, empleado_id, observaciones, total)
@@ -1645,7 +1693,7 @@ app.post("/api/compras", async (req, res) => {
 // ==========================================
 app.get("/api/caja/abierta", async (req, res) => {
   try {
-    const caja = await buscarCajaAbierta();
+    const caja = await buscarCajaAbierta(req.query.empleado_id || null);
     if (!caja) return res.json(null);
 
     const detalle = await calcularResumenCaja(pool, caja.id);
@@ -1662,18 +1710,27 @@ app.post("/api/caja/abrir", async (req, res) => {
   try {
     const { empleado_id, monto_inicial, observaciones } = req.body;
 
-    const cajaExistente = await client.query(`
+    if (!empleado_id) {
+      return res.status(400).json({ error: "Empleado no informado" });
+    }
+
+    const cajaExistente = await client.query(
+      `
       SELECT id
       FROM caja_sesiones
       WHERE estado = 'abierta'
+        AND empleado_apertura_id = $1
       LIMIT 1
-    `);
+      `,
+      [empleado_id]
+    );
 
     if (cajaExistente.rows.length > 0) {
-      return res.status(400).json({ error: "Ya hay una caja abierta" });
+      return res.status(400).json({ error: "Este usuario ya tiene una caja abierta" });
     }
 
     await client.query("BEGIN");
+    await registrarActividadEmpleado(client, empleado_id);
 
     const result = await client.query(
       `
@@ -1718,6 +1775,8 @@ app.post("/api/caja/movimiento", async (req, res) => {
     }
 
     const medioPagoFinal = String(medio_pago || "efectivo").toLowerCase() === "transferencia" ? "transferencia" : "efectivo";
+
+    await registrarActividadEmpleado(pool, empleado_id);
 
     const result = await pool.query(
       `
@@ -1770,6 +1829,7 @@ app.post("/api/caja/cerrar", async (req, res) => {
     }
 
     await client.query("BEGIN");
+    await registrarActividadEmpleado(client, empleado_cierre_id);
 
     const detalleCaja = await calcularResumenCaja(client, caja_sesion_id);
 
@@ -2011,23 +2071,31 @@ app.post("/api/ventas", async (req, res) => {
       }
     }
 
-    const cajaAbiertaResult = await client.query(`
+    if (!empleado_id) {
+      return res.status(400).json({ error: "Empleado no informado" });
+    }
+
+    const cajaAbiertaResult = await client.query(
+      `
       SELECT *
       FROM caja_sesiones
       WHERE estado = 'abierta'
+        AND empleado_apertura_id = $1
       ORDER BY id DESC
       LIMIT 1
-    `);
+      `,
+      [empleado_id]
+    );
 
     const cajaAbierta = cajaAbiertaResult.rows[0] || null;
 
-    // POS PRO: desde ahora ninguna venta se guarda sin caja abierta.
-    // Aunque sea transferencia, débito o crédito, queda asociada a una caja.
+    // POS PRO: cada venta queda asociada a la caja abierta del usuario logueado.
     if (!cajaAbierta) {
-      return res.status(400).json({ error: "No hay caja abierta. Abrí caja antes de vender." });
+      return res.status(400).json({ error: "Este usuario no tiene caja abierta. Abrí caja antes de vender." });
     }
 
     await client.query("BEGIN");
+    await registrarActividadEmpleado(client, empleado_id);
 
     let totalVenta = 0;
     for (const item of items) {
@@ -2722,6 +2790,73 @@ app.get("/api/reportes/compras", async (req, res) => {
   }
 });
 
+
+app.get("/api/reportes/usuarios", async (req, res) => {
+  try {
+    const resumenUsuariosResult = await pool.query(`
+      SELECT
+        COUNT(*)::int AS usuarios_registrados,
+        COALESCE(SUM(CASE WHEN activo = true THEN 1 ELSE 0 END), 0)::int AS usuarios_activos,
+        COALESCE(SUM(CASE WHEN activo = true AND ultima_actividad >= NOW() - INTERVAL '5 minutes' THEN 1 ELSE 0 END), 0)::int AS usuarios_en_linea
+      FROM empleados
+    `);
+
+    const usuariosOnlineResult = await pool.query(`
+      SELECT
+        id,
+        nombre,
+        usuario,
+        rol,
+        ultima_actividad,
+        EXTRACT(EPOCH FROM (NOW() - ultima_actividad))::int AS segundos_sin_actividad
+      FROM empleados
+      WHERE activo = true
+        AND ultima_actividad >= NOW() - INTERVAL '5 minutes'
+      ORDER BY ultima_actividad DESC
+    `);
+
+    const cajasAbiertasResult = await pool.query(`
+      SELECT
+        cs.id,
+        cs.fecha_apertura,
+        cs.estado,
+        e.id AS empleado_id,
+        e.nombre AS cajero_nombre,
+        e.usuario AS cajero_usuario,
+        e.rol AS cajero_rol,
+        EXTRACT(EPOCH FROM (NOW() - cs.fecha_apertura))::int AS segundos_abierta
+      FROM caja_sesiones cs
+      LEFT JOIN empleados e ON e.id = cs.empleado_apertura_id
+      WHERE cs.estado = 'abierta'
+      ORDER BY cs.fecha_apertura ASC
+    `);
+
+    const cajasAbiertas = cajasAbiertasResult.rows.map(c => ({
+      ...c,
+      segundos_abierta: Number(c.segundos_abierta || 0),
+      caja_olvidada: Number(c.segundos_abierta || 0) >= 12 * 60 * 60
+    }));
+
+    const resumenBase = resumenUsuariosResult.rows[0] || {};
+    res.json({
+      resumen: {
+        usuarios_registrados: Number(resumenBase.usuarios_registrados || 0),
+        usuarios_activos: Number(resumenBase.usuarios_activos || 0),
+        usuarios_en_linea: Number(resumenBase.usuarios_en_linea || 0),
+        cajas_abiertas: cajasAbiertas.length
+      },
+      usuarios_en_linea: usuariosOnlineResult.rows.map(u => ({
+        ...u,
+        segundos_sin_actividad: Number(u.segundos_sin_actividad || 0)
+      })),
+      cajas_abiertas: cajasAbiertas,
+      cajas_olvidadas: cajasAbiertas.filter(c => c.caja_olvidada)
+    });
+  } catch (error) {
+    console.error("Error reporte usuarios:", error);
+    res.status(500).json({ error: "Error al obtener reporte de usuarios" });
+  }
+});
 
 app.get("/api/reportes/cajeros", async (req, res) => {
   try {
