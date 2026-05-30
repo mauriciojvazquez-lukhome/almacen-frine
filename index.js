@@ -242,7 +242,24 @@ async function asegurarColumnasAlmacen() {
     ADD COLUMN IF NOT EXISTS ventas_debito NUMERIC DEFAULT 0,
     ADD COLUMN IF NOT EXISTS ventas_credito NUMERIC DEFAULT 0,
     ADD COLUMN IF NOT EXISTS ingresos_manuales NUMERIC DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS retiros NUMERIC DEFAULT 0
+    ADD COLUMN IF NOT EXISTS retiros NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS ingresos_efectivo NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS ingresos_transferencia NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS retiros_efectivo NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS retiros_transferencia NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS transferencia_esperada NUMERIC DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS diferencia_transferencia NUMERIC DEFAULT 0
+  `);
+
+  await pool.query(`
+    ALTER TABLE caja_movimientos
+    ADD COLUMN IF NOT EXISTS medio_pago VARCHAR(30) DEFAULT 'efectivo'
+  `);
+
+  await pool.query(`
+    UPDATE caja_movimientos
+    SET medio_pago = 'efectivo'
+    WHERE medio_pago IS NULL OR TRIM(medio_pago) = ''
   `);
 }
 
@@ -274,7 +291,11 @@ async function calcularResumenCaja(clientOrPool, cajaSesionId) {
       COALESCE(SUM(CASE WHEN tipo = 'venta_debito' THEN monto ELSE 0 END), 0) AS ventas_debito,
       COALESCE(SUM(CASE WHEN tipo = 'venta_credito' THEN monto ELSE 0 END), 0) AS ventas_credito,
       COALESCE(SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE 0 END), 0) AS ingresos_manuales,
-      COALESCE(SUM(CASE WHEN tipo = 'retiro' THEN monto ELSE 0 END), 0) AS retiros
+      COALESCE(SUM(CASE WHEN tipo = 'ingreso' AND COALESCE(medio_pago, 'efectivo') = 'efectivo' THEN monto ELSE 0 END), 0) AS ingresos_efectivo,
+      COALESCE(SUM(CASE WHEN tipo = 'ingreso' AND COALESCE(medio_pago, 'efectivo') = 'transferencia' THEN monto ELSE 0 END), 0) AS ingresos_transferencia,
+      COALESCE(SUM(CASE WHEN tipo = 'retiro' THEN monto ELSE 0 END), 0) AS retiros,
+      COALESCE(SUM(CASE WHEN tipo = 'retiro' AND COALESCE(medio_pago, 'efectivo') = 'efectivo' THEN monto ELSE 0 END), 0) AS retiros_efectivo,
+      COALESCE(SUM(CASE WHEN tipo = 'retiro' AND COALESCE(medio_pago, 'efectivo') = 'transferencia' THEN monto ELSE 0 END), 0) AS retiros_transferencia
     FROM caja_movimientos
     WHERE caja_sesion_id = $1
     `,
@@ -289,13 +310,23 @@ async function calcularResumenCaja(clientOrPool, cajaSesionId) {
   const ventasDebito = n2(m.ventas_debito);
   const ventasCredito = n2(m.ventas_credito);
   const ingresosManuales = n2(m.ingresos_manuales);
+  const ingresosEfectivo = n2(m.ingresos_efectivo);
+  const ingresosTransferencia = n2(m.ingresos_transferencia);
   const retiros = n2(m.retiros);
+  const retirosEfectivo = n2(m.retiros_efectivo);
+  const retirosTransferencia = n2(m.retiros_transferencia);
 
   const cajaEsperada = n2(
     apertura +
     ventasEfectivo +
-    ingresosManuales -
-    retiros
+    ingresosEfectivo -
+    retirosEfectivo
+  );
+
+  const transferenciaEsperada = n2(
+    ventasTransferencia +
+    ingresosTransferencia -
+    retirosTransferencia
   );
 
   const efectivoReal = caja.estado === "cerrada" ? n2(caja.efectivo_real) : 0;
@@ -303,7 +334,7 @@ async function calcularResumenCaja(clientOrPool, cajaSesionId) {
 
   const diferencia = caja.estado === "cerrada" ? n2(efectivoReal - cajaEsperada) : null;
   const diferenciaTransferencia = caja.estado === "cerrada"
-    ? n2(transferenciaReal - ventasTransferencia)
+    ? n2(transferenciaReal - transferenciaEsperada)
     : null;
 
   return {
@@ -316,8 +347,13 @@ async function calcularResumenCaja(clientOrPool, cajaSesionId) {
       ventas_debito: ventasDebito,
       ventas_credito: ventasCredito,
       ingresos_manuales: ingresosManuales,
+      ingresos_efectivo: ingresosEfectivo,
+      ingresos_transferencia: ingresosTransferencia,
       retiros,
+      retiros_efectivo: retirosEfectivo,
+      retiros_transferencia: retirosTransferencia,
       caja_esperada: cajaEsperada,
+      transferencia_esperada: transferenciaEsperada,
       efectivo_real: efectivoReal,
       transferencia_real: transferenciaReal,
       diferencia,
@@ -1652,8 +1688,8 @@ app.post("/api/caja/abrir", async (req, res) => {
 
     await client.query(
       `
-      INSERT INTO caja_movimientos (caja_sesion_id, tipo, monto, motivo, empleado_id)
-      VALUES ($1, 'apertura', $2, $3, $4)
+      INSERT INTO caja_movimientos (caja_sesion_id, tipo, medio_pago, monto, motivo, empleado_id)
+      VALUES ($1, 'apertura', 'efectivo', $2, $3, $4)
       `,
       [caja.id, n2(monto_inicial), "Apertura de caja", empleado_id || null]
     );
@@ -1671,7 +1707,7 @@ app.post("/api/caja/abrir", async (req, res) => {
 
 app.post("/api/caja/movimiento", async (req, res) => {
   try {
-    const { caja_sesion_id, tipo, monto, motivo, empleado_id } = req.body;
+    const { caja_sesion_id, tipo, monto, motivo, empleado_id, medio_pago } = req.body;
 
     if (!caja_sesion_id) {
       return res.status(400).json({ error: "Caja no informada" });
@@ -1681,13 +1717,15 @@ app.post("/api/caja/movimiento", async (req, res) => {
       return res.status(400).json({ error: "Tipo inválido" });
     }
 
+    const medioPagoFinal = String(medio_pago || "efectivo").toLowerCase() === "transferencia" ? "transferencia" : "efectivo";
+
     const result = await pool.query(
       `
-      INSERT INTO caja_movimientos (caja_sesion_id, tipo, monto, motivo, empleado_id)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO caja_movimientos (caja_sesion_id, tipo, medio_pago, monto, motivo, empleado_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
       `,
-      [caja_sesion_id, tipo, n2(monto), motivo || "", empleado_id || null]
+      [caja_sesion_id, tipo, medioPagoFinal, n2(monto), motivo || "", empleado_id || null]
     );
 
     res.json(result.rows[0]);
@@ -1749,7 +1787,7 @@ app.post("/api/caja/cerrar", async (req, res) => {
     const efectivoReal = n2(efectivo_real);
     const transferenciaReal = n2(transferencia_real);
     const diferencia = n2(efectivoReal - resumen.caja_esperada);
-    const diferenciaTransferencia = n2(transferenciaReal - resumen.ventas_transferencia);
+    const diferenciaTransferencia = n2(transferenciaReal - resumen.transferencia_esperada);
 
     const updateResult = await client.query(
       `
@@ -1768,9 +1806,15 @@ app.post("/api/caja/cerrar", async (req, res) => {
         ventas_credito = $10,
         ingresos_manuales = $11,
         retiros = $12,
+        ingresos_efectivo = $13,
+        ingresos_transferencia = $14,
+        retiros_efectivo = $15,
+        retiros_transferencia = $16,
+        transferencia_esperada = $17,
+        diferencia_transferencia = $18,
         estado = 'cerrada',
-        observaciones = COALESCE(observaciones, '') || $13
-      WHERE id = $14
+        observaciones = COALESCE(observaciones, '') || $19
+      WHERE id = $20
       RETURNING *
       `,
       [
@@ -1786,6 +1830,12 @@ app.post("/api/caja/cerrar", async (req, res) => {
         resumen.ventas_credito,
         resumen.ingresos_manuales,
         resumen.retiros,
+        resumen.ingresos_efectivo,
+        resumen.ingresos_transferencia,
+        resumen.retiros_efectivo,
+        resumen.retiros_transferencia,
+        resumen.transferencia_esperada,
+        diferenciaTransferencia,
         observaciones ? ` | ${observaciones}` : "",
         caja_sesion_id
       ]
@@ -1793,8 +1843,8 @@ app.post("/api/caja/cerrar", async (req, res) => {
 
     await client.query(
       `
-      INSERT INTO caja_movimientos (caja_sesion_id, tipo, monto, motivo, empleado_id)
-      VALUES ($1, 'cierre', $2, $3, $4)
+      INSERT INTO caja_movimientos (caja_sesion_id, tipo, medio_pago, monto, motivo, empleado_id)
+      VALUES ($1, 'cierre', 'efectivo', $2, $3, $4)
       `,
       [caja_sesion_id, efectivoReal, "Cierre de caja", empleado_cierre_id || null]
     );
@@ -2113,10 +2163,10 @@ app.post("/api/ventas", async (req, res) => {
 
     await client.query(
       `
-      INSERT INTO caja_movimientos (caja_sesion_id, tipo, monto, motivo, empleado_id, venta_id)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO caja_movimientos (caja_sesion_id, tipo, medio_pago, monto, motivo, empleado_id, venta_id)
+      VALUES ($1, $2, $7, $3, $4, $5, $6)
       `,
-      [cajaAbierta.id, tipoMovimientoCaja, n2(totalVenta), `Venta ${formaPagoNormalizada}`, empleado_id || null, venta.id]
+      [cajaAbierta.id, tipoMovimientoCaja, n2(totalVenta), `Venta ${formaPagoNormalizada}`, empleado_id || null, venta.id, formaPagoNormalizada === 'transferencia' ? 'transferencia' : 'efectivo']
     );
 
     if (formaPagoNormalizada === "cuenta_corriente") {
@@ -2708,6 +2758,14 @@ app.get("/api/reportes/cajeros", async (req, res) => {
         cs.caja_esperada,
         cs.ventas_efectivo,
         cs.ventas_transferencia,
+        cs.ventas_cuenta_corriente,
+        cs.transferencia_real,
+        cs.transferencia_esperada,
+        cs.diferencia_transferencia,
+        cs.ingresos_efectivo,
+        cs.ingresos_transferencia,
+        cs.retiros_efectivo,
+        cs.retiros_transferencia,
         cs.ventas_debito,
         cs.ventas_credito,
         cs.ingresos_manuales,
@@ -2740,6 +2798,14 @@ app.get("/api/reportes/cajeros", async (req, res) => {
         monto_inicial: n2(r.monto_inicial),
         ventas_efectivo: n2(r.ventas_efectivo),
         ventas_transferencia: n2(r.ventas_transferencia),
+        ventas_cuenta_corriente: n2(r.ventas_cuenta_corriente),
+        transferencia_real: n2(r.transferencia_real),
+        transferencia_esperada: n2(r.transferencia_esperada),
+        diferencia_transferencia: n2(r.diferencia_transferencia),
+        ingresos_efectivo: n2(r.ingresos_efectivo),
+        ingresos_transferencia: n2(r.ingresos_transferencia),
+        retiros_efectivo: n2(r.retiros_efectivo),
+        retiros_transferencia: n2(r.retiros_transferencia),
         ventas_debito: n2(r.ventas_debito),
         ventas_credito: n2(r.ventas_credito),
         total_ventas: totalVentas,
@@ -2794,18 +2860,22 @@ app.get("/api/reportes/caja/:caja_sesion_id", async (req, res) => {
       return res.status(404).json({ error: "Caja no encontrada" });
     }
 
+    const detalleCaja = await calcularResumenCaja(pool, caja_sesion_id);
+
     const movimientosResult = await pool.query(
       `
-      SELECT *
-      FROM caja_movimientos
-      WHERE caja_sesion_id = $1
-      ORDER BY id ASC
+      SELECT cm.*, e.nombre AS empleado_nombre
+      FROM caja_movimientos cm
+      LEFT JOIN empleados e ON e.id = cm.empleado_id
+      WHERE cm.caja_sesion_id = $1
+      ORDER BY cm.id ASC
       `,
       [caja_sesion_id]
     );
 
     res.json({
-      caja: cajaResult.rows[0],
+      caja: detalleCaja?.caja || cajaResult.rows[0],
+      resumen: detalleCaja?.resumen || {},
       movimientos: movimientosResult.rows
     });
   } catch (error) {
