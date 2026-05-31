@@ -1073,6 +1073,79 @@ async function verDetalleMovimientoCC(ventaId){
   }catch(e){alert("Error de conexión");}
 }
 
+
+// =====================================================
+// FIX PERMISOS MENÚ - Mostrar SOLO lo tildado
+// No ocultar Productos / Recetas por rol cajero
+// =====================================================
+function permisoBool(nombre){ return !!(usuarioActual && usuarioActual[nombre] === true); }
+
+aplicarPermisosMenu = function(){
+  const reglas = {
+    btnNavInicio: permisoBool('puede_inicio'),
+    btnNavVentas: permisoBool('puede_ventas'),
+    btnNavProductos: permisoBool('puede_productos'),
+    btnNavCompras: permisoBool('puede_compras'),
+    btnNavRecetas: permisoBool('puede_recetas'),
+    btnNavCaja: permisoBool('puede_caja'),
+    btnNavHistorialVentas: permisoBool('puede_ventas'),
+    btnNavReportes: permisoBool('puede_reportes'),
+    btnNavConfiguracion: permisoBool('puede_configuracion')
+  };
+  Object.entries(reglas).forEach(([id, visible])=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = visible ? 'block' : 'none';
+  });
+};
+
+primeraPantallaPermitida = function(){
+  if(permisoBool('puede_inicio')) return 'inicio';
+  if(permisoBool('puede_ventas')) return 'ventas';
+  if(permisoBool('puede_productos')) return 'productos';
+  if(permisoBool('puede_compras')) return 'compras';
+  if(permisoBool('puede_recetas')) return 'recetas';
+  if(permisoBool('puede_caja')) return 'caja';
+  if(permisoBool('puede_reportes')) return 'reportes';
+  if(permisoBool('puede_configuracion')) return 'configuracion';
+  return 'ventas';
+};
+
+mostrarPagina = function(nombre){
+  const mapa = {
+    inicio: permisoBool('puede_inicio'),
+    ventas: permisoBool('puede_ventas'),
+    productos: permisoBool('puede_productos'),
+    compras: permisoBool('puede_compras'),
+    recetas: permisoBool('puede_recetas'),
+    caja: permisoBool('puede_caja'),
+    'historial-ventas': permisoBool('puede_ventas'),
+    reportes: permisoBool('puede_reportes'),
+    configuracion: permisoBool('puede_configuracion')
+  };
+  if(!mapa[nombre]){
+    const primera = primeraPantallaPermitida();
+    if(primera !== nombre) return mostrarPagina(primera);
+    return;
+  }
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+nombre)?.classList.add('active');
+  const btnMap = {
+    inicio:'btnNavInicio', ventas:'btnNavVentas', productos:'btnNavProductos', compras:'btnNavCompras', recetas:'btnNavRecetas', caja:'btnNavCaja',
+    'historial-ventas':'btnNavHistorialVentas', reportes:'btnNavReportes', configuracion:'btnNavConfiguracion'
+  };
+  document.getElementById(btnMap[nombre])?.classList.add('active');
+
+  if(nombre==='inicio') cargarDashboardInicio?.();
+  if(nombre==='productos') cargarProductos?.();
+  if(nombre==='compras') cargarProveedores?.();
+  if(nombre==='recetas') { cargarProductosRecetas?.(); cargarHistorialRecetas?.(); }
+  if(nombre==='caja') cargarEstadoCaja?.();
+  if(nombre==='historial-ventas') cargarHistorialVentas?.();
+  if(nombre==='reportes') cargarReportes?.();
+  if(nombre==='configuracion') cargarConfiguracion?.();
+};
+
 </script>
 </body>
 </html>
