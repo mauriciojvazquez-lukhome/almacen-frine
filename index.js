@@ -2525,15 +2525,15 @@ app.get("/api/reportes/inventario-resumen", async (req, res) => {
         p.plu,
         p.tipo_venta,
         COALESCE(p.costo, 0) AS costo,
-        COALESCE(NULLIF(p.cantidad_bulto, 0), 1) AS cantidad_bulto,
-        ROUND((COALESCE(p.costo, 0) / COALESCE(NULLIF(p.cantidad_bulto, 0), 1))::numeric, 2) AS costo_unitario,
         COALESCE(p.precio_venta, 0) AS precio_venta,
         COALESCE(p.porcentaje_ganancia, 0) AS porcentaje_ganancia,
         COALESCE(p.stock_actual, 0) AS stock_actual,
         COALESCE(p.stock_minimo, 0) AS stock_minimo,
-        ROUND((COALESCE(p.stock_actual, 0) * (COALESCE(p.costo, 0) / COALESCE(NULLIF(p.cantidad_bulto, 0), 1)))::numeric, 2) AS total_costo,
+        COALESCE(p.cantidad_bulto, 1) AS cantidad_bulto,
+        ROUND((COALESCE(p.costo, 0) / NULLIF(COALESCE(p.cantidad_bulto, 1), 0))::numeric, 2) AS costo_unitario_real,
+        ROUND((COALESCE(p.stock_actual, 0) * (COALESCE(p.costo, 0) / NULLIF(COALESCE(p.cantidad_bulto, 1), 0)))::numeric, 2) AS total_costo,
         ROUND((COALESCE(p.stock_actual, 0) * COALESCE(p.precio_venta, 0))::numeric, 2) AS total_venta,
-        ROUND((COALESCE(p.stock_actual, 0) * (COALESCE(p.precio_venta, 0) - (COALESCE(p.costo, 0) / COALESCE(NULLIF(p.cantidad_bulto, 0), 1))))::numeric, 2) AS total_ganancia
+        ROUND((COALESCE(p.stock_actual, 0) * (COALESCE(p.precio_venta, 0) - (COALESCE(p.costo, 0) / NULLIF(COALESCE(p.cantidad_bulto, 1), 0))))::numeric, 2) AS total_ganancia
       FROM productos p
       WHERE ${where}
       ORDER BY p.nombre ASC
