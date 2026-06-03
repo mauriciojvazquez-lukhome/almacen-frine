@@ -231,6 +231,27 @@
     .nav-scroll { max-height: none; overflow: visible; padding-right: 0; }
     .grid-4, .grid-3, .grid-2, .checks, .venta-atajos { grid-template-columns: 1fr; }
   }
+
+
+  /* Asistente Frine Admin */
+  .frine-assistant-btn { position: fixed; right: 24px; bottom: 24px; width: 68px; height: 68px; border-radius: 999px; border: 0; background: linear-gradient(135deg,#0f172a,#2563eb); color: white; font-size: 28px; box-shadow: 0 18px 45px rgba(15,23,42,.35); cursor: pointer; z-index: 9998; display: none; align-items: center; justify-content: center; }
+  .frine-assistant-btn:hover { transform: translateY(-2px); }
+  .frine-assistant-panel { position: fixed; right: 24px; bottom: 104px; width: min(430px, calc(100vw - 32px)); height: min(620px, calc(100vh - 130px)); background: white; border-radius: 24px; box-shadow: 0 24px 80px rgba(15,23,42,.35); border: 1px solid #e5e7eb; z-index: 9999; display: none; overflow: hidden; }
+  .frine-assistant-panel.open { display: flex; flex-direction: column; }
+  .frine-assistant-head { background: linear-gradient(135deg,#0f172a,#1d4ed8); color: white; padding: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .frine-assistant-title { font-weight: 900; font-size: 18px; }
+  .frine-assistant-sub { font-size: 12px; color: rgba(255,255,255,.78); margin-top: 2px; }
+  .frine-assistant-close { border: 0; background: rgba(255,255,255,.16); color: white; border-radius: 12px; padding: 8px 10px; cursor: pointer; font-weight: 900; }
+  .frine-assistant-body { flex: 1; padding: 14px; overflow-y: auto; background: #f8fafc; display: flex; flex-direction: column; gap: 10px; }
+  .frine-msg { max-width: 88%; border-radius: 16px; padding: 11px 13px; font-size: 14px; line-height: 1.35; white-space: pre-wrap; }
+  .frine-msg.bot { background: white; border: 1px solid #e5e7eb; color: #0f172a; align-self: flex-start; }
+  .frine-msg.user { background: #2563eb; color: white; align-self: flex-end; }
+  .frine-assistant-suggestions { padding: 10px 12px 0; background: #f8fafc; display: flex; gap: 8px; flex-wrap: wrap; }
+  .frine-suggestion { border: 1px solid #dbe3ef; background: white; border-radius: 999px; padding: 8px 10px; font-size: 12px; font-weight: 800; cursor: pointer; color: #0f172a; }
+  .frine-assistant-input { border-top: 1px solid #e5e7eb; padding: 12px; background: white; display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .frine-assistant-input input { width: 100%; border: 1px solid #d1d5db; border-radius: 14px; padding: 12px; outline: none; }
+  .frine-assistant-input button { border: 0; border-radius: 14px; background: #2563eb; color: white; padding: 0 15px; font-weight: 900; cursor: pointer; }
+
 </style>
 </head>
 <body>
@@ -428,6 +449,37 @@
   </div>
 </div>
 </main></div></div>
+
+
+<button id="frineAssistantBtn" class="frine-assistant-btn" onclick="toggleAsistenteFrine()" title="Asistente Frine">🤖</button>
+<div id="frineAssistantPanel" class="frine-assistant-panel">
+  <div class="frine-assistant-head">
+    <div>
+      <div class="frine-assistant-title">🤖 Asistente Frine</div>
+      <div class="frine-assistant-sub">Chat admin · analiza datos, no modifica nada</div>
+    </div>
+    <button class="frine-assistant-close" onclick="toggleAsistenteFrine(false)">✕</button>
+  </div>
+  <div class="frine-assistant-suggestions">
+    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Qué problemas ves?')">Problemas</button>
+    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Hay stock negativo?')">Stock negativo</button>
+    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Qué tengo que comprar?')">Comprar</button>
+    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Hay productos sin PLU?')">Sin PLU</button>
+  </div>
+  <div id="frineAssistantBody" class="frine-assistant-body">
+    <div class="frine-msg bot">Hola Maury. Preguntame cosas como:
+
+¿Qué problemas ves?
+¿Qué tengo que comprar?
+¿Hay productos mal cargados?
+¿Hay cajas abiertas?</div>
+  </div>
+  <div class="frine-assistant-input">
+    <input id="frineAssistantInput" placeholder="Escribí tu consulta..." onkeydown="handleAsistenteFrineEnter(event)" />
+    <button onclick="enviarAsistenteFrine()">Enviar</button>
+  </div>
+</div>
+
 <script>
 let usuarioActual=null,ticketVenta=[],itemsCompra=[],cajaAbiertaActual=null,cajaInformeUltimo=null,ultimoComprobanteVenta=null,ventaFocusTimer=null,ventaProcesando=false,productoPresentacionesActuales=[];function money(n){
   const num=Number(n||0);
@@ -1341,6 +1393,67 @@ mostrarPagina = function(nombre){
   if(nombre==='reportes') cargarReportes?.();
   if(nombre==='configuracion') cargarConfiguracion?.();
 };
+
+
+function usuarioPuedeAsistenteFrine(){
+  return !!(usuarioActual && !esCajeroActual() && (usuarioActual.puede_inicio || usuarioActual.puede_reportes || usuarioActual.puede_configuracion || String(usuarioActual.rol||'').toLowerCase()==='admin'));
+}
+function refrescarBotonAsistenteFrine(){
+  const btn=document.getElementById('frineAssistantBtn');
+  const panel=document.getElementById('frineAssistantPanel');
+  if(!btn)return;
+  if(usuarioPuedeAsistenteFrine()) btn.style.display='flex';
+  else { btn.style.display='none'; panel?.classList.remove('open'); }
+}
+function toggleAsistenteFrine(forzar){
+  if(!usuarioPuedeAsistenteFrine()){ alert('El Asistente Frine es solo para administradores.'); return; }
+  const panel=document.getElementById('frineAssistantPanel');
+  if(!panel)return;
+  const abrir = typeof forzar==='boolean' ? forzar : !panel.classList.contains('open');
+  panel.classList.toggle('open', abrir);
+  if(abrir) setTimeout(()=>document.getElementById('frineAssistantInput')?.focus(),80);
+}
+function agregarMensajeAsistenteFrine(texto,tipo='bot'){
+  const body=document.getElementById('frineAssistantBody');
+  if(!body)return;
+  const div=document.createElement('div');
+  div.className='frine-msg '+tipo;
+  div.textContent=texto;
+  body.appendChild(div);
+  body.scrollTop=body.scrollHeight;
+  return div;
+}
+function handleAsistenteFrineEnter(e){ if(e.key==='Enter') enviarAsistenteFrine(); }
+function preguntarAsistenteRapido(texto){
+  const input=document.getElementById('frineAssistantInput');
+  if(input) input.value=texto;
+  enviarAsistenteFrine();
+}
+async function enviarAsistenteFrine(){
+  const input=document.getElementById('frineAssistantInput');
+  const pregunta=(input?.value||'').trim();
+  if(!pregunta)return;
+  input.value='';
+  agregarMensajeAsistenteFrine(pregunta,'user');
+  const cargando=agregarMensajeAsistenteFrine('Analizando Frine...','bot');
+  try{
+    const res=await fetch('/api/asistente-frine',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pregunta,empleado_id:usuarioActual?.id})});
+    const data=await res.json();
+    cargando.textContent=data.respuesta || data.error || 'No pude responder esa consulta.';
+  }catch(e){
+    cargando.textContent='Error de conexión con el asistente.';
+  }
+}
+
+const hacerLoginAsistenteBase = typeof hacerLogin === 'function' ? hacerLogin : null;
+if(hacerLoginAsistenteBase){
+  hacerLogin = async function(){
+    const r = await hacerLoginAsistenteBase.apply(this, arguments);
+    setTimeout(refrescarBotonAsistenteFrine,150);
+    return r;
+  }
+}
+window.addEventListener('load',()=>setTimeout(refrescarBotonAsistenteFrine,300));
 
 </script>
 </body>
