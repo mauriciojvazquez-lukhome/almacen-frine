@@ -793,6 +793,83 @@ app.post("/api/proveedores", async (req, res) => {
 });
 
 
+
+// ==========================================
+// IA PLU CAJERO - SOLO NOMBRE, PLU Y CODIGO
+// ==========================================
+function limpiarConsultaIaPlu(texto) {
+  let q = String(texto || "").toLowerCase().trim();
+  q = q.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  q = q.replace(/[^a-z0-9ñ\s]/g, " ").replace(/\s+/g, " ").trim();
+
+  const bloqueadas = [
+    "precio", "precios", "stock", "costo", "costos", "ganancia", "ganancias",
+    "venta", "ventas", "caja", "reporte", "reportes", "compra", "compras",
+    "usuario", "usuarios", "empleado", "empleados", "configuracion", "modificar",
+    "cambiar", "editar", "borrar", "eliminar", "dar de baja", "deuda", "cuenta corriente",
+    "factura", "afip", "arca", "total", "recaudacion", "cierre"
+  ];
+
+  if (bloqueadas.some(p => q.includes(p))) return { autorizado: false, q: "" };
+
+  const palabrasPermitidas = new Set([
+    "plu", "codigo", "barra", "barras", "producto", "productos", "buscar", "busca",
+    "buscame", "decime", "dame", "cual", "cuál", "es", "el", "la", "los", "las",
+    "de", "del", "un", "una", "por", "favor", "necesito", "quiero", "saber"
+  ]);
+
+  const terminos = q.split(" ").filter(p => p && !palabrasPermitidas.has(p));
+  const consulta = terminos.join(" ").trim();
+
+  if (!consulta || consulta.length < 2) return { autorizado: false, q: "" };
+  return { autorizado: true, q: consulta };
+}
+
+app.get("/api/ia-plu", async (req, res) => {
+  try {
+    const original = String(req.query.q || "").trim();
+    const filtro = limpiarConsultaIaPlu(original);
+
+    if (!filtro.autorizado) {
+      return res.status(403).json({
+        autorizado: false,
+        error: "No estoy autorizado a responder esa consulta."
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        nombre,
+        COALESCE(plu, '') AS plu,
+        COALESCE(codigo_barras, '') AS codigo_barras
+      FROM productos
+      WHERE activo = true
+        AND (
+          nombre ILIKE $1
+          OR COALESCE(plu, '') ILIKE $1
+          OR COALESCE(codigo_barras, '') ILIKE $1
+        )
+      ORDER BY
+        CASE
+          WHEN nombre ILIKE $2 THEN 0
+          WHEN COALESCE(plu, '') = $3 THEN 1
+          WHEN COALESCE(codigo_barras, '') = $3 THEN 2
+          ELSE 3
+        END,
+        nombre ASC
+      LIMIT 10
+      `,
+      [`%${filtro.q}%`, `${filtro.q}%`, filtro.q]
+    );
+
+    res.json({ autorizado: true, productos: result.rows });
+  } catch (error) {
+    console.error("Error IA PLU:", error);
+    res.status(500).json({ autorizado: false, error: "Error al consultar IA PLU" });
+  }
+});
+
 // ==========================================
 // PRODUCTOS
 // ==========================================
