@@ -3350,6 +3350,154 @@ app.get("/api/dashboard/inicio-pro", async (req, res) => {
   }
 });
 
+
+
+// ==========================================
+// ASISTENTE FRINE ADMIN
+// ==========================================
+function formatearDineroAr(valor) {
+  return "$ " + Number(valor || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatearCantidadAr(valor) {
+  return Number(valor || 0).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+}
+
+function contieneAlguna(texto, palabras) {
+  const t = String(texto || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return palabras.some(p => t.includes(String(p).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")));
+}
+
+async function armarAuditoriaFrine() {
+  const [stockNeg, sinPlu, sinCodigo, sinMinimo, margenBajo, cajasAbiertas, faltantes] = await Promise.all([
+    pool.query(`SELECT nombre, stock_actual FROM productos WHERE activo = true AND stock_actual < 0 ORDER BY stock_actual ASC, nombre ASC LIMIT 10`),
+    pool.query(`SELECT nombre FROM productos WHERE activo = true AND (plu IS NULL OR TRIM(plu) = '') ORDER BY nombre ASC LIMIT 10`),
+    pool.query(`SELECT nombre FROM productos WHERE activo = true AND (codigo_barras IS NULL OR TRIM(codigo_barras) = '') ORDER BY nombre ASC LIMIT 10`),
+    pool.query(`SELECT nombre FROM productos WHERE activo = true AND (stock_minimo IS NULL OR stock_minimo <= 0) ORDER BY nombre ASC LIMIT 10`),
+    pool.query(`
+      SELECT nombre, costo, precio_venta,
+             CASE WHEN costo > 0 THEN ROUND(((precio_venta - costo) / costo * 100)::numeric, 2) ELSE 0 END AS margen
+      FROM productos
+      WHERE activo = true AND costo > 0 AND precio_venta > 0 AND ((precio_venta - costo) / costo * 100) < 10
+      ORDER BY margen ASC, nombre ASC
+      LIMIT 10
+    `),
+    pool.query(`
+      SELECT cs.id, cs.fecha_apertura, e.nombre AS empleado_nombre
+      FROM caja_sesiones cs
+      LEFT JOIN empleados e ON e.id = cs.empleado_apertura_id
+      WHERE cs.estado = 'abierta'
+      ORDER BY cs.fecha_apertura ASC
+      LIMIT 10
+    `),
+    pool.query(`
+      SELECT cs.id, cs.fecha_cierre, e.nombre AS empleado_nombre, cs.diferencia
+      FROM caja_sesiones cs
+      LEFT JOIN empleados e ON e.id = cs.empleado_cierre_id
+      WHERE cs.estado = 'cerrada' AND COALESCE(cs.diferencia,0) < 0
+      ORDER BY cs.fecha_cierre DESC
+      LIMIT 10
+    `)
+  ]);
+
+  const partes = [];
+  const addLista = (titulo, rows, map) => {
+    if (!rows.length) return;
+    partes.push(`${titulo}:`);
+    rows.forEach(r => partes.push(`• ${map(r)}`));
+  };
+
+  addLista("⚠️ Stock negativo", stockNeg.rows, r => `${r.nombre}: ${formatearCantidadAr(r.stock_actual)}`);
+  addLista("⚠️ Productos sin PLU", sinPlu.rows, r => r.nombre);
+  addLista("⚠️ Productos sin código de barras", sinCodigo.rows, r => r.nombre);
+  addLista("⚠️ Productos sin stock mínimo", sinMinimo.rows, r => r.nombre);
+  addLista("⚠️ Margen menor al 10%", margenBajo.rows, r => `${r.nombre}: margen ${r.margen}% · costo ${formatearDineroAr(r.costo)} · venta ${formatearDineroAr(r.precio_venta)}`);
+  addLista("⚠️ Cajas abiertas", cajasAbiertas.rows, r => `Caja #${r.id} · ${r.empleado_nombre || 'Sin empleado'}`);
+  addLista("⚠️ Últimos faltantes de caja", faltantes.rows, r => `Caja #${r.id} · ${r.empleado_nombre || 'Sin empleado'} · ${formatearDineroAr(r.diferencia)}`);
+
+  if (!partes.length) return "No encontré problemas importantes en productos, caja ni márgenes.";
+  return "Encontré esto en Frine:\n\n" + partes.join("\n");
+}
+
+app.post("/api/asistente-frine", async (req, res) => {
+  try {
+    const pregunta = String(req.body?.pregunta || "").trim();
+    if (!pregunta) return res.status(400).json({ error: "Escribí una consulta" });
+
+    const esModificacion = contieneAlguna(pregunta, ["cambia", "cambiar", "modifica", "modificar", "borra", "borrar", "elimina", "eliminar", "cerrar caja", "abrir caja", "crear producto"]);
+    if (esModificacion) return res.json({ respuesta: "No puedo modificar información. Solo puedo analizar Frine y mostrarte datos para que vos decidas." });
+
+    if (contieneAlguna(pregunta, ["problema", "raro", "mal cargado", "audita", "auditoria", "revisa", "diagnostico", "diagnóstico"])) return res.json({ respuesta: await armarAuditoriaFrine() });
+
+    if (contieneAlguna(pregunta, ["stock negativo", "negativo"])) {
+      const r = await pool.query(`SELECT nombre, stock_actual FROM productos WHERE activo = true AND stock_actual < 0 ORDER BY stock_actual ASC, nombre ASC LIMIT 20`);
+      if (!r.rows.length) return res.json({ respuesta: "No hay productos con stock negativo." });
+      return res.json({ respuesta: "Productos con stock negativo:\n\n" + r.rows.map(x => `• ${x.nombre}: ${formatearCantidadAr(x.stock_actual)}`).join("\n") });
+    }
+
+    if (contieneAlguna(pregunta, ["sin plu", "plu"])) {
+      const r = await pool.query(`SELECT nombre FROM productos WHERE activo = true AND (plu IS NULL OR TRIM(plu) = '') ORDER BY nombre ASC LIMIT 30`);
+      if (!r.rows.length) return res.json({ respuesta: "No encontré productos sin PLU." });
+      return res.json({ respuesta: `Hay ${r.rows.length} productos sin PLU en esta muestra:\n\n` + r.rows.map(x => `• ${x.nombre}`).join("\n") });
+    }
+
+    if (contieneAlguna(pregunta, ["sin codigo", "sin código", "codigo de barras", "código de barras"])) {
+      const r = await pool.query(`SELECT nombre FROM productos WHERE activo = true AND (codigo_barras IS NULL OR TRIM(codigo_barras) = '') ORDER BY nombre ASC LIMIT 30`);
+      if (!r.rows.length) return res.json({ respuesta: "No encontré productos sin código de barras." });
+      return res.json({ respuesta: `Hay ${r.rows.length} productos sin código de barras en esta muestra:\n\n` + r.rows.map(x => `• ${x.nombre}`).join("\n") });
+    }
+
+    if (contieneAlguna(pregunta, ["margen", "ganancia", "precio menor", "debajo del costo", "baja ganancia"])) {
+      const r = await pool.query(`
+        SELECT nombre, costo, precio_venta,
+               ROUND(((precio_venta - costo) / NULLIF(costo,0) * 100)::numeric, 2) AS margen
+        FROM productos
+        WHERE activo = true AND costo > 0 AND precio_venta > 0 AND ((precio_venta - costo) / costo * 100) < 15
+        ORDER BY margen ASC, nombre ASC
+        LIMIT 20
+      `);
+      if (!r.rows.length) return res.json({ respuesta: "No encontré productos con margen bajo." });
+      return res.json({ respuesta: "Productos con margen bajo:\n\n" + r.rows.map(x => `• ${x.nombre}: ${x.margen}% · costo ${formatearDineroAr(x.costo)} · venta ${formatearDineroAr(x.precio_venta)}`).join("\n") });
+    }
+
+    if (contieneAlguna(pregunta, ["comprar", "reponer", "reposicion", "reposición", "stock bajo", "que falta", "qué falta"])) {
+      const r = await pool.query(`
+        SELECT nombre, stock_actual, stock_minimo
+        FROM productos
+        WHERE activo = true AND stock_actual <= stock_minimo
+        ORDER BY (stock_actual - stock_minimo) ASC, nombre ASC
+        LIMIT 25
+      `);
+      if (!r.rows.length) return res.json({ respuesta: "No hay productos por debajo del stock mínimo." });
+      return res.json({ respuesta: "Conviene revisar reposición de estos productos:\n\n" + r.rows.map(x => `• ${x.nombre}: stock ${formatearCantidadAr(x.stock_actual)} · mínimo ${formatearCantidadAr(x.stock_minimo)}`).join("\n") });
+    }
+
+    if (contieneAlguna(pregunta, ["caja abierta", "cajas abiertas", "faltante", "sobrante", "caja"])) {
+      const abiertas = await pool.query(`
+        SELECT cs.id, cs.fecha_apertura, e.nombre AS empleado_nombre
+        FROM caja_sesiones cs LEFT JOIN empleados e ON e.id = cs.empleado_apertura_id
+        WHERE cs.estado = 'abierta'
+        ORDER BY cs.fecha_apertura ASC LIMIT 10
+      `);
+      const faltantes = await pool.query(`
+        SELECT cs.id, cs.diferencia, e.nombre AS empleado_nombre
+        FROM caja_sesiones cs LEFT JOIN empleados e ON e.id = cs.empleado_cierre_id
+        WHERE cs.estado = 'cerrada' AND COALESCE(cs.diferencia,0) <> 0
+        ORDER BY cs.fecha_cierre DESC LIMIT 10
+      `);
+      const partes = [];
+      if (abiertas.rows.length) partes.push("Cajas abiertas:\n" + abiertas.rows.map(x => `• Caja #${x.id} · ${x.empleado_nombre || 'Sin empleado'}`).join("\n"));
+      if (faltantes.rows.length) partes.push("Últimas diferencias de caja:\n" + faltantes.rows.map(x => `• Caja #${x.id} · ${x.empleado_nombre || 'Sin empleado'} · ${formatearDineroAr(x.diferencia)}`).join("\n"));
+      return res.json({ respuesta: partes.length ? partes.join("\n\n") : "No encontré cajas abiertas ni diferencias recientes." });
+    }
+
+    return res.json({ respuesta: "Todavía no sé responder esa consulta. Probá con:\n\n• ¿Qué problemas ves?\n• ¿Qué tengo que comprar?\n• ¿Hay stock negativo?\n• ¿Hay productos sin PLU?\n• ¿Hay productos con margen bajo?\n• ¿Hay cajas abiertas?" });
+  } catch (error) {
+    console.error("Error asistente Frine:", error);
+    res.status(500).json({ error: "Error al consultar el asistente" });
+  }
+});
+
 // ==========================================
 // FACTURA AFIP
 // ==========================================
