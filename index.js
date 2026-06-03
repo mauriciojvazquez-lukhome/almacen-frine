@@ -3109,7 +3109,8 @@ app.get("/api/dashboard/inicio-pro", async (req, res) => {
       SELECT
         COALESCE(SUM(CASE WHEN ${fechaLocal} = ${SQL_HOY_ARGENTINA} THEN total ELSE 0 END), 0) AS ventas_hoy,
         COALESCE(COUNT(*) FILTER (WHERE ${fechaLocal} = ${SQL_HOY_ARGENTINA}), 0) AS cantidad_ventas_hoy,
-        COALESCE(SUM(CASE WHEN ${fechaLocal} >= DATE_TRUNC('month', ${SQL_HOY_ARGENTINA})::date THEN total ELSE 0 END), 0) AS ventas_mes,
+        COALESCE(SUM(CASE WHEN ${fechaLocal} >= DATE_TRUNC('month', ${SQL_HOY_ARGENTINA})::date
+                           AND ${fechaLocal} < (DATE_TRUNC('month', ${SQL_HOY_ARGENTINA}) + INTERVAL '1 month')::date THEN total ELSE 0 END), 0) AS ventas_mes,
         COALESCE(SUM(CASE WHEN ${fechaLocal} = (${SQL_HOY_ARGENTINA} - INTERVAL '1 day')::date THEN total ELSE 0 END), 0) AS ventas_ayer,
         COALESCE(SUM(CASE WHEN ${fechaLocal} >= (DATE_TRUNC('month', ${SQL_HOY_ARGENTINA}) - INTERVAL '1 month')::date
                            AND ${fechaLocal} < DATE_TRUNC('month', ${SQL_HOY_ARGENTINA})::date THEN total ELSE 0 END), 0) AS ventas_mes_anterior
