@@ -77,7 +77,7 @@
   .venta-card-total { background: linear-gradient(135deg, #0f172a, #1d4ed8); color: white; border-radius: 18px; padding: 18px; margin-bottom: 14px; }
   .venta-card-total .mini { color: rgba(255,255,255,.8); font-size: 13px; margin-bottom: 6px; }
   .venta-card-total .big { font-size: 44px; font-weight: 900; line-height: 1; }
-  .venta-atajos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+  .venta-atajos { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
   .atajo { border: 1px solid #e5e7eb; background: #f8fafc; border-radius: 12px; padding: 10px; text-align: center; font-size: 12px; font-weight: bold; }
   .barra-wrap { margin-bottom: 14px; }
   .barra-label { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 6px; color: #374151; font-weight: bold; }
@@ -142,6 +142,11 @@
   .receta-resultado-item:hover, .receta-resultado-item.active { background: #dbeafe; color: #1d4ed8; }
   .receta-resultado-stock { font-size: 12px; color: #64748b; font-weight: 700; margin-top: 3px; }
 
+  .ia-plu-respuesta { border: 1px solid #e5e7eb; background: #f8fafc; border-radius: 14px; padding: 12px; margin-top: 10px; }
+  .ia-plu-item { border: 1px solid #dbe3ef; background: white; border-radius: 14px; padding: 12px; margin-bottom: 10px; }
+  .ia-plu-item strong { display:block; font-size:16px; margin-bottom:6px; }
+  .ia-plu-linea { font-size:14px; color:#334155; margin-top:4px; font-weight:800; }
+
 
 
   .dashboard-hero { background: linear-gradient(135deg, #0f172a, #1d4ed8); color: white; border-radius: 24px; padding: 22px; margin-bottom: 18px; box-shadow: 0 18px 45px rgba(15,23,42,.18); }
@@ -184,7 +189,28 @@
 <div id="loginScreen"><div class="login-card"><h1>FRINE</h1><p>Ingresá con tu usuario y contraseña.</p><div class="field"><label>Usuario</label><input id="loginUsuario" placeholder="Ej: admin" /></div><div class="field"><label>Contraseña</label><input id="loginPassword" type="password" placeholder="Tu contraseña" /></div><button class="btn btn-primary" style="width:100%" onclick="hacerLogin()">Ingresar</button><div id="loginError" class="login-error"></div></div></div>
 <div id="app"><div class="layout"><aside class="sidebar"><div class="brand">FRINE</div><div class="brand-sub">Sistema de almacén</div><div class="user-box"><div class="name" id="sidebarNombre">-</div><div class="role" id="sidebarRol">-</div></div><div class="nav-scroll"><button id="btnNavInicio" class="nav-btn" onclick="mostrarPagina('inicio')">Inicio</button><button id="btnNavVentas" class="nav-btn" onclick="mostrarPagina('ventas')">Ventas</button><button id="btnNavProductos" class="nav-btn" onclick="mostrarPagina('productos')">Productos</button><button id="btnNavCompras" class="nav-btn" onclick="mostrarPagina('compras')">Compras</button><button id="btnNavRecetas" class="nav-btn" onclick="mostrarPagina('recetas')">Recetas</button><button id="btnNavCaja" class="nav-btn" onclick="mostrarPagina('caja')">Caja</button><button id="btnNavHistorialVentas" class="nav-btn" onclick="mostrarPagina('historial-ventas')">Historial ventas</button><button id="btnNavReportes" class="nav-btn" onclick="mostrarPagina('reportes')">Reportes</button><button id="btnNavConfiguracion" class="nav-btn" onclick="mostrarPagina('configuracion')">Configuración</button></div><div class="sidebar-footer"><button class="btn btn-danger" style="width:100%" onclick="logout()">Salir</button></div></aside><main class="content">
 <section id="page-inicio" class="page"><div class="topbar"><div><h1 class="page-title">Inicio PRO</h1><div class="page-subtitle">Panel general del negocio con indicadores y gráficos.</div></div><div class="pill" id="estadoCajaPill">Caja: cargando...</div></div><div class="dashboard-hero"><div class="hero-title">FRINE · Dashboard comercial</div><div class="hero-sub" id="dashboardHeroSub">Ventas, caja, stock y cuenta corriente en una sola pantalla.</div></div><div class="grid-4"><div class="card dashboard-card-pro"><div class="metric" id="mVentasHoy">$0</div><div class="muted">Ventas de hoy</div><div class="metric-small" id="mComparativoHoy">Comparando con ayer...</div></div><div class="card dashboard-card-pro"><div class="metric" id="mCantidadVentasHoy">0</div><div class="muted">Tickets de hoy</div><div class="metric-small">Promedio: <span id="mPromedioTicket">$0</span></div></div><div class="card dashboard-card-pro"><div class="metric" id="mVentasMes">$0</div><div class="muted">Ventas del mes</div><div class="metric-small" id="mComparativoMes">Comparando con mes anterior...</div></div><div class="card dashboard-card-pro"><div class="metric" id="mBajoStock">0</div><div class="muted">Productos con stock bajo</div><div class="metric-small" id="mDeudaClientes">CC pendiente: $0</div></div></div><div class="grid-2"><div class="card"><h3>📈 Ventas últimos 7 días</h3><div id="graficoVentas7Dias" class="dash-chart"></div></div><div class="card"><h3>📊 Ventas por forma de pago</h3><div id="ventasFormaPagoInicio" class="dash-chart"></div></div></div><div class="grid-2"><div class="card"><h3>🏆 Top 10 productos vendidos</h3><div id="topProductosInicio"></div></div><div class="card"><h3>👨‍💼 Ventas por empleado</h3><div id="ventasEmpleadoInicio"></div></div></div><div class="grid-3"><div class="card"><h3>⚠️ Stock crítico</h3><div id="stockCriticoInicio"></div></div><div class="card"><h3>💳 Clientes con mayor deuda</h3><div id="clientesDeudoresInicio"></div></div><div class="card"><h3>Alertas</h3><div id="alertasInicio"></div></div></div></section>
-<section id="page-ventas" class="page"><div class="topbar"><div><h1 class="page-title">Ventas</h1><div class="page-subtitle">POS rápido con scanner, atajos y ticket prolijo.</div></div><div class="pill" id="ventaModoPill">F1 efectivo · F2 transferencia · F3 cuenta corriente · F4 cobrar</div></div><div class="venta-toolbar"><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Escanear / Código / PLU</label><input id="ventaCodigo" placeholder="Escaneá y enter" onkeypress="handleCodigoVenta(event)" /></div></div><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Forma de pago</label><select id="ventaFormaPago" onchange="actualizarModoPagoVisual()"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="cuenta_corriente">Cuenta corriente</option></select></div></div><div class="card" id="ventaClienteCard" style="margin-bottom:0; display:none;"><div class="field" style="margin-bottom:0;"><label>Cliente CC</label><select id="ventaClienteId"><option value="">Seleccionar cliente</option></select></div></div><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Acciones rápidas</label><div class="row"><button class="btn btn-success" onclick="guardarVenta()">Cobrar</button><button class="btn btn-secondary" onclick="limpiarTicket()">Vaciar</button></div></div></div></div><div class="split"><div class="card"><div class="venta-headline"><h3 style="margin:0;">Ticket actual</h3><div class="tag tag-blue" id="ventaCantidadItems">0 items</div></div><div class="message hidden" id="ventaMsg"></div><div class="scroll-x"><table class="ticket-table"><thead><tr><th>Producto</th><th style="width:170px;">Cantidad</th><th>Precio</th><th>Subtotal</th><th>Stock</th><th></th></tr></thead><tbody id="ventaTicketBody"></tbody></table></div><div id="ventaVacio" class="venta-ticket-vacio">Todavía no cargaste productos en el ticket.</div></div><div><div class="venta-card-total"><div class="mini">TOTAL A COBRAR</div><div class="big">$<span id="ventaTotal">0.00</span></div></div><div class="card"><h3>Cierre del ticket</h3><div class="venta-resumen"><div class="tag" id="ventaTagPago">Efectivo</div><div class="tag tag-green" id="ventaTagEstado">Listo para cobrar</div></div><div class="field"><label>Observaciones</label><textarea id="ventaObs"></textarea></div><button class="btn btn-success" style="width:100%; margin-bottom:10px;" onclick="guardarVenta()">Cobrar venta</button><button class="btn btn-ghost" style="width:100%; margin-bottom:10px;" onclick="imprimirUltimoComprobanteManual()">Reimprimir último comprobante</button><button class="btn btn-secondary" style="width:100%" onclick="limpiarTicket()">Vaciar ticket</button><div class="venta-atajos"><div class="atajo">F1<br>Efectivo</div><div class="atajo">F2<br>Transferencia</div><div class="atajo">F3<br>Cuenta corriente</div><div class="atajo">F4<br>Cobrar</div></div><div class="print-note" id="ventaNotaAfip">Efectivo imprime comprobante simple. Factura ARCA/AFIP real para transferencia: se genera CAE automáticamente.</div></div></div></div></section>
+<section id="page-ventas" class="page"><div class="topbar"><div><h1 class="page-title">Ventas</h1><div class="page-subtitle">POS rápido con scanner, atajos y ticket prolijo.</div></div><div class="pill" id="ventaModoPill">F1 efectivo · F2 transferencia · F3 cuenta corriente · F4 cobrar · F5 IA PLU</div></div><div class="venta-toolbar"><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Escanear / Código / PLU</label><input id="ventaCodigo" placeholder="Escaneá y enter" onkeypress="handleCodigoVenta(event)" /></div></div><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Forma de pago</label><select id="ventaFormaPago" onchange="actualizarModoPagoVisual()"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="cuenta_corriente">Cuenta corriente</option></select></div></div><div class="card" id="ventaClienteCard" style="margin-bottom:0; display:none;"><div class="field" style="margin-bottom:0;"><label>Cliente CC</label><select id="ventaClienteId"><option value="">Seleccionar cliente</option></select></div></div><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Acciones rápidas</label><div class="row"><button class="btn btn-success" onclick="guardarVenta()">Cobrar</button><button class="btn btn-secondary" onclick="limpiarTicket()">Vaciar</button><button class="btn btn-primary" onclick="abrirIaPlu()">🤖 IA PLU</button></div></div></div></div><div class="split"><div class="card"><div class="venta-headline"><h3 style="margin:0;">Ticket actual</h3><div class="tag tag-blue" id="ventaCantidadItems">0 items</div></div><div class="message hidden" id="ventaMsg"></div><div class="scroll-x"><table class="ticket-table"><thead><tr><th>Producto</th><th style="width:170px;">Cantidad</th><th>Precio</th><th>Subtotal</th><th>Stock</th><th></th></tr></thead><tbody id="ventaTicketBody"></tbody></table></div><div id="ventaVacio" class="venta-ticket-vacio">Todavía no cargaste productos en el ticket.</div></div><div><div class="venta-card-total"><div class="mini">TOTAL A COBRAR</div><div class="big">$<span id="ventaTotal">0.00</span></div></div><div class="card"><h3>Cierre del ticket</h3><div class="venta-resumen"><div class="tag" id="ventaTagPago">Efectivo</div><div class="tag tag-green" id="ventaTagEstado">Listo para cobrar</div></div><div class="field"><label>Observaciones</label><textarea id="ventaObs"></textarea></div><button class="btn btn-success" style="width:100%; margin-bottom:10px;" onclick="guardarVenta()">Cobrar venta</button><button class="btn btn-ghost" style="width:100%; margin-bottom:10px;" onclick="imprimirUltimoComprobanteManual()">Reimprimir último comprobante</button><button class="btn btn-secondary" style="width:100%" onclick="limpiarTicket()">Vaciar ticket</button><div class="venta-atajos"><div class="atajo">F1<br>Efectivo</div><div class="atajo">F2<br>Transferencia</div><div class="atajo">F3<br>Cuenta corriente</div><div class="atajo">F4<br>Cobrar</div><div class="atajo">F5<br>IA PLU</div></div><div class="print-note" id="ventaNotaAfip">Efectivo imprime comprobante simple. Factura ARCA/AFIP real para transferencia: se genera CAE automáticamente.</div></div></div></div></section>
+
+<div id="iaPluModal" class="modal-backdrop hidden">
+  <div class="modal-card" style="max-width:720px;">
+    <div class="modal-head">
+      <div>
+        <h2>🤖 IA PLU</h2>
+        <div class="muted">Solo responde nombre de producto, PLU y código de barras.</div>
+      </div>
+      <button class="modal-close" onclick="cerrarIaPlu()">Cerrar</button>
+    </div>
+    <div class="field">
+      <label>Producto a buscar</label>
+      <input id="iaPluPregunta" placeholder="Ej: coca 500, yerba mañanita, pan lactal" onkeydown="handleIaPluEnter(event)" autocomplete="off" />
+    </div>
+    <div class="row">
+      <button class="btn btn-primary" onclick="consultarIaPlu()">Buscar PLU</button>
+      <button class="btn btn-secondary" onclick="limpiarIaPlu()">Limpiar</button>
+    </div>
+    <div id="iaPluRespuesta" class="ia-plu-respuesta hidden"></div>
+  </div>
+</div>
 <section id="page-productos" class="page"><div class="topbar"><div><h1 class="page-title">Productos PRO</h1><div class="page-subtitle">Alta, edición, stock, presentaciones, códigos y baja lógica.</div></div><div class="pill">Editar · Stock · Presentaciones · Baja</div></div><div class="card"><h3>Nuevo producto</h3><div class="grid-3"><div class="field"><label>Nombre</label><input id="prodNombre" /></div><div class="field"><label>Código de barras</label><input id="prodCodigo" /></div><div class="field"><label>PLU</label><input id="prodPlu" /></div><div class="field"><label>Tipo de venta</label><select id="prodTipo"><option value="unidad">Unidad</option><option value="peso">Peso</option><option value="receta">Receta / producido</option></select></div><div class="field"><label>Costo compra / bulto</label><input id="prodCosto" type="number" step="0.01" oninput="recalcularPrecioProductoNuevo()" /></div><div class="field"><label>Cantidad por bulto</label><input id="prodCantidadBulto" type="number" step="0.001" value="1" oninput="recalcularPrecioProductoNuevo()" /></div><div class="field"><label>% Ganancia</label><input id="prodGanancia" type="number" step="0.01" oninput="recalcularPrecioProductoNuevo()" /></div><div class="field"><label>Redondeo de precio</label><select id="prodRedondeo" onchange="recalcularPrecioProductoNuevo()"><option value="100">Múltiplo de 100</option><option value="50">Múltiplo de 50</option><option value="ninguno">Sin redondeo</option></select></div><div class="field"><label>Precio de venta</label><input id="prodPrecio" type="number" step="0.01" /></div><div class="field"><label>Stock inicial</label><input id="prodStock" type="number" step="0.001" value="0" /></div><div class="field"><label>Stock mínimo</label><input id="prodStockMin" type="number" step="0.001" value="0" /></div></div><div class="row"><button class="btn btn-primary" onclick="crearProducto()">Guardar producto</button><button class="btn btn-secondary" onclick="calcularPrecioSugerido()">Calcular precio por %</button></div><div class="message hidden" id="productoMsg"></div></div><div class="card"><h3>Listado PRO</h3><div class="row" style="margin-bottom:12px;"><input id="buscarProducto" placeholder="Buscar por nombre / código / PLU" oninput="cargarProductos()" /><button class="btn btn-secondary" onclick="cargarProductos()">Actualizar</button></div><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Código</th><th>PLU</th><th>Tipo</th><th>Costo</th><th>Bulto</th><th>Ganancia</th><th>Redondeo</th><th>Precio</th><th>Stock</th><th>Mínimo</th><th>Acciones</th></tr></thead><tbody id="productosBody"></tbody></table></div></div></section>
 <section id="page-compras" class="page"><div class="topbar"><div><h1 class="page-title">Compras</h1><div class="page-subtitle">Ingreso de mercadería con stock automático.</div></div></div><div class="split"><div class="card"><h3>Agregar producto a la compra</h3><div class="row"><div class="field"><label>Escanear / Código / PLU</label><input id="compraCodigo" placeholder="Escaneá y enter" onkeypress="handleCodigoCompra(event)" /></div><div class="field"><label>Proveedor</label><select id="compraProveedor"></select></div></div><div class="message hidden" id="compraMsg"></div><div class="scroll-x"><table><thead><tr><th>Producto</th><th>Cant.</th><th>Costo Unit.</th><th>Subtotal</th><th></th></tr></thead><tbody id="comprasBody"></tbody></table></div></div><div class="card"><h3>Guardar compra</h3><div style="margin-bottom:10px;" class="muted">Total compra</div><div class="total-box">$<span id="compraTotal">0.00</span></div><div class="field"><label>Observaciones</label><textarea id="compraObs"></textarea></div><button class="btn btn-success" style="width:100%; margin-bottom:10px;" onclick="guardarCompra()">Guardar compra</button><button class="btn btn-secondary" style="width:100%" onclick="limpiarCompra()">Vaciar compra</button></div></div></section>
 
@@ -682,7 +708,60 @@ Comprobante reimpreso
 `});texto+=`--------------------------------
 `;texto+=`TOTAL: $ ${money(venta.total)}
 `;texto+=`OBS: ${venta.observaciones||"-"}
-`;imprimirTexto(texto,"Comprobante FRINE")}catch(error){alert("Error de conexión al reimprimir")}}document.addEventListener("keydown",e=>{const ventasActiva=document.getElementById("page-ventas")?.classList.contains("active");if(!ventasActiva)return;if(e.key==="F1"){e.preventDefault();document.getElementById("ventaFormaPago").value="efectivo";actualizarModoPagoVisual()}if(e.key==="F2"){e.preventDefault();document.getElementById("ventaFormaPago").value="transferencia";actualizarModoPagoVisual()}if(e.key==="F3"){e.preventDefault();document.getElementById("ventaFormaPago").value="cuenta_corriente";actualizarModoPagoVisual()}if(e.key==="F4"){e.preventDefault();guardarVenta()}});
+`;imprimirTexto(texto,"Comprobante FRINE")}catch(error){alert("Error de conexión al reimprimir")}}
+function abrirIaPlu(){
+  const modal=document.getElementById("iaPluModal");
+  if(!modal)return;
+  modal.classList.remove("hidden");
+  setTimeout(()=>document.getElementById("iaPluPregunta")?.focus(),60);
+}
+function cerrarIaPlu(){
+  document.getElementById("iaPluModal")?.classList.add("hidden");
+  activarFocoVenta?.();
+}
+function limpiarIaPlu(){
+  const input=document.getElementById("iaPluPregunta"), box=document.getElementById("iaPluRespuesta");
+  if(input) input.value="";
+  if(box){ box.innerHTML=""; box.classList.add("hidden"); }
+  input?.focus();
+}
+function handleIaPluEnter(e){
+  if(e.key==="Enter"){
+    e.preventDefault();
+    consultarIaPlu();
+  }
+}
+function escapeHtmlIA(valor){
+  return String(valor??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+async function consultarIaPlu(){
+  const input=document.getElementById("iaPluPregunta"), box=document.getElementById("iaPluRespuesta");
+  if(!input||!box)return;
+  const pregunta=input.value.trim();
+  box.classList.remove("hidden");
+  if(!pregunta){
+    box.innerHTML="❌ Escribí el nombre de un producto para buscar su PLU.";
+    return;
+  }
+  box.innerHTML="Buscando...";
+  try{
+    const res=await fetch(`/api/ia-plu?q=${encodeURIComponent(pregunta)}`);
+    const data=await res.json();
+    if(!res.ok || data.autorizado===false){
+      box.innerHTML=`❌ ${escapeHtmlIA(data.error||"No estoy autorizado a responder esa consulta.")}<br><span class="muted">Solo puedo mostrar nombre de producto, PLU y código de barras.</span>`;
+      return;
+    }
+    const productos=Array.isArray(data.productos)?data.productos:[];
+    if(!productos.length){
+      box.innerHTML="No encontré productos con esa búsqueda.";
+      return;
+    }
+    box.innerHTML=productos.map(p=>`<div class="ia-plu-item"><strong>${escapeHtmlIA(p.nombre)}</strong><div class="ia-plu-linea">PLU: ${escapeHtmlIA(p.plu||"Sin PLU")}</div><div class="ia-plu-linea">Código de barras: ${escapeHtmlIA(p.codigo_barras||"Sin código")}</div></div>`).join("");
+  }catch(error){
+    box.innerHTML="❌ Error de conexión al consultar la IA PLU.";
+  }
+}
+document.addEventListener("keydown",e=>{const ventasActiva=document.getElementById("page-ventas")?.classList.contains("active");if(!ventasActiva)return;if(e.key==="F1"){e.preventDefault();document.getElementById("ventaFormaPago").value="efectivo";actualizarModoPagoVisual()}if(e.key==="F2"){e.preventDefault();document.getElementById("ventaFormaPago").value="transferencia";actualizarModoPagoVisual()}if(e.key==="F3"){e.preventDefault();document.getElementById("ventaFormaPago").value="cuenta_corriente";actualizarModoPagoVisual()}if(e.key==="F4"){e.preventDefault();guardarVenta()}if(e.key==="F5"){e.preventDefault();abrirIaPlu()}});
 async function cargarClientesSelect(){try{const res=await fetch("/api/clientes"),data=await res.json(),sel=document.getElementById("ventaClienteId");if(!sel)return;sel.innerHTML='<option value="">Seleccionar cliente</option>';(Array.isArray(data)?data:[]).forEach(c=>{const op=document.createElement("option");op.value=c.id;op.textContent=`${c.nombre} · Saldo $ ${money(c.saldo||0)}`;sel.appendChild(op)})}catch(e){}}
 const actualizarModoPagoVisualOriginal=actualizarModoPagoVisual;
 actualizarModoPagoVisual=function(){actualizarModoPagoVisualOriginal();const forma=document.getElementById("ventaFormaPago")?.value||"efectivo";const card=document.getElementById("ventaClienteCard");if(card){card.style.display=forma==="cuenta_corriente"?"block":"none"}if(forma==="cuenta_corriente")cargarClientesSelect();}
