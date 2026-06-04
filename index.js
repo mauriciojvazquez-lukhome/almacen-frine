@@ -2978,85 +2978,87 @@ app.get("/api/reportes/compras", async (req, res) => {
 });
 
 
+
 app.get("/api/reportes/usuarios", async (req, res) => {
   try {
-    // Asegura columnas/tablas por si Render inició con una versión anterior o la base quedó sin migrar.
     await pool.query(`
       ALTER TABLE empleados
       ADD COLUMN IF NOT EXISTS ultima_actividad TIMESTAMP
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS caja_sesiones (
-        id SERIAL PRIMARY KEY,
-        empleado_apertura_id INTEGER,
-        empleado_cierre_id INTEGER,
-        fecha_apertura TIMESTAMP DEFAULT NOW(),
-        fecha_cierre TIMESTAMP,
-        monto_inicial NUMERIC DEFAULT 0,
-        efectivo_real NUMERIC DEFAULT 0,
-        diferencia NUMERIC DEFAULT 0,
-        estado VARCHAR(20) DEFAULT 'abierta',
-        observaciones TEXT DEFAULT ''
-      )
-    `);
-
-    await pool.query(`
-      ALTER TABLE caja_sesiones
-      ADD COLUMN IF NOT EXISTS empleado_apertura_id INTEGER,
-      ADD COLUMN IF NOT EXISTS fecha_apertura TIMESTAMP DEFAULT NOW(),
-      ADD COLUMN IF NOT EXISTS estado VARCHAR(20) DEFAULT 'abierta'
-    `);
+    `).catch(() => {});
 
     const resumenUsuariosResult = await pool.query(`
       SELECT
         COUNT(*)::int AS usuarios_registrados,
-        COALESCE(SUM(CASE WHEN activo = true THEN 1 ELSE 0 END), 0)::int AS usuarios_activos,
-        COALESCE(SUM(CASE WHEN activo = true AND ultima_actividad IS NOT NULL AND ultima_actividad >= NOW() - INTERVAL '5 minutes' THEN 1 ELSE 0 END), 0)::int AS usuarios_en_linea
+        COALESCE(SUM(CASE WHEN COALESCE(activo, true) = true THEN 1 ELSE 0 END), 0)::int AS usuarios_activos,
+        COALESCE(SUM(CASE WHEN COALESCE(activo, true) = true AND ultima_actividad IS NOT NULL AND ultima_actividad >= NOW() - INTERVAL '5 minutes' THEN 1 ELSE 0 END), 0)::int AS usuarios_en_linea
       FROM empleados
     `);
 
     const usuariosOnlineResult = await pool.query(`
       SELECT
         id,
-        COALESCE(nombre, '') AS nombre,
-        COALESCE(usuario, '') AS usuario,
-        COALESCE(rol, '') AS rol,
+        nombre,
+        usuario,
+        rol,
         ultima_actividad,
         CASE
-          WHEN ultima_actividad IS NULL THEN NULL
-          ELSE EXTRACT(EPOCH FROM (NOW() - ultima_actividad))::int
+          WHEN ultima_actividad IS NULL THEN 0
+          ELSE GREATEST(EXTRACT(EPOCH FROM (NOW() - ultima_actividad))::int, 0)
         END AS segundos_sin_actividad
       FROM empleados
-      WHERE activo = true
+      WHERE COALESCE(activo, true) = true
         AND ultima_actividad IS NOT NULL
         AND ultima_actividad >= NOW() - INTERVAL '5 minutes'
       ORDER BY ultima_actividad DESC
     `);
 
-    const cajasAbiertasResult = await pool.query(`
-      SELECT
-        cs.id,
-        cs.fecha_apertura,
-        cs.estado,
-        e.id AS empleado_id,
-        COALESCE(e.nombre, 'Sin empleado') AS cajero_nombre,
-        COALESCE(e.usuario, '') AS cajero_usuario,
-        COALESCE(e.rol, '') AS cajero_rol,
-        EXTRACT(EPOCH FROM (NOW() - COALESCE(cs.fecha_apertura, NOW())))::int AS segundos_abierta
-      FROM caja_sesiones cs
-      LEFT JOIN empleados e ON e.id = cs.empleado_apertura_id
-      WHERE cs.estado = 'abierta'
-      ORDER BY cs.fecha_apertura ASC NULLS LAST
-    `);
+    let cajasAbiertas = [];
 
-    const cajasAbiertas = cajasAbiertasResult.rows.map(c => ({
-      ...c,
-      segundos_abierta: Number(c.segundos_abierta || 0),
-      caja_olvidada: Number(c.segundos_abierta || 0) >= 12 * 60 * 60
-    }));
+    try {
+      const tablaCaja = await pool.query(`SELECT to_regclass('public.caja_sesiones') AS existe`);
+      if (tablaCaja.rows[0] && tablaCaja.rows[0].existe) {
+        const columnas = await pool.query(`
+          SELECT column_name
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'caja_sesiones'
+        `);
+        const cols = new Set(columnas.rows.map(r => r.column_name));
+        const colFecha = cols.has('fecha_apertura') ? 'fecha_apertura' : (cols.has('created_at') ? 'created_at' : null);
+        const colEmpleado = cols.has('empleado_apertura_id') ? 'empleado_apertura_id' : null;
+        const colEstado = cols.has('estado') ? 'estado' : null;
+
+        if (colFecha && colEmpleado && colEstado) {
+          const cajasResult = await pool.query(`
+            SELECT
+              cs.id,
+              cs.${colFecha} AS fecha_apertura,
+              cs.${colEstado} AS estado,
+              e.id AS empleado_id,
+              COALESCE(e.nombre, 'Sin empleado') AS cajero_nombre,
+              COALESCE(e.usuario, '') AS cajero_usuario,
+              COALESCE(e.rol, '') AS cajero_rol,
+              GREATEST(EXTRACT(EPOCH FROM (NOW() - cs.${colFecha}))::int, 0) AS segundos_abierta
+            FROM caja_sesiones cs
+            LEFT JOIN empleados e ON e.id = cs.${colEmpleado}
+            WHERE cs.${colEstado} = 'abierta'
+            ORDER BY cs.${colFecha} ASC
+          `);
+
+          cajasAbiertas = cajasResult.rows.map(c => ({
+            ...c,
+            segundos_abierta: Number(c.segundos_abierta || 0),
+            caja_olvidada: Number(c.segundos_abierta || 0) >= 12 * 60 * 60
+          }));
+        }
+      }
+    } catch (errorCajas) {
+      console.warn('Reporte usuarios: no se pudo leer cajas abiertas:', errorCajas.message);
+      cajasAbiertas = [];
+    }
 
     const resumenBase = resumenUsuariosResult.rows[0] || {};
+
     res.json({
       resumen: {
         usuarios_registrados: Number(resumenBase.usuarios_registrados || 0),
@@ -3073,9 +3075,19 @@ app.get("/api/reportes/usuarios", async (req, res) => {
     });
   } catch (error) {
     console.error("Error reporte usuarios:", error);
-    res.status(500).json({
-      error: "Error al obtener reporte de usuarios",
-      detalle: error.message
+
+    // Último respaldo: si algo raro pasa, no rompe la pantalla. Devuelve reporte vacío.
+    res.json({
+      resumen: {
+        usuarios_registrados: 0,
+        usuarios_activos: 0,
+        usuarios_en_linea: 0,
+        cajas_abiertas: 0
+      },
+      usuarios_en_linea: [],
+      cajas_abiertas: [],
+      cajas_olvidadas: [],
+      aviso: "No se pudo calcular el reporte completo, pero la pantalla sigue funcionando."
     });
   }
 });
