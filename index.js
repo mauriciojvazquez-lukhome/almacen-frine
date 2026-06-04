@@ -2980,10 +2980,32 @@ app.get("/api/reportes/compras", async (req, res) => {
 
 app.get("/api/reportes/usuarios", async (req, res) => {
   try {
-    // Asegura columnas por si Render inició con una versión anterior o la base quedó sin migrar.
+    // Asegura columnas/tablas por si Render inició con una versión anterior o la base quedó sin migrar.
     await pool.query(`
       ALTER TABLE empleados
       ADD COLUMN IF NOT EXISTS ultima_actividad TIMESTAMP
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS caja_sesiones (
+        id SERIAL PRIMARY KEY,
+        empleado_apertura_id INTEGER,
+        empleado_cierre_id INTEGER,
+        fecha_apertura TIMESTAMP DEFAULT NOW(),
+        fecha_cierre TIMESTAMP,
+        monto_inicial NUMERIC DEFAULT 0,
+        efectivo_real NUMERIC DEFAULT 0,
+        diferencia NUMERIC DEFAULT 0,
+        estado VARCHAR(20) DEFAULT 'abierta',
+        observaciones TEXT DEFAULT ''
+      )
+    `);
+
+    await pool.query(`
+      ALTER TABLE caja_sesiones
+      ADD COLUMN IF NOT EXISTS empleado_apertura_id INTEGER,
+      ADD COLUMN IF NOT EXISTS fecha_apertura TIMESTAMP DEFAULT NOW(),
+      ADD COLUMN IF NOT EXISTS estado VARCHAR(20) DEFAULT 'abierta'
     `);
 
     const resumenUsuariosResult = await pool.query(`
@@ -2997,9 +3019,9 @@ app.get("/api/reportes/usuarios", async (req, res) => {
     const usuariosOnlineResult = await pool.query(`
       SELECT
         id,
-        nombre,
-        usuario,
-        rol,
+        COALESCE(nombre, '') AS nombre,
+        COALESCE(usuario, '') AS usuario,
+        COALESCE(rol, '') AS rol,
         ultima_actividad,
         CASE
           WHEN ultima_actividad IS NULL THEN NULL
@@ -3012,7 +3034,6 @@ app.get("/api/reportes/usuarios", async (req, res) => {
       ORDER BY ultima_actividad DESC
     `);
 
-    // Reporte de cajas abiertas. Usa COALESCE para evitar errores si hay datos viejos.
     const cajasAbiertasResult = await pool.query(`
       SELECT
         cs.id,
@@ -3022,11 +3043,11 @@ app.get("/api/reportes/usuarios", async (req, res) => {
         COALESCE(e.nombre, 'Sin empleado') AS cajero_nombre,
         COALESCE(e.usuario, '') AS cajero_usuario,
         COALESCE(e.rol, '') AS cajero_rol,
-        EXTRACT(EPOCH FROM (NOW() - cs.fecha_apertura))::int AS segundos_abierta
+        EXTRACT(EPOCH FROM (NOW() - COALESCE(cs.fecha_apertura, NOW())))::int AS segundos_abierta
       FROM caja_sesiones cs
       LEFT JOIN empleados e ON e.id = cs.empleado_apertura_id
       WHERE cs.estado = 'abierta'
-      ORDER BY cs.fecha_apertura ASC
+      ORDER BY cs.fecha_apertura ASC NULLS LAST
     `);
 
     const cajasAbiertas = cajasAbiertasResult.rows.map(c => ({
