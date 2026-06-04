@@ -1777,5 +1777,159 @@ function limpiarProveedor() {
 })();
 
 </script>
+
+
+<script>
+/* ===== PARCHE FINAL REPORTE USUARIOS - SIN ERROR DE CONEXIÓN FALSO ===== */
+(function(){
+  function frineEscape(v){
+    if (typeof window.escapeHtml === "function") return window.escapeHtml(v || "");
+    return String(v ?? "").replace(/[&<>'"]/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c];
+    });
+  }
+
+  function frineFechaHora(v){
+    if (!v) return "-";
+    try {
+      return new Date(v).toLocaleString("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch(e) {
+      return "-";
+    }
+  }
+
+  function frineTiempo(segundos){
+    segundos = Number(segundos || 0);
+    if (!Number.isFinite(segundos) || segundos < 60) return "hace menos de 1 min";
+    const min = Math.floor(segundos / 60);
+    if (min < 60) return `hace ${min} min`;
+    const hs = Math.floor(min / 60);
+    const resto = min % 60;
+    if (hs < 24) return `hace ${hs} h${resto ? ` ${resto} min` : ""}`;
+    const dias = Math.floor(hs / 24);
+    const hsR = hs % 24;
+    return `hace ${dias} día${dias === 1 ? "" : "s"}${hsR ? ` ${hsR} h` : ""}`;
+  }
+
+  window.formatoFechaHora = window.formatoFechaHora || frineFechaHora;
+  window.textoTiempo = window.textoTiempo || frineTiempo;
+  window.escapeHtml = window.escapeHtml || frineEscape;
+
+  window.mostrarReporteUsuarios = async function(){
+    if (typeof limpiarResultadoReportes === "function") limpiarResultadoReportes();
+    if (typeof setReporteHTML === "function") {
+      setReporteHTML("Resultado · Usuarios", '<div class="reporte-empty">Cargando reporte de usuarios...</div>');
+    }
+
+    let data = null;
+    let aviso = "";
+
+    try {
+      if (typeof registrarActividad === "function") await registrarActividad();
+    } catch(e) {}
+
+    try {
+      const res = await fetch("/api/reportes/usuarios", { cache: "no-store" });
+      data = await res.json().catch(() => null);
+      if (!res.ok || !data) throw new Error(data?.error || "No respondió /api/reportes/usuarios");
+    } catch (errorReporte) {
+      aviso = "No se pudo leer el detalle completo del reporte. Muestro el resumen básico de usuarios.";
+      console.warn("Reporte usuarios: usando respaldo /api/empleados", errorReporte);
+      try {
+        const resEmpleados = await fetch("/api/empleados", { cache: "no-store" });
+        const empleados = await resEmpleados.json().catch(() => []);
+        const lista = Array.isArray(empleados) ? empleados : [];
+        data = {
+          resumen: {
+            usuarios_registrados: lista.length,
+            usuarios_activos: lista.filter(u => u.activo !== false).length,
+            usuarios_en_linea: 0,
+            cajas_abiertas: 0
+          },
+          usuarios_en_linea: [],
+          cajas_abiertas: [],
+          cajas_olvidadas: [],
+          aviso
+        };
+      } catch (errorEmpleados) {
+        console.error("Reporte usuarios: también falló /api/empleados", errorEmpleados);
+        data = {
+          resumen: { usuarios_registrados: 0, usuarios_activos: 0, usuarios_en_linea: 0, cajas_abiertas: 0 },
+          usuarios_en_linea: [],
+          cajas_abiertas: [],
+          cajas_olvidadas: [],
+          aviso: "No se pudo conectar con usuarios. Revisar el deploy de Render."
+        };
+      }
+    }
+
+    const r = data.resumen || {};
+    const online = Array.isArray(data.usuarios_en_linea) ? data.usuarios_en_linea : [];
+    const cajas = Array.isArray(data.cajas_abiertas) ? data.cajas_abiertas : [];
+    const olvidadas = Array.isArray(data.cajas_olvidadas) ? data.cajas_olvidadas : [];
+
+    let filasOnline = online.map(u => `
+      <tr>
+        <td><strong>🟢 ${frineEscape(u.nombre || u.usuario || "-")}</strong><div class="muted">${frineEscape(u.usuario || "")}</div></td>
+        <td>${frineEscape(u.rol || "-")}</td>
+        <td>${frineFechaHora(u.ultima_actividad)}</td>
+        <td><span class="tag tag-green">${frineTiempo(u.segundos_sin_actividad)}</span></td>
+      </tr>`).join("");
+    if (!filasOnline) filasOnline = '<tr><td colspan="4"><div class="reporte-empty">No hay usuarios en línea en este momento.</div></td></tr>';
+
+    let filasCajas = cajas.map(c => `
+      <tr>
+        <td><strong>Caja #${frineEscape(c.id || "-")}</strong></td>
+        <td>${frineEscape(c.cajero_nombre || "-")}<div class="muted">${frineEscape(c.cajero_usuario || "")}</div></td>
+        <td>${frineFechaHora(c.fecha_apertura)}</td>
+        <td><span class="tag ${c.caja_olvidada ? "tag-red" : "tag-blue"}">${frineTiempo(c.segundos_abierta)}</span></td>
+        <td>${c.caja_olvidada ? "⚠️ Sin cerrar" : "🟢 Abierta"}</td>
+      </tr>`).join("");
+    if (!filasCajas) filasCajas = '<tr><td colspan="5"><div class="reporte-empty">No hay cajas abiertas.</div></td></tr>';
+
+    let filasOlvidadas = olvidadas.map(c => `
+      <tr>
+        <td><strong>Caja #${frineEscape(c.id || "-")}</strong></td>
+        <td>${frineEscape(c.cajero_nombre || "-")}</td>
+        <td>${frineFechaHora(c.fecha_apertura)}</td>
+        <td><span class="tag tag-red">${frineTiempo(c.segundos_abierta)}</span></td>
+      </tr>`).join("");
+    if (!filasOlvidadas) filasOlvidadas = '<tr><td colspan="4"><div class="alerta-ok">✅ No hay cajas olvidadas abiertas.</div></td></tr>';
+
+    const card = (label, valor) => (typeof reporteCard === "function")
+      ? reporteCard(label, valor)
+      : `<div class="reporte-metric-card"><div class="label">${frineEscape(label)}</div><div class="valor">${frineEscape(valor)}</div></div>`;
+
+    const avisoHTML = (data.aviso || aviso)
+      ? `<div class="message error" style="margin-bottom:14px;">${frineEscape(data.aviso || aviso)}</div>`
+      : "";
+
+    if (typeof setReporteHTML === "function") {
+      setReporteHTML("Resultado · Usuarios", `
+        ${avisoHTML}
+        <div class="reporte-metricas">
+          ${card("Usuarios registrados", r.usuarios_registrados || 0)}
+          ${card("Usuarios activos", r.usuarios_activos || 0)}
+          ${card("Usuarios en línea", r.usuarios_en_linea || 0)}
+          ${card("Cajas abiertas", r.cajas_abiertas || 0)}
+        </div>
+        <div class="grid-2">
+          <div class="card"><h3>🟢 Usuarios en línea</h3><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Usuario</th><th>Rol</th><th>Última actividad</th><th>Estado</th></tr></thead><tbody>${filasOnline}</tbody></table></div></div>
+          <div class="card"><h3>⚠️ Cajas olvidadas abiertas</h3><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Caja</th><th>Cajero</th><th>Apertura</th><th>Tiempo abierta</th></tr></thead><tbody>${filasOlvidadas}</tbody></table></div></div>
+        </div>
+        <div class="card"><h3>📦 Cajas abiertas</h3><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Caja</th><th>Cajero</th><th>Fecha/Hora apertura</th><th>Tiempo abierta</th><th>Estado</th></tr></thead><tbody>${filasCajas}</tbody></table></div></div>
+        <div class="muted">Se considera usuario en línea si tuvo actividad en los últimos 5 minutos. Caja olvidada: abierta hace 12 horas o más.</div>
+      `);
+    }
+  };
+})();
+</script>
+
 </body>
 </html>
