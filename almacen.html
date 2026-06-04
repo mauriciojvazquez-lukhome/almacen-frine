@@ -944,6 +944,29 @@ function limpiarProveedor() {
   limpiarFormularioProveedor();
 }
 
+function abrirIaPlu(){
+  const modal = document.getElementById("iaPluModal");
+  const input = document.getElementById("iaPluPregunta");
+  const box = document.getElementById("iaPluRespuesta");
+
+  if (!modal) {
+    alert("No se encontró la ventana de IA PLU.");
+    return;
+  }
+
+  modal.classList.remove("hidden");
+
+  if (box) {
+    box.innerHTML = "";
+    box.classList.add("hidden");
+  }
+
+  if (input) {
+    input.value = "";
+    setTimeout(() => input.focus(), 80);
+  }
+}
+
 function cerrarIaPlu(){
   document.getElementById("iaPluModal")?.classList.add("hidden");
   activarFocoVenta?.();
