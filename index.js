@@ -151,6 +151,30 @@ async function registrarActividadEmpleado(clientOrPool, empleadoId) {
 
 
 async function asegurarColumnasAlmacen() {
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS proveedores (
+      id SERIAL PRIMARY KEY,
+      nombre VARCHAR(255) NOT NULL,
+      telefono VARCHAR(80) DEFAULT '',
+      direccion TEXT DEFAULT '',
+      activo BOOLEAN DEFAULT true,
+      observaciones TEXT DEFAULT '',
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    ALTER TABLE proveedores
+    ADD COLUMN IF NOT EXISTS telefono VARCHAR(80) DEFAULT '',
+    ADD COLUMN IF NOT EXISTS direccion TEXT DEFAULT '',
+    ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT true,
+    ADD COLUMN IF NOT EXISTS observaciones TEXT DEFAULT '',
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
+  `);
+
   await pool.query(`
     ALTER TABLE empleados
     ADD COLUMN IF NOT EXISTS puede_recetas BOOLEAN DEFAULT false
@@ -803,6 +827,51 @@ app.post("/api/proveedores", async (req, res) => {
     res.status(500).json({ error: "Error al crear proveedor" });
   }
 });
+
+
+app.put("/api/proveedores/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, telefono, direccion, observaciones, activo } = req.body;
+
+    if (vacio(nombre)) {
+      return res.status(400).json({ error: "El nombre del proveedor es obligatorio" });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE proveedores
+      SET
+        nombre = $1,
+        telefono = $2,
+        direccion = $3,
+        observaciones = $4,
+        activo = $5,
+        updated_at = NOW()
+      WHERE id = $6
+      RETURNING *
+      `,
+      [
+        String(nombre).trim(),
+        telefono || "",
+        direccion || "",
+        observaciones || "",
+        activo === false ? false : true,
+        id
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Proveedor no encontrado" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error editar proveedor:", error);
+    res.status(500).json({ error: "Error al editar proveedor" });
+  }
+});
+
 
 
 
