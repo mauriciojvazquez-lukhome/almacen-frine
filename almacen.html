@@ -493,7 +493,7 @@ function qty(n){
   return num.toFixed(3);
 }
 function formatoCantidad(n){return qty(n)}
-function formatoDinero(valor){return "$ "+money(valor)}function mostrarMensaje(id,texto,tipo="ok"){const el=document.getElementById(id);if(!el)return;el.className=`message ${tipo}`;el.textContent=texto;el.classList.remove("hidden");setTimeout(()=>el.classList.add("hidden"),3500)}function logout(){usuarioActual=null;ticketVenta=[];itemsCompra=[];localStorage.removeItem("frine_usuario");location.reload()}function obtenerPermisosFormulario(){return{puede_inicio:document.getElementById("permInicio").checked,puede_ventas:document.getElementById("permVentas").checked,puede_productos:document.getElementById("permProductos").checked,puede_compras:document.getElementById("permCompras").checked,puede_caja:document.getElementById("permCaja").checked,puede_reportes:document.getElementById("permReportes").checked,puede_configuracion:document.getElementById("permConfiguracion").checked}}function esCajeroActual(){return String(usuarioActual?.rol||"").toLowerCase()==="cajero"}function aplicarPermisosMenu(){const esCajero=esCajeroActual();document.getElementById("btnNavInicio").style.display=usuarioActual?.puede_inicio&&!esCajero?"block":"none";document.getElementById("btnNavVentas").style.display=usuarioActual?.puede_ventas?"block":"none";document.getElementById("btnNavProductos").style.display=usuarioActual?.puede_productos&&!esCajero?"block":"none";document.getElementById("btnNavCompras").style.display=usuarioActual?.puede_compras?"block":"none";document.getElementById("btnNavCaja").style.display=usuarioActual?.puede_caja?"block":"none";document.getElementById("btnNavHistorialVentas").style.display=!esCajero&&usuarioActual?.puede_ventas?"block":"none";document.getElementById("btnNavReportes").style.display=!esCajero&&usuarioActual?.puede_reportes?"block":"none";document.getElementById("btnNavConfiguracion").style.display=!esCajero&&usuarioActual?.puede_configuracion?"block":"none"}function primeraPantallaPermitida(){const esCajero=esCajeroActual();if(usuarioActual?.puede_inicio&&!esCajero)return"inicio";if(usuarioActual?.puede_ventas)return"ventas";if(usuarioActual?.puede_productos&&!esCajero)return"productos";if(usuarioActual?.puede_compras)return"compras";if(usuarioActual?.puede_caja)return"caja";if(usuarioActual?.puede_reportes&&!esCajero)return"reportes";if(usuarioActual?.puede_configuracion&&!esCajero)return"configuracion";return"ventas"}function mostrarPagina(nombre){const esCajero=esCajeroActual();const mapa={inicio:usuarioActual?.puede_inicio&&!esCajero,ventas:usuarioActual?.puede_ventas,productos:usuarioActual?.puede_productos&&!esCajero,compras:usuarioActual?.puede_compras,caja:usuarioActual?.puede_caja,"historial-ventas":usuarioActual?.puede_ventas&&!esCajero,reportes:usuarioActual?.puede_reportes&&!esCajero,configuracion:usuarioActual?.puede_configuracion&&!esCajero};if(!mapa[nombre]){mostrarPagina(primeraPantallaPermitida());return;}document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));const pagina=document.getElementById("page-"+nombre);if(pagina)pagina.classList.add("active");const btnMap={inicio:"btnNavInicio",ventas:"btnNavVentas",productos:"btnNavProductos",compras:"btnNavCompras",caja:"btnNavCaja","historial-ventas":"btnNavHistorialVentas",reportes:"btnNavReportes",configuracion:"btnNavConfiguracion"};if(btnMap[nombre]){const btn=document.getElementById(btnMap[nombre]);if(btn)btn.classList.add("active")}if(nombre==="inicio")cargarResumen();if(nombre==="ventas"){actualizarModoPagoVisual();activarFocoVenta();renderTicketVenta()}if(nombre==="productos")cargarProductos();if(nombre==="compras")cargarProveedores();if(nombre==="caja")cargarEstadoCaja();if(nombre==="historial-ventas")cargarHistorialVentas();if(nombre==="configuracion"){cargarUsuarios();cargarProveedores();mostrarConfigSubtab("usuarios")}}function actualizarModoPagoVisual(){const forma=document.getElementById("ventaFormaPago")?.value||"efectivo",tag=document.getElementById("ventaTagPago"),nota=document.getElementById("ventaNotaAfip");if(!tag||!nota)return;const nombres={efectivo:"Efectivo",transferencia:"Transferencia",cuenta_corriente:"Cuenta corriente"};tag.textContent=nombres[forma]||"Efectivo";if(forma==="efectivo"){tag.className="tag tag-green";nota.textContent="Efectivo imprime comprobante simple al cobrar."}else if(forma==="transferencia"){tag.className="tag tag-blue";nota.textContent="Transferencia queda registrada separada de efectivo. Se controla en cierre de caja."}else if(forma==="cuenta_corriente"){tag.className="tag tag-red";nota.textContent="Cuenta corriente: registra la venta como deuda y NO afecta efectivo ni transferencia del cajero."}else{tag.className="tag";nota.textContent="Cobro registrado."}}function activarFocoVenta(){
+function formatoDinero(valor){return "$ "+money(valor)}function mostrarMensaje(id,texto,tipo="ok"){const el=document.getElementById(id);if(!el)return;el.className=`message ${tipo}`;el.textContent=texto;el.classList.remove("hidden");setTimeout(()=>el.classList.add("hidden"),3500)}function logout(){usuarioActual=null;ticketVenta=[];itemsCompra=[];localStorage.removeItem("frine_usuario");location.reload()}function obtenerPermisosFormulario(){return{puede_inicio:document.getElementById("permInicio").checked,puede_ventas:document.getElementById("permVentas").checked,puede_productos:document.getElementById("permProductos").checked,puede_compras:document.getElementById("permCompras").checked,puede_caja:document.getElementById("permCaja").checked,puede_reportes:document.getElementById("permReportes").checked,puede_configuracion:document.getElementById("permConfiguracion").checked}}function esCajeroActual(){return String(usuarioActual?.rol||"").toLowerCase()==="cajero"}function aplicarPermisosMenu(){const esCajero=esCajeroActual();document.getElementById("btnNavInicio").style.display=usuarioActual?.puede_inicio&&!esCajero?"block":"none";document.getElementById("btnNavVentas").style.display=usuarioActual?.puede_ventas?"block":"none";document.getElementById("btnNavProductos").style.display=usuarioActual?.puede_productos&&!esCajero?"block":"none";document.getElementById("btnNavCompras").style.display=usuarioActual?.puede_compras?"block":"none";document.getElementById("btnNavCaja").style.display=usuarioActual?.puede_caja?"block":"none";document.getElementById("btnNavHistorialVentas").style.display=!esCajero&&usuarioActual?.puede_ventas?"block":"none";document.getElementById("btnNavReportes").style.display=!esCajero&&usuarioActual?.puede_reportes?"block":"none";document.getElementById("btnNavConfiguracion").style.display=!esCajero&&usuarioActual?.puede_configuracion?"block":"none"}function primeraPantallaPermitida(){const esCajero=esCajeroActual();if(usuarioActual?.puede_inicio&&!esCajero)return"inicio";if(usuarioActual?.puede_ventas)return"ventas";if(usuarioActual?.puede_productos&&!esCajero)return"productos";if(usuarioActual?.puede_compras)return"compras";if(usuarioActual?.puede_caja)return"caja";if(usuarioActual?.puede_reportes&&!esCajero)return"reportes";if(usuarioActual?.puede_configuracion&&!esCajero)return"configuracion";return"ventas"}function mostrarPagina(nombre){const esCajero=esCajeroActual();const mapa={inicio:usuarioActual?.puede_inicio&&!esCajero,ventas:usuarioActual?.puede_ventas,productos:usuarioActual?.puede_productos&&!esCajero,compras:usuarioActual?.puede_compras,caja:usuarioActual?.puede_caja,"historial-ventas":usuarioActual?.puede_ventas&&!esCajero,reportes:usuarioActual?.puede_reportes&&!esCajero,configuracion:usuarioActual?.puede_configuracion&&!esCajero};if(!mapa[nombre]){mostrarPagina(primeraPantallaPermitida());return;}document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));const pagina=document.getElementById("page-"+nombre);if(pagina)pagina.classList.add("active");const btnMap={inicio:"btnNavInicio",ventas:"btnNavVentas",productos:"btnNavProductos",compras:"btnNavCompras",caja:"btnNavCaja","historial-ventas":"btnNavHistorialVentas",reportes:"btnNavReportes",configuracion:"btnNavConfiguracion"};if(btnMap[nombre]){const btn=document.getElementById(btnMap[nombre]);if(btn)btn.classList.add("active")}if(nombre==="inicio")cargarResumen();if(nombre==="ventas"){actualizarModoPagoVisual();activarFocoVenta();renderTicketVenta()}if(nombre==="productos")cargarProductos();if(nombre==="compras")cargarProveedores();if(nombre==="caja")cargarEstadoCaja();if(nombre==="historial-ventas")cargarHistorialVentas();if(nombre==="configuracion"){cargarUsuarios();cargarProveedoresConfig();mostrarConfigSubtab("usuarios")}}function actualizarModoPagoVisual(){const forma=document.getElementById("ventaFormaPago")?.value||"efectivo",tag=document.getElementById("ventaTagPago"),nota=document.getElementById("ventaNotaAfip");if(!tag||!nota)return;const nombres={efectivo:"Efectivo",transferencia:"Transferencia",cuenta_corriente:"Cuenta corriente"};tag.textContent=nombres[forma]||"Efectivo";if(forma==="efectivo"){tag.className="tag tag-green";nota.textContent="Efectivo imprime comprobante simple al cobrar."}else if(forma==="transferencia"){tag.className="tag tag-blue";nota.textContent="Transferencia queda registrada separada de efectivo. Se controla en cierre de caja."}else if(forma==="cuenta_corriente"){tag.className="tag tag-red";nota.textContent="Cuenta corriente: registra la venta como deuda y NO afecta efectivo ni transferencia del cajero."}else{tag.className="tag";nota.textContent="Cobro registrado."}}function activarFocoVenta(){
   clearInterval(ventaFocusTimer);
   ventaFocusTimer = setInterval(() => {
     const page = document.getElementById("page-ventas");
@@ -780,20 +780,13 @@ async function darBajaProducto(id,nombre){const motivo=prompt(`Motivo para dar d
 function escapeHtmlAttr(str){return String(str||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
 async function cargarProveedores() {
   try {
-    const tbody = document.getElementById("proveedoresConfigBody");
-    if (tbody) {
-      tbody.innerHTML = `<tr><td colspan="6" class="muted">Cargando proveedores...</td></tr>`;
-    }
-
     const response = await fetch("/api/proveedores");
-    const data = await response.json().catch(() => ([]));
+    if (!response.ok) throw new Error("Error al obtener proveedores");
 
-    if (!response.ok) {
-      throw new Error(data.error || "Error al obtener proveedores");
-    }
+    const proveedores = await response.json();
+    window.proveedores = Array.isArray(proveedores) ? proveedores : [];
 
-    window.proveedores = Array.isArray(data) ? data : [];
-
+    const tbody = document.getElementById("proveedoresConfigBody");
     if (!tbody) return;
 
     if (window.proveedores.length === 0) {
@@ -809,50 +802,15 @@ async function cargarProveedores() {
         <td>${escapeHtml(proveedor.direccion || "")}</td>
         <td>${escapeHtml(proveedor.observaciones || "")}</td>
         <td>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button class="btn btn-secondary" style="padding:8px 10px;font-size:12px;" onclick="editarProveedor(${proveedor.id})">Editar</button>
-            <button class="btn btn-danger" style="padding:8px 10px;font-size:12px;" onclick="eliminarProveedor(${proveedor.id})">Eliminar</button>
-          </div>
+          <button class="btn btn-secondary" style="padding:8px 10px;font-size:12px;" onclick="editarProveedor(${proveedor.id})">Editar</button>
         </td>
       </tr>
     `).join("");
   } catch (error) {
     console.error("Error cargarProveedores:", error);
-    const tbody = document.getElementById("proveedoresConfigBody");
-    if (tbody) {
-      tbody.innerHTML = `<tr><td colspan="6" class="muted">Error al cargar proveedores.</td></tr>`;
-    }
-    mostrarMensaje("proveedorMsg", error.message || "Error al cargar proveedores", "error");
+    mostrarMensaje("proveedorMsg", "Error al cargar proveedores", "error");
   }
 }
-
-async function eliminarProveedor(id) {
-  const proveedor = (window.proveedores || []).find(p => String(p.id) === String(id));
-  const nombre = proveedor?.nombre || `ID ${id}`;
-
-  if (!confirm(`¿Eliminar proveedor "${nombre}"?`)) return;
-
-  try {
-    const response = await fetch(`/api/proveedores/${id}`, { method: "DELETE" });
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(data.error || "Error al eliminar proveedor");
-    }
-
-    if (String(proveedorEditandoId || "") === String(id)) {
-      limpiarFormularioProveedor();
-    }
-
-    mostrarMensaje("proveedorMsg", "Proveedor eliminado correctamente", "ok");
-    await cargarProveedores();
-    await cargarSelectsBase?.();
-  } catch (error) {
-    console.error("Error eliminar proveedor:", error);
-    mostrarMensaje("proveedorMsg", error.message || "Error al eliminar proveedor", "error");
-  }
-}
-
 async function cargarMovimientosCajaActual(cajaId){
   const box=document.getElementById("cajaMovimientosActual");if(!box||!cajaId)return;
   try{
@@ -886,28 +844,7 @@ async function abrirCaja(){try{const res=await fetch("/api/caja/abrir",{method:"
 async function registrarMovimientoCaja(){if(!cajaAbiertaActual?.id){alert("No hay caja abierta");return}try{const res=await fetch("/api/caja/movimiento",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({caja_sesion_id:cajaAbiertaActual.id,tipo:document.getElementById("cajaTipoMovimiento").value,medio_pago:document.getElementById("cajaMedioMovimiento")?.value||"efectivo",monto:document.getElementById("cajaMontoMovimiento").value,motivo:document.getElementById("cajaMotivoMovimiento").value,empleado_id:usuarioActual.id})}),data=await res.json();if(!res.ok){alert(data.error||"Error al guardar movimiento");return}alert("Movimiento guardado");document.getElementById("cajaMontoMovimiento").value="";document.getElementById("cajaMotivoMovimiento").value="";cargarEstadoCaja();cargarResumen()}catch(error){alert("Error de conexión")}}
 async function cerrarCaja(){if(!cajaAbiertaActual?.id){alert("No hay caja abierta");return}try{const res=await fetch("/api/caja/cerrar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({caja_sesion_id:cajaAbiertaActual.id,empleado_cierre_id:usuarioActual.id,efectivo_real:document.getElementById("cajaEfectivoReal").value,transferencia_real:document.getElementById("cajaTransferenciaReal").value,observaciones:document.getElementById("cajaObsCierre").value})}),data=await res.json();if(!res.ok){alert(data.error||"Error al cerrar caja");return}const dif=Number(data?.resumen?.diferencia||0);const difT=Number(data?.resumen?.diferencia_transferencia||0);let txt=dif<0?`Caja cerrada con faltante efectivo de ${formatoDinero(Math.abs(dif))}`:dif>0?`Caja cerrada con sobrante efectivo de ${formatoDinero(dif)}`:"Caja efectivo exacta";txt+=difT<0?`\nTransferencia con faltante de ${formatoDinero(Math.abs(difT))}`:difT>0?`\nTransferencia con sobrante de ${formatoDinero(difT)}`:"\nTransferencia exacta";alert(txt);document.getElementById("cajaEfectivoReal").value="";document.getElementById("cajaTransferenciaReal").value="";document.getElementById("cajaObsCierre").value="";renderInformeCaja({caja:data.caja,resumen:data.resumen});cargarResumen()}catch(error){alert("Error de conexión")}}
 function ocultarReporteCompras(){document.getElementById("reportesComprasWrap")?.classList.add("hidden")}function limpiarResultadoReportes(){const pre=document.getElementById("reportesPre");if(pre){pre.classList.add("hidden");pre.textContent=""}ocultarReporteCompras()}function setReporteHTML(titulo,html){document.getElementById("reportesTituloResultado").textContent=titulo||"Resultado";const box=document.getElementById("reportesResultado");if(box)box.innerHTML=html;limpiarResultadoReportes()}function reporteCard(label,valor){return `<div class="reporte-metric-card"><div class="label">${label}</div><div class="valor">${valor}</div></div>`}function escapeHtml(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}function fechaCorta(v){return v?new Date(v).toLocaleDateString("es-AR"):"-"}function textoTiempo(segundos){segundos=Number(segundos||0);if(segundos<60)return "hace menos de 1 min";const min=Math.floor(segundos/60);if(min<60)return `hace ${min} min`;const hs=Math.floor(min/60),resto=min%60;if(hs<24)return `hace ${hs} h${resto?` ${resto} min`:""}`;const dias=Math.floor(hs/24),hsR=hs%24;return `hace ${dias} día${dias===1?"":"s"}${hsR?` ${hsR} h`:""}`}async function registrarActividad(){try{if(!usuarioActual?.id)return;await fetch("/api/actividad",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empleado_id:usuarioActual.id})})}catch(e){}}setInterval(registrarActividad,60000);function mostrarReporteJSON(titulo,data){const pre=document.getElementById("reportesPre"),box=document.getElementById("reportesResultado");document.getElementById("reportesTituloResultado").textContent=titulo||"Resultado";if(box)box.innerHTML="";if(pre){pre.classList.remove("hidden");pre.textContent=JSON.stringify(data,null,2)}ocultarReporteCompras()}async function cargarReporteVentasDiarias(){try{const res=await fetch("/api/reportes/ventas-diarias"),data=await res.json();if(!res.ok){alert(data.error||"Error al cargar reporte");return}const items=Array.isArray(data)?data:[];let total=0,cant=0;items.forEach(r=>{total+=Number(r.total_vendido||0);cant+=Number(r.cantidad_ventas||0)});const promedio=cant?total/cant:0;let filas="";items.forEach(r=>{const monto=Number(r.total_vendido||0);const ancho=total?Math.min(100,(monto/Math.max(...items.map(x=>Number(x.total_vendido||0)),1))*100):0;filas+=`<tr><td>${fechaCorta(r.fecha)}</td><td>${r.cantidad_ventas||0}</td><td><strong>$${money(monto)}</strong></td><td>$${money(Number(r.cantidad_ventas||0)?monto/Number(r.cantidad_ventas||1):0)}</td><td><div class="reporte-barra"><div style="width:${ancho}%"></div></div></td></tr>`});if(!filas)filas='<tr><td colspan="5" class="muted">No hay ventas cargadas.</td></tr>';setReporteHTML("Resultado · Ventas diarias",`<div class="reporte-metricas">${reporteCard("Total vendido","$ "+money(total))}${reporteCard("Tickets",cant)}${reporteCard("Promedio","$ "+money(promedio))}${reporteCard("Días",items.length)}</div><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Fecha</th><th>Tickets</th><th>Total</th><th>Promedio</th><th>Comparación</th></tr></thead><tbody>${filas}</tbody></table></div>`)}catch(error){alert("Error de conexión")}}async function cargarReporteVentasPorProducto(){try{const res=await fetch("/api/reportes/ventas-por-producto"),data=await res.json();if(!res.ok){alert(data.error||"Error al cargar reporte");return}const items=Array.isArray(data)?data:[];let total=0,cant=0;items.forEach(r=>{total+=Number(r.total_vendido||0);cant+=Number(r.cantidad_vendida||0)});const max=Math.max(...items.map(r=>Number(r.total_vendido||0)),1);let filas="";items.forEach((r,i)=>{const monto=Number(r.total_vendido||0),cantidad=Number(r.cantidad_vendida||0);filas+=`<tr><td><span class="reporte-ranking">${i+1}</span></td><td><strong>${escapeHtml(r.nombre||"-")}</strong></td><td>${qty(cantidad)}</td><td><strong>$${money(monto)}</strong></td><td>$${money(cantidad?monto/cantidad:0)}</td><td><div class="reporte-barra"><div style="width:${(monto/max)*100}%"></div></div></td></tr>`});if(!filas)filas='<tr><td colspan="6" class="muted">No hay ventas por producto.</td></tr>';setReporteHTML("Resultado · Ventas por producto",`<div class="reporte-metricas">${reporteCard("Total vendido","$ "+money(total))}${reporteCard("Unidades",qty(cant))}${reporteCard("Productos",items.length)}${reporteCard("Producto líder",items[0]?.nombre?escapeHtml(items[0].nombre):"-")}</div><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>#</th><th>Producto</th><th>Cantidad</th><th>Total</th><th>Promedio unidad</th><th>Ranking</th></tr></thead><tbody>${filas}</tbody></table></div>`)}catch(error){alert("Error de conexión")}}async function cargarReporteVentasPorEmpleado(){try{const res=await fetch("/api/reportes/ventas-por-empleado"),data=await res.json();if(!res.ok){alert(data.error||"Error al cargar reporte");return}const items=Array.isArray(data)?data:[];let total=0,tickets=0;items.forEach(r=>{total+=Number(r.total_vendido||0);tickets+=Number(r.cantidad_ventas||0)});const max=Math.max(...items.map(r=>Number(r.total_vendido||0)),1);let filas="";items.forEach((r,i)=>{const monto=Number(r.total_vendido||0),cant=Number(r.cantidad_ventas||0);filas+=`<tr><td><span class="reporte-ranking">${i+1}</span></td><td><strong>${escapeHtml(r.nombre||"-")}</strong></td><td>${cant}</td><td><strong>$${money(monto)}</strong></td><td>$${money(cant?monto/cant:0)}</td><td><div class="reporte-barra"><div style="width:${(monto/max)*100}%"></div></div></td></tr>`});if(!filas)filas='<tr><td colspan="6" class="muted">No hay ventas por empleado.</td></tr>';setReporteHTML("Resultado · Ventas por empleado",`<div class="reporte-metricas">${reporteCard("Total vendido","$ "+money(total))}${reporteCard("Tickets",tickets)}${reporteCard("Promedio ticket","$ "+money(tickets?total/tickets:0))}${reporteCard("Empleados",items.length)}</div><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>#</th><th>Empleado</th><th>Tickets</th><th>Total</th><th>Promedio</th><th>Ranking</th></tr></thead><tbody>${filas}</tbody></table></div>`)}catch(error){alert("Error de conexión")}}async function mostrarReporteInventario(){limpiarResultadoReportes();document.getElementById("reportesTituloResultado").textContent="Resultado · Inventario";const box=document.getElementById("reportesResultado");if(box)box.innerHTML=`<div class="subtabs"><button id="btnRepInvStockBajo" class="subtab-btn active" onclick="cargarReporteStockBajo()">Stock bajo</button><button id="btnRepInvResumen" class="subtab-btn" onclick="cargarReporteResumenStock()">Resumen de stock</button></div><div id="reporteInventarioContenido"><div class="reporte-empty">Cargando inventario...</div></div>`;cargarReporteStockBajo()}function activarReporteInventarioTab(tab){document.getElementById("btnRepInvStockBajo")?.classList.toggle("active",tab==="stock");document.getElementById("btnRepInvResumen")?.classList.toggle("active",tab==="resumen")}function setInventarioHTML(html){const cont=document.getElementById("reporteInventarioContenido"),box=document.getElementById("reportesResultado");if(cont)cont.innerHTML=html;else if(box)box.innerHTML=html}async function cargarReporteStockBajo(){try{limpiarResultadoReportes();activarReporteInventarioTab("stock");const res=await fetch("/api/reportes/stock-bajo"),data=await res.json();if(!res.ok){alert(data.error||"Error al cargar reporte");return}const items=Array.isArray(data)?data:[];let sinStock=items.filter(p=>Number(p.stock_actual||0)<=0).length;let filas="";items.forEach(p=>{const stock=Number(p.stock_actual||0),min=Number(p.stock_minimo||0);filas+=`<tr><td><strong>${escapeHtml(p.nombre||"-")}</strong><div class="muted">ID ${p.id} · ${escapeHtml(p.categoria_nombre||"")}</div></td><td>${p.codigo_barras||"-"}</td><td>${p.plu||"-"}</td><td><span class="${stock<=0?"stock-alerta":"tag tag-red"}">${qty(stock)}</span></td><td>${qty(min)}</td><td>$${money(p.precio_venta)}</td><td>${stock<=0?"Sin stock":"Bajo mínimo"}</td></tr>`});if(!filas)filas='<tr><td colspan="7"><div class="reporte-empty">No hay productos con stock bajo.</div></td></tr>';setInventarioHTML(`<div class="reporte-metricas">${reporteCard("Productos en alerta",items.length)}${reporteCard("Sin stock",sinStock)}${reporteCard("Con stock bajo",items.length-sinStock)}${reporteCard("Estado",items.length?"Revisar":"OK")}</div><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Producto</th><th>Código</th><th>PLU</th><th>Stock</th><th>Mínimo</th><th>Precio</th><th>Alerta</th></tr></thead><tbody>${filas}</tbody></table></div>`)}catch(error){alert("Error de conexión")}}async function cargarReporteResumenStock(){try{limpiarResultadoReportes();activarReporteInventarioTab("resumen");const estado=document.getElementById("repInvEstado")?.value||"",q=document.getElementById("repInvBuscar")?.value.trim()||"",params=new URLSearchParams();if(estado)params.append("estado",estado);if(q)params.append("q",q);const url=params.toString()?"/api/reportes/inventario-resumen?"+params.toString():"/api/reportes/inventario-resumen",res=await fetch(url),data=await res.json();if(!res.ok){alert(data.error||"Error al cargar resumen de stock");return}const items=Array.isArray(data.items)?data.items:[],r=data.resumen||{};let filas="";items.forEach(p=>{const stock=Number(p.stock_actual||0),costo=Number(p.costo||0),venta=Number(p.precio_venta||0),gananciaUnit=venta-costo,totalCosto=Number(p.total_costo||0),totalVenta=Number(p.total_venta||0),totalGanancia=Number(p.total_ganancia||0),porc=costo>0?(gananciaUnit/costo)*100:0;const estadoTxt=stock<=0?"Sin stock":stock<=Number(p.stock_minimo||0)?"Stock bajo":"OK";filas+=`<tr><td><strong>${escapeHtml(p.nombre||"-")}</strong><div class="muted">${p.codigo_barras||"Sin código"} · PLU ${p.plu||"-"}</div></td><td>${qty(stock)}</td><td>$${money(costo)}</td><td>$${money(venta)}</td><td><strong>$${money(gananciaUnit)}</strong><div class="muted">${money(porc)}%</div></td><td>$${money(totalCosto)}</td><td>$${money(totalVenta)}</td><td><strong>$${money(totalGanancia)}</strong></td><td>${estadoTxt}</td></tr>`});if(!filas)filas='<tr><td colspan="9"><div class="reporte-empty">No hay productos para los filtros elegidos.</div></td></tr>';setInventarioHTML(`<div class="grid-4"><div class="field"><label>Buscar producto</label><input id="repInvBuscar" placeholder="Nombre / código / PLU" value="${escapeHtml(q)}" onkeypress="if(event.key==='Enter')cargarReporteResumenStock()" /></div><div class="field"><label>Estado</label><select id="repInvEstado"><option value="">Todos</option><option value="ok" ${estado==="ok"?"selected":""}>Con stock OK</option><option value="bajo" ${estado==="bajo"?"selected":""}>Stock bajo</option><option value="sin" ${estado==="sin"?"selected":""}>Sin stock</option></select></div><div class="field"><label>&nbsp;</label><button class="btn btn-primary" style="width:100%" onclick="cargarReporteResumenStock()">Buscar</button></div><div class="field"><label>&nbsp;</label><button class="btn btn-secondary" style="width:100%" onclick="document.getElementById('repInvBuscar').value='';document.getElementById('repInvEstado').value='';cargarReporteResumenStock()">Limpiar</button></div></div><div class="reporte-metricas">${reporteCard("Productos",r.productos||0)}${reporteCard("Resumen total costo","$ "+money(r.total_costo))}${reporteCard("Resumen total venta","$ "+money(r.total_venta))}${reporteCard("Resumen total ganancia","$ "+money(r.total_ganancia))}</div><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Producto</th><th>Stock</th><th>Precio costo</th><th>Precio venta</th><th>Ganancia</th><th>Total costo</th><th>Total venta</th><th>Total ganancia</th><th>Estado</th></tr></thead><tbody>${filas}</tbody><tfoot><tr><th colspan="5">TOTAL GENERAL</th><th>$${money(r.total_costo)}</th><th>$${money(r.total_venta)}</th><th>$${money(r.total_ganancia)}</th><th></th></tr></tfoot></table></div>`)}catch(error){alert("Error de conexión")}}async function cargarReporteCajeros(){try{limpiarResultadoReportes();const hoy=new Date().toISOString().slice(0,10);const desde=prompt("Desde (AAAA-MM-DD). Dejá vacío para hoy:",hoy)||hoy;const hasta=prompt("Hasta (AAAA-MM-DD). Dejá vacío para hoy:",desde)||desde;const url=new URL("/api/reportes/cajeros",window.location.origin);if(desde)url.searchParams.set("desde",desde);if(hasta)url.searchParams.set("hasta",hasta);const res=await fetch(url),data=await res.json();if(!res.ok){alert(data.error||"Error al cargar reporte de cajeros");return}const resumen=data.resumen||{},items=Array.isArray(data.cierres)?data.cierres:[];let filas="";items.forEach(c=>{const dif=Number(c.diferencia||0);const difT=Number(c.diferencia_transferencia||0);const estado=dif<0?`<span class="tag tag-red">🔴 -${formatoDinero(Math.abs(dif)).replace("$","").trim()} faltante</span>`:dif>0?`<span class="tag tag-green">🟢 ${formatoDinero(dif)} sobrante</span>`:`<span class="tag tag-blue">🔵 Exacta</span>`;const estadoT=difT<0?`<span class="tag tag-red">🔴 -${formatoDinero(Math.abs(difT)).replace("$","").trim()} faltante</span>`:difT>0?`<span class="tag tag-green">🟢 ${formatoDinero(difT)} sobrante</span>`:`<span class="tag tag-blue">🔵 Exacta</span>`;filas+=`<tr><td>${formatoFechaHora(c.fecha_cierre)}</td><td><strong>${escapeHtml(c.cajero_nombre||"-")}</strong><div class="muted">Caja #${c.id}</div></td><td>${formatoDinero(c.monto_inicial)}</td><td><div>Efectivo: ${formatoDinero(c.ventas_efectivo)}</div><div>Transferencia: ${formatoDinero(c.ventas_transferencia)}</div><div>Cuenta corriente: ${formatoDinero(c.ventas_cuenta_corriente)}</div></td><td><div>Efectivo: ${formatoDinero(c.ingresos_efectivo ?? c.ingresos_manuales)}</div><div>Transferencia: ${formatoDinero(c.ingresos_transferencia)}</div></td><td><div>Efectivo: ${formatoDinero(c.retiros_efectivo ?? c.retiros)}</div><div>Transferencia: ${formatoDinero(c.retiros_transferencia)}</div></td><td><div>Efectivo: <strong>${formatoDinero(c.caja_esperada)}</strong></div><div>Transferencia: <strong>${formatoDinero(c.transferencia_esperada ?? c.ventas_transferencia)}</strong></div></td><td><div>Efectivo: <strong>${formatoDinero(c.efectivo_real)}</strong></div><div>Transferencia: <strong>${formatoDinero(c.transferencia_real)}</strong></div></td><td>${estado}<div style="margin-top:6px;">${estadoT}</div></td><td><button class="btn btn-secondary" onclick="reimprimirCierreCaja(${c.id})">Imprimir</button></td></tr>`});if(!filas)filas='<tr><td colspan="10"><div class="reporte-empty">No hay cierres de caja en ese período.</div></td></tr>';setReporteHTML("Resultado · Reporte de cajeros",`<div class="reporte-metricas">${reporteCard("Cierres",resumen.cantidad_cierres||0)}${reporteCard("Total esperado efectivo",formatoDinero(resumen.total_esperado))}${reporteCard("Total real efectivo",formatoDinero(resumen.total_real))}${reporteCard("Diferencia efectivo",formatoDinero(resumen.total_diferencia))}</div><div class="reporte-metricas">${reporteCard("Faltantes",formatoDinero(resumen.total_faltantes))}${reporteCard("Sobrantes",formatoDinero(resumen.total_sobrantes))}${reporteCard("Desde",escapeHtml(desde))}${reporteCard("Hasta",escapeHtml(hasta))}</div><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Fecha cierre</th><th>Cajero</th><th>Apertura</th><th>Ventas</th><th>Ingresos</th><th>Retiros</th><th>Esperado</th><th>Real</th><th>Diferencia</th><th>Acción</th></tr></thead><tbody>${filas}</tbody></table></div>`)}catch(error){alert("Error de conexión")}}
-function limpiarFormularioUsuario(){document.getElementById("cfgEmpleadoId").value="";document.getElementById("cfgNombre").value="";document.getElementById("cfgUsuario").value="";document.getElementById("cfgPassword").value="";document.getElementById("cfgRol").value="cajero";document.getElementById("cfgActivo").value="true";document.getElementById("permInicio").checked=true;document.getElementById("permVentas").checked=true;document.getElementById("permProductos").checked=false;document.getElementById("permCompras").checked=false;document.getElementById("permCaja").checked=false;document.getElementById("permReportes").checked=false;document.getElementById("permConfiguracion").checked=false;document.getElementById("configTituloForm").textContent="Nuevo usuario";document.getElementById("btnGuardarUsuario").textContent="Guardar usuario"}async function guardarUsuario(){const id=document.getElementById("cfgEmpleadoId").value,payload={nombre:document.getElementById("cfgNombre").value,usuario:document.getElementById("cfgUsuario").value,password:document.getElementById("cfgPassword").value,rol:document.getElementById("cfgRol").value,activo:document.getElementById("cfgActivo").value==="true",...obtenerPermisosFormulario()};try{const res=await fetch(id?`/api/empleados/${id}`:"/api/empleados",{method:id?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}),data=await res.json();if(!res.ok){mostrarMensaje("configMsg",data.error||"Error al guardar usuario","error");return}mostrarMensaje("configMsg",id?"Usuario actualizado":"Usuario creado");limpiarFormularioUsuario();cargarUsuarios()}catch(error){mostrarMensaje("configMsg","Error de conexión","error")}}async function cargarUsuarios(){try{const res=await fetch("/api/empleados"),data=await res.json(),body=document.getElementById("usuariosBody");body.innerHTML="";(Array.isArray(data)?data:[]).forEach(u=>{const permisos=[];if(u.puede_inicio)permisos.push("Inicio");if(u.puede_ventas)permisos.push("Ventas");if(u.puede_productos)permisos.push("Productos");if(u.puede_compras)permisos.push("Compras");if(u.puede_caja)permisos.push("Caja");if(u.puede_reportes)permisos.push("Reportes");if(u.puede_configuracion)permisos.push("Config");const tr=document.createElement("tr");tr.innerHTML=`<td>${u.id}</td><td>${u.nombre}</td><td>${u.usuario}</td><td>${u.rol}</td><td>${u.activo?'<span class="tag tag-green">Sí</span>':'<span class="tag tag-red">No</span>'}</td><td>${permisos.join(", ")}</td><td><button class="btn btn-secondary" onclick="editarUsuario(${u.id})">Editar</button></td>`;body.appendChild(tr)})}catch(error){}}async function editarUsuario(id){const res=await fetch(`/api/empleados/${id}`),u=await res.json();document.getElementById("cfgEmpleadoId").value=u.id;document.getElementById("cfgNombre").value=u.nombre||"";document.getElementById("cfgUsuario").value=u.usuario||"";document.getElementById("cfgPassword").value=u.password||"";document.getElementById("cfgRol").value=u.rol||"cajero";document.getElementById("cfgActivo").value=String(u.activo);document.getElementById("permInicio").checked=!!u.puede_inicio;document.getElementById("permVentas").checked=!!u.puede_ventas;document.getElementById("permProductos").checked=!!u.puede_productos;document.getElementById("permCompras").checked=!!u.puede_compras;document.getElementById("permCaja").checked=!!u.puede_caja;document.getElementById("permReportes").checked=!!u.puede_reportes;document.getElementById("permConfiguracion").checked=!!u.puede_configuracion;document.getElementById("configTituloForm").textContent="Editar usuario";document.getElementById("btnGuardarUsuario").textContent="Guardar cambios";window.scrollTo({top:0,behavior:"smooth"})}function mostrarConfigSubtab(nombre){
-  document.querySelectorAll(".config-subpage").forEach(p=>p.classList.remove("active"));
-  document.querySelectorAll(".subtab-btn").forEach(b=>b.classList.remove("active"));
-
-  if(nombre==="usuarios"){
-    document.getElementById("configSubpageUsuarios")?.classList.add("active");
-    document.getElementById("btnConfigTabUsuarios")?.classList.add("active");
-    cargarUsuarios?.();
-  }
-
-  if(nombre==="proveedores"){
-    document.getElementById("configSubpageProveedores")?.classList.add("active");
-    document.getElementById("btnConfigTabProveedores")?.classList.add("active");
-    cargarProveedores?.();
-  }
-
-  if(nombre==="clientes"){
-    document.getElementById("configSubpageClientes")?.classList.add("active");
-    document.getElementById("btnConfigTabClientes")?.classList.add("active");
-    cargarClientesConfig?.();
-  }
-}function limpiarFormularioProveedor() {
+function limpiarFormularioUsuario(){document.getElementById("cfgEmpleadoId").value="";document.getElementById("cfgNombre").value="";document.getElementById("cfgUsuario").value="";document.getElementById("cfgPassword").value="";document.getElementById("cfgRol").value="cajero";document.getElementById("cfgActivo").value="true";document.getElementById("permInicio").checked=true;document.getElementById("permVentas").checked=true;document.getElementById("permProductos").checked=false;document.getElementById("permCompras").checked=false;document.getElementById("permCaja").checked=false;document.getElementById("permReportes").checked=false;document.getElementById("permConfiguracion").checked=false;document.getElementById("configTituloForm").textContent="Nuevo usuario";document.getElementById("btnGuardarUsuario").textContent="Guardar usuario"}async function guardarUsuario(){const id=document.getElementById("cfgEmpleadoId").value,payload={nombre:document.getElementById("cfgNombre").value,usuario:document.getElementById("cfgUsuario").value,password:document.getElementById("cfgPassword").value,rol:document.getElementById("cfgRol").value,activo:document.getElementById("cfgActivo").value==="true",...obtenerPermisosFormulario()};try{const res=await fetch(id?`/api/empleados/${id}`:"/api/empleados",{method:id?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}),data=await res.json();if(!res.ok){mostrarMensaje("configMsg",data.error||"Error al guardar usuario","error");return}mostrarMensaje("configMsg",id?"Usuario actualizado":"Usuario creado");limpiarFormularioUsuario();cargarUsuarios()}catch(error){mostrarMensaje("configMsg","Error de conexión","error")}}async function cargarUsuarios(){try{const res=await fetch("/api/empleados"),data=await res.json(),body=document.getElementById("usuariosBody");body.innerHTML="";(Array.isArray(data)?data:[]).forEach(u=>{const permisos=[];if(u.puede_inicio)permisos.push("Inicio");if(u.puede_ventas)permisos.push("Ventas");if(u.puede_productos)permisos.push("Productos");if(u.puede_compras)permisos.push("Compras");if(u.puede_caja)permisos.push("Caja");if(u.puede_reportes)permisos.push("Reportes");if(u.puede_configuracion)permisos.push("Config");const tr=document.createElement("tr");tr.innerHTML=`<td>${u.id}</td><td>${u.nombre}</td><td>${u.usuario}</td><td>${u.rol}</td><td>${u.activo?'<span class="tag tag-green">Sí</span>':'<span class="tag tag-red">No</span>'}</td><td>${permisos.join(", ")}</td><td><button class="btn btn-secondary" onclick="editarUsuario(${u.id})">Editar</button></td>`;body.appendChild(tr)})}catch(error){}}async function editarUsuario(id){const res=await fetch(`/api/empleados/${id}`),u=await res.json();document.getElementById("cfgEmpleadoId").value=u.id;document.getElementById("cfgNombre").value=u.nombre||"";document.getElementById("cfgUsuario").value=u.usuario||"";document.getElementById("cfgPassword").value=u.password||"";document.getElementById("cfgRol").value=u.rol||"cajero";document.getElementById("cfgActivo").value=String(u.activo);document.getElementById("permInicio").checked=!!u.puede_inicio;document.getElementById("permVentas").checked=!!u.puede_ventas;document.getElementById("permProductos").checked=!!u.puede_productos;document.getElementById("permCompras").checked=!!u.puede_compras;document.getElementById("permCaja").checked=!!u.puede_caja;document.getElementById("permReportes").checked=!!u.puede_reportes;document.getElementById("permConfiguracion").checked=!!u.puede_configuracion;document.getElementById("configTituloForm").textContent="Editar usuario";document.getElementById("btnGuardarUsuario").textContent="Guardar cambios";window.scrollTo({top:0,behavior:"smooth"})}function mostrarConfigSubtab(nombre){document.querySelectorAll(".config-subpage").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".subtab-btn").forEach(b=>b.classList.remove("active"));if(nombre==="usuarios"){document.getElementById("configSubpageUsuarios")?.classList.add("active");document.getElementById("btnConfigTabUsuarios")?.classList.add("active")}if(nombre==="proveedores"){document.getElementById("configSubpageProveedores")?.classList.add("active");document.getElementById("btnConfigTabProveedores")?.classList.add("active")}}function limpiarFormularioProveedor() {
   proveedorEditandoId = null;
 
   const nombre = document.getElementById("provNombre");
@@ -1057,7 +994,7 @@ async function cargarClientesSelect(){try{const res=await fetch("/api/clientes")
 const actualizarModoPagoVisualOriginal=actualizarModoPagoVisual;
 actualizarModoPagoVisual=function(){actualizarModoPagoVisualOriginal();const forma=document.getElementById("ventaFormaPago")?.value||"efectivo";const card=document.getElementById("ventaClienteCard");if(card){card.style.display=forma==="cuenta_corriente"?"block":"none"}if(forma==="cuenta_corriente")cargarClientesSelect();}
 const mostrarPaginaOriginal=mostrarPagina;
-mostrarPagina=function(nombre){mostrarPaginaOriginal(nombre);if(nombre==="ventas")cargarClientesSelect();if(nombre==="configuracion"){cargarProveedores?.();cargarClientesConfig?.();}}
+mostrarPagina=function(nombre){mostrarPaginaOriginal(nombre);if(nombre==="ventas")cargarClientesSelect();if(nombre==="configuracion")cargarClientesConfig();}
 function limpiarFormularioCliente(){["cliNombre","cliTelefono","cliDireccion","cliObservaciones"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=""});const l=document.getElementById("cliLimite");if(l)l.value="0"}
 async function guardarCliente(){const payload={nombre:document.getElementById("cliNombre").value.trim(),telefono:document.getElementById("cliTelefono").value.trim(),direccion:document.getElementById("cliDireccion").value.trim(),limite_credito:document.getElementById("cliLimite").value||0,observaciones:document.getElementById("cliObservaciones").value.trim()};if(!payload.nombre){mostrarMensaje("clienteMsg","El nombre del cliente es obligatorio","error");return}try{const res=await fetch("/api/clientes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}),data=await res.json();if(!res.ok){mostrarMensaje("clienteMsg",data.error||"Error al guardar cliente","error");return}mostrarMensaje("clienteMsg","Cliente guardado correctamente");limpiarFormularioCliente();cargarClientesConfig();cargarClientesSelect()}catch(e){mostrarMensaje("clienteMsg","Error de conexión","error")}}
 async function cargarClientesConfig(){try{const res=await fetch("/api/clientes"),data=await res.json(),body=document.getElementById("clientesConfigBody");if(!body)return;body.innerHTML="";(Array.isArray(data)?data:[]).forEach(c=>{const saldo=Number(c.saldo||0);const tr=document.createElement("tr");tr.innerHTML=`<td>${c.id}</td><td>${escapeHtml(c.nombre||"")}</td><td>${escapeHtml(c.telefono||"")}</td><td><strong class="${saldo>0?'stock-alerta':'stock-normal'}">$${money(saldo)}</strong></td><td><button class="btn btn-secondary" onclick="verCuentaCliente(${c.id}, '${String(c.nombre||'').replace(/'/g,"\\'")}')">Ver</button> <button class="btn btn-success" onclick="registrarPagoCliente(${c.id})">Pago</button></td>`;body.appendChild(tr)});if(!body.innerHTML)body.innerHTML='<tr><td colspan="5" class="muted">Sin clientes.</td></tr>'}catch(e){}}
@@ -1628,6 +1565,216 @@ function limpiarProveedor() {
   });
   ajustarModoProveedorForm(false);
 }
+
+
+
+/* =========================================================
+   CORRECCIÓN FINAL 22 - Proveedores + Reporte Usuarios
+   ========================================================= */
+(function(){
+  function safeTexto(v){ return (typeof escapeHtml === "function") ? escapeHtml(v || "") : String(v || ""); }
+
+  window.cargarProveedores = async function(){
+    const tbody = document.getElementById("proveedoresConfigBody");
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="muted">Cargando proveedores...</td></tr>`;
+    try {
+      const response = await fetch("/api/proveedores");
+      const proveedores = await response.json().catch(() => []);
+      if (!response.ok) throw new Error(proveedores.error || "Error al obtener proveedores");
+      window.proveedores = Array.isArray(proveedores) ? proveedores : [];
+      if (!tbody) return;
+      if (window.proveedores.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="muted">No hay proveedores cargados.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = window.proveedores.map(proveedor => `
+        <tr>
+          <td>${proveedor.id ?? ""}</td>
+          <td>${safeTexto(proveedor.nombre)}</td>
+          <td>${safeTexto(proveedor.telefono)}</td>
+          <td>${safeTexto(proveedor.direccion)}</td>
+          <td>${safeTexto(proveedor.observaciones)}</td>
+          <td>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-secondary" style="padding:8px 10px;font-size:12px;" onclick="editarProveedor(${proveedor.id})">Editar</button>
+              <button class="btn btn-danger" style="padding:8px 10px;font-size:12px;" onclick="eliminarProveedor(${proveedor.id})">Eliminar</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    } catch (error) {
+      console.error("Error cargarProveedores FINAL:", error);
+      if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="muted">Error al cargar proveedores.</td></tr>`;
+      mostrarMensaje?.("proveedorMsg", error.message || "Error al cargar proveedores", "error");
+    }
+  };
+
+  window.cargarProveedoresConfig = window.cargarProveedores;
+
+  window.limpiarFormularioProveedor = function(){
+    window.proveedorEditandoId = null;
+    ["provNombre", "provTelefono", "provDireccion", "provObservaciones"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
+    const titulo = document.getElementById("proveedorFormTitulo");
+    const btnGuardar = document.getElementById("btnGuardarProveedor");
+    const btnCancelar = document.getElementById("btnCancelarEdicionProveedor");
+    if (titulo) titulo.textContent = "Nuevo proveedor";
+    if (btnGuardar) btnGuardar.textContent = "Guardar proveedor";
+    if (btnCancelar) btnCancelar.classList.add("hidden");
+  };
+
+  window.cancelarEdicionProveedor = function(){ window.limpiarFormularioProveedor(); };
+  window.limpiarProveedor = window.limpiarFormularioProveedor;
+
+  window.editarProveedor = function(id){
+    const proveedor = (window.proveedores || []).find(p => String(p.id) === String(id));
+    if (!proveedor) {
+      mostrarMensaje?.("proveedorMsg", "No encontré el proveedor para editar", "error");
+      return;
+    }
+    window.proveedorEditandoId = proveedor.id;
+    const campos = {
+      provNombre: proveedor.nombre,
+      provTelefono: proveedor.telefono,
+      provDireccion: proveedor.direccion,
+      provObservaciones: proveedor.observaciones
+    };
+    Object.entries(campos).forEach(([idCampo, valor]) => {
+      const el = document.getElementById(idCampo);
+      if (el) el.value = valor || "";
+    });
+    const titulo = document.getElementById("proveedorFormTitulo");
+    const btnGuardar = document.getElementById("btnGuardarProveedor");
+    const btnCancelar = document.getElementById("btnCancelarEdicionProveedor");
+    if (titulo) titulo.textContent = "Editar proveedor";
+    if (btnGuardar) btnGuardar.textContent = "Actualizar proveedor";
+    if (btnCancelar) btnCancelar.classList.remove("hidden");
+    document.getElementById("provNombre")?.focus();
+  };
+
+  window.guardarProveedor = async function(){
+    const id = window.proveedorEditandoId || null;
+    const nombre = (document.getElementById("provNombre")?.value || "").trim();
+    const telefono = (document.getElementById("provTelefono")?.value || "").trim();
+    const direccion = (document.getElementById("provDireccion")?.value || "").trim();
+    const observaciones = (document.getElementById("provObservaciones")?.value || "").trim();
+    if (!nombre) {
+      mostrarMensaje?.("proveedorMsg", "El nombre del proveedor es obligatorio", "error");
+      return;
+    }
+    try {
+      const response = await fetch(id ? `/api/proveedores/${id}` : "/api/proveedores", {
+        method: id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, telefono, direccion, observaciones, activo: true })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Error al guardar proveedor");
+      mostrarMensaje?.("proveedorMsg", id ? "Proveedor actualizado correctamente" : "Proveedor creado correctamente", "ok");
+      window.limpiarFormularioProveedor();
+      await window.cargarProveedores();
+      if (typeof cargarSelectsBase === "function") await cargarSelectsBase();
+    } catch (error) {
+      console.error("Error guardar proveedor FINAL:", error);
+      mostrarMensaje?.("proveedorMsg", error.message || "Error al guardar proveedor", "error");
+    }
+  };
+
+  window.eliminarProveedor = async function(id){
+    const proveedor = (window.proveedores || []).find(p => String(p.id) === String(id));
+    const nombre = proveedor?.nombre ? ` "${proveedor.nombre}"` : "";
+    if (!confirm(`¿Eliminar proveedor${nombre}?`)) return;
+    try {
+      const response = await fetch(`/api/proveedores/${id}`, { method: "DELETE" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Error al eliminar proveedor");
+      mostrarMensaje?.("proveedorMsg", "Proveedor eliminado correctamente", "ok");
+      if (String(window.proveedorEditandoId || "") === String(id)) window.limpiarFormularioProveedor();
+      await window.cargarProveedores();
+      if (typeof cargarSelectsBase === "function") await cargarSelectsBase();
+    } catch (error) {
+      console.error("Error eliminar proveedor FINAL:", error);
+      mostrarMensaje?.("proveedorMsg", error.message || "Error al eliminar proveedor", "error");
+    }
+  };
+
+  const mostrarConfigSubtabAnterior = window.mostrarConfigSubtab;
+  window.mostrarConfigSubtab = function(nombre){
+    if (typeof mostrarConfigSubtabAnterior === "function") mostrarConfigSubtabAnterior(nombre);
+    if (nombre === "proveedores") window.cargarProveedores();
+    if (nombre === "usuarios" && typeof cargarUsuarios === "function") cargarUsuarios();
+    if (nombre === "clientes") {
+      document.getElementById("configSubpageClientes")?.classList.add("active");
+      document.getElementById("btnConfigTabClientes")?.classList.add("active");
+      if (typeof cargarClientesConfig === "function") cargarClientesConfig();
+    }
+  };
+
+  window.mostrarReporteUsuarios = async function(){
+    try{
+      if (typeof limpiarResultadoReportes === "function") limpiarResultadoReportes();
+      if (typeof setReporteHTML === "function") setReporteHTML("Resultado · Usuarios",'<div class="reporte-empty">Cargando reporte de usuarios...</div>');
+      if (typeof registrarActividad === "function") await registrarActividad();
+
+      let data = null;
+      try {
+        const res = await fetch("/api/reportes/usuarios");
+        data = await res.json().catch(() => null);
+        if (!res.ok || !data) throw new Error(data?.error || "No respondió el reporte de usuarios");
+      } catch (errorReporte) {
+        console.warn("Fallback reporte usuarios:", errorReporte);
+        const resEmpleados = await fetch("/api/empleados");
+        const empleados = await resEmpleados.json().catch(() => []);
+        const lista = Array.isArray(empleados) ? empleados : [];
+        data = {
+          resumen: {
+            usuarios_registrados: lista.length,
+            usuarios_activos: lista.filter(u => u.activo !== false).length,
+            usuarios_en_linea: 0,
+            cajas_abiertas: 0
+          },
+          usuarios_en_linea: [],
+          cajas_abiertas: [],
+          cajas_olvidadas: []
+        };
+      }
+
+      const r = data.resumen || {};
+      const online = Array.isArray(data.usuarios_en_linea) ? data.usuarios_en_linea : [];
+      const cajas = Array.isArray(data.cajas_abiertas) ? data.cajas_abiertas : [];
+      const olvidadas = Array.isArray(data.cajas_olvidadas) ? data.cajas_olvidadas : [];
+
+      let filasOnline = online.map(u => `<tr><td><strong>🟢 ${safeTexto(u.nombre || u.usuario || "-")}</strong><div class="muted">${safeTexto(u.usuario || "")}</div></td><td>${safeTexto(u.rol || "-")}</td><td>${formatoFechaHora?.(u.ultima_actividad) || "-"}</td><td><span class="tag tag-green">${textoTiempo?.(u.segundos_sin_actividad) || "Activo"}</span></td></tr>`).join("");
+      if(!filasOnline) filasOnline='<tr><td colspan="4"><div class="reporte-empty">No hay usuarios en línea en este momento.</div></td></tr>';
+
+      let filasCajas = cajas.map(c => `<tr><td><strong>Caja #${c.id}</strong></td><td>${safeTexto(c.cajero_nombre || "-")}<div class="muted">${safeTexto(c.cajero_usuario || "")}</div></td><td>${formatoFechaHora?.(c.fecha_apertura) || "-"}</td><td><span class="tag ${c.caja_olvidada ? 'tag-red' : 'tag-blue'}">${textoTiempo?.(c.segundos_abierta) || "-"}</span></td><td>${c.caja_olvidada ? '⚠️ Sin cerrar' : '🟢 Abierta'}</td></tr>`).join("");
+      if(!filasCajas) filasCajas='<tr><td colspan="5"><div class="reporte-empty">No hay cajas abiertas.</div></td></tr>';
+
+      let filasOlvidadas = olvidadas.map(c => `<tr><td><strong>Caja #${c.id}</strong></td><td>${safeTexto(c.cajero_nombre || "-")}</td><td>${formatoFechaHora?.(c.fecha_apertura) || "-"}</td><td><span class="tag tag-red">${textoTiempo?.(c.segundos_abierta) || "-"}</span></td></tr>`).join("");
+      if(!filasOlvidadas) filasOlvidadas='<tr><td colspan="4"><div class="alerta-ok">✅ No hay cajas olvidadas abiertas.</div></td></tr>';
+
+      if (typeof setReporteHTML === "function") setReporteHTML("Resultado · Usuarios",`
+        <div class="reporte-metricas">
+          ${(typeof reporteCard === "function") ? reporteCard("Usuarios registrados", r.usuarios_registrados || 0) : ""}
+          ${(typeof reporteCard === "function") ? reporteCard("Usuarios activos", r.usuarios_activos || 0) : ""}
+          ${(typeof reporteCard === "function") ? reporteCard("Usuarios en línea", r.usuarios_en_linea || 0) : ""}
+          ${(typeof reporteCard === "function") ? reporteCard("Cajas abiertas", r.cajas_abiertas || 0) : ""}
+        </div>
+        <div class="grid-2">
+          <div class="card"><h3>🟢 Usuarios en línea</h3><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Usuario</th><th>Rol</th><th>Última actividad</th><th>Estado</th></tr></thead><tbody>${filasOnline}</tbody></table></div></div>
+          <div class="card"><h3>⚠️ Cajas olvidadas abiertas</h3><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Caja</th><th>Cajero</th><th>Apertura</th><th>Tiempo abierta</th></tr></thead><tbody>${filasOlvidadas}</tbody></table></div></div>
+        </div>
+        <div class="card"><h3>📦 Cajas abiertas</h3><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Caja</th><th>Cajero</th><th>Fecha/Hora apertura</th><th>Tiempo abierta</th><th>Estado</th></tr></thead><tbody>${filasCajas}</tbody></table></div></div>
+        <div class="muted">Se considera usuario en línea si tuvo actividad en los últimos 5 minutos. Caja olvidada: abierta hace 12 horas o más.</div>
+      `);
+    }catch(error){
+      console.error("Error reporte usuarios FINAL:", error);
+      if (typeof setReporteHTML === "function") setReporteHTML("Resultado · Usuarios",'<div class="reporte-empty">No se pudo cargar el reporte de usuarios.</div>');
+    }
+  };
+})();
 
 </script>
 </body>
