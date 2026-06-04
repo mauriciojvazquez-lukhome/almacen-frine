@@ -1607,420 +1607,324 @@ window.addEventListener('load',()=>setTimeout(refrescarBotonAsistenteFrine,300))
 
 
 
-function editarProveedor(id) {
-  const proveedor = (window.proveedores || []).find(p => String(p.id) === String(id));
-  if (!proveedor) {
-    mostrarMensaje("proveedorMensaje", "No encontré el proveedor para editar", "error");
-    return;
-  }
-
-  proveedorEditandoId = proveedor.id;
-
-  const nombreInput = document.getElementById("proveedorNombre");
-  const telefonoInput = document.getElementById("proveedorTelefono");
-  const direccionInput = document.getElementById("proveedorDireccion");
-  const observacionesInput = document.getElementById("proveedorObservaciones");
-
-  if (nombreInput) nombreInput.value = proveedor.nombre || "";
-  if (telefonoInput) telefonoInput.value = proveedor.telefono || "";
-  if (direccionInput) direccionInput.value = proveedor.direccion || "";
-  if (observacionesInput) observacionesInput.value = proveedor.observaciones || "";
-
-  ajustarModoProveedorForm(true);
-  if (nombreInput) nombreInput.focus();
-  mostrarMensaje("proveedorMensaje", `Editando proveedor: ${proveedor.nombre || ""}`, "ok");
-}
-
-function cancelarEdicionProveedor() {
-  limpiarProveedor();
-}
-
-function ajustarModoProveedorForm(editando) {
-  const titulo = document.getElementById("proveedorFormTitulo");
-  const btnGuardar = document.getElementById("btnGuardarProveedor");
-  const btnCancelar = document.getElementById("btnCancelarEdicionProveedor");
-
-  if (titulo) titulo.textContent = editando ? "Editar proveedor" : "Nuevo proveedor";
-  if (btnGuardar) btnGuardar.textContent = editando ? "Actualizar proveedor" : "Guardar proveedor";
-  if (btnCancelar) btnCancelar.classList.toggle("hidden", !editando);
-}
-
-
-
-function limpiarProveedor() {
-  proveedorEditandoId = null;
-  const campos = ["proveedorNombre", "proveedorTelefono", "proveedorDireccion", "proveedorObservaciones"];
-  campos.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = "";
-  });
-  ajustarModoProveedorForm(false);
-}
-
-
 
 /* =========================================================
-   CORRECCIÓN FINAL 22 - Proveedores + Reporte Usuarios
+   FRINE ESTABLE - Compras + Proveedores + Usuarios
+   Revisión completa: evita funciones pisadas y carga todo desde un solo lugar.
    ========================================================= */
 (function(){
-  function safeTexto(v){ return (typeof escapeHtml === "function") ? escapeHtml(v || "") : String(v || ""); }
+  function frineEsc(v){
+    return String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+  }
+  function frineNum(v){ const n = Number(v || 0); return Number.isFinite(n) ? n : 0; }
+  function frineMoney(v){ return (typeof money === "function") ? money(v) : frineNum(v).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function frineQty(v){ return (typeof qty === "function") ? qty(v) : String(frineNum(v)); }
+  window.escapeHtml = window.escapeHtml || frineEsc;
+
+  function setMsg(id, texto, tipo){
+    if (typeof mostrarMensaje === "function") mostrarMensaje(id, texto, tipo || "ok");
+    else alert(texto);
+  }
+
+  window.obtenerPermisosFormulario = function(){
+    return {
+      puede_inicio: !!document.getElementById("permInicio")?.checked,
+      puede_ventas: !!document.getElementById("permVentas")?.checked,
+      puede_productos: !!document.getElementById("permProductos")?.checked,
+      puede_compras: !!document.getElementById("permCompras")?.checked,
+      puede_recetas: !!document.getElementById("permRecetas")?.checked,
+      puede_caja: !!document.getElementById("permCaja")?.checked,
+      puede_reportes: !!document.getElementById("permReportes")?.checked,
+      puede_configuracion: !!document.getElementById("permConfiguracion")?.checked
+    };
+  };
+
+  function renderSelectProveedores(){
+    const proveedores = Array.isArray(window.proveedores) ? window.proveedores : [];
+    const options = '<option value="">Seleccionar proveedor</option>' + proveedores.map(p => `<option value="${p.id}">${frineEsc(p.nombre || "Sin nombre")}</option>`).join("");
+    const compraSelect = document.getElementById("compraProveedor");
+    if (compraSelect) {
+      const actual = compraSelect.value;
+      compraSelect.innerHTML = options;
+      if (actual) compraSelect.value = actual;
+    }
+    const repSelect = document.getElementById("repComprasProveedor");
+    if (repSelect) {
+      const actual = repSelect.value;
+      repSelect.innerHTML = '<option value="">Todos</option>' + proveedores.map(p => `<option value="${p.id}">${frineEsc(p.nombre || "Sin nombre")}</option>`).join("");
+      if (actual) repSelect.value = actual;
+    }
+  }
 
   window.cargarProveedores = async function(){
     const tbody = document.getElementById("proveedoresConfigBody");
     if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="muted">Cargando proveedores...</td></tr>`;
-    try {
-      const response = await fetch("/api/proveedores");
-      const proveedores = await response.json().catch(() => []);
-      if (!response.ok) throw new Error(proveedores.error || "Error al obtener proveedores");
-      window.proveedores = Array.isArray(proveedores) ? proveedores : [];
-      if (!tbody) return;
-      if (window.proveedores.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="muted">No hay proveedores cargados.</td></tr>`;
-        return;
+    try{
+      const response = await fetch("/api/proveedores", { cache: "no-store" });
+      const data = await response.json().catch(() => []);
+      if (!response.ok) throw new Error(data.error || "Error al obtener proveedores");
+      window.proveedores = Array.isArray(data) ? data : [];
+      renderSelectProveedores();
+      if (tbody) {
+        if (!window.proveedores.length) {
+          tbody.innerHTML = `<tr><td colspan="6" class="muted">No hay proveedores cargados.</td></tr>`;
+        } else {
+          tbody.innerHTML = window.proveedores.map(p => `
+            <tr>
+              <td>${p.id ?? ""}</td>
+              <td>${frineEsc(p.nombre)}</td>
+              <td>${frineEsc(p.telefono)}</td>
+              <td>${frineEsc(p.direccion)}</td>
+              <td>${frineEsc(p.observaciones)}</td>
+              <td>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button class="btn btn-secondary" style="padding:8px 10px;font-size:12px;" onclick="editarProveedor(${p.id})">Editar</button>
+                  <button class="btn btn-danger" style="padding:8px 10px;font-size:12px;" onclick="eliminarProveedor(${p.id})">Eliminar</button>
+                </div>
+              </td>
+            </tr>`).join("");
+        }
       }
-      tbody.innerHTML = window.proveedores.map(proveedor => `
-        <tr>
-          <td>${proveedor.id ?? ""}</td>
-          <td>${safeTexto(proveedor.nombre)}</td>
-          <td>${safeTexto(proveedor.telefono)}</td>
-          <td>${safeTexto(proveedor.direccion)}</td>
-          <td>${safeTexto(proveedor.observaciones)}</td>
-          <td>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn btn-secondary" style="padding:8px 10px;font-size:12px;" onclick="editarProveedor(${proveedor.id})">Editar</button>
-              <button class="btn btn-danger" style="padding:8px 10px;font-size:12px;" onclick="eliminarProveedor(${proveedor.id})">Eliminar</button>
-            </div>
-          </td>
-        </tr>
-      `).join("");
-    } catch (error) {
-      console.error("Error cargarProveedores FINAL:", error);
+      return window.proveedores;
+    }catch(error){
+      console.error("Error cargarProveedores:", error);
       if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="muted">Error al cargar proveedores.</td></tr>`;
-      mostrarMensaje?.("proveedorMsg", error.message || "Error al cargar proveedores", "error");
+      setMsg("proveedorMsg", error.message || "Error al cargar proveedores", "error");
+      renderSelectProveedores();
+      return [];
     }
   };
-
   window.cargarProveedoresConfig = window.cargarProveedores;
 
   window.limpiarFormularioProveedor = function(){
     window.proveedorEditandoId = null;
-    ["provNombre", "provTelefono", "provDireccion", "provObservaciones"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = "";
-    });
-    const titulo = document.getElementById("proveedorFormTitulo");
-    const btnGuardar = document.getElementById("btnGuardarProveedor");
-    const btnCancelar = document.getElementById("btnCancelarEdicionProveedor");
-    if (titulo) titulo.textContent = "Nuevo proveedor";
-    if (btnGuardar) btnGuardar.textContent = "Guardar proveedor";
-    if (btnCancelar) btnCancelar.classList.add("hidden");
+    ["provNombre","provTelefono","provDireccion","provObservaciones"].forEach(id => { const el=document.getElementById(id); if(el) el.value=""; });
+    document.getElementById("proveedorFormTitulo") && (document.getElementById("proveedorFormTitulo").textContent = "Nuevo proveedor");
+    document.getElementById("btnGuardarProveedor") && (document.getElementById("btnGuardarProveedor").textContent = "Guardar proveedor");
+    document.getElementById("btnCancelarEdicionProveedor")?.classList.add("hidden");
   };
-
-  window.cancelarEdicionProveedor = function(){ window.limpiarFormularioProveedor(); };
   window.limpiarProveedor = window.limpiarFormularioProveedor;
+  window.cancelarEdicionProveedor = window.limpiarFormularioProveedor;
 
   window.editarProveedor = function(id){
-    const proveedor = (window.proveedores || []).find(p => String(p.id) === String(id));
-    if (!proveedor) {
-      mostrarMensaje?.("proveedorMsg", "No encontré el proveedor para editar", "error");
-      return;
-    }
-    window.proveedorEditandoId = proveedor.id;
-    const campos = {
-      provNombre: proveedor.nombre,
-      provTelefono: proveedor.telefono,
-      provDireccion: proveedor.direccion,
-      provObservaciones: proveedor.observaciones
-    };
-    Object.entries(campos).forEach(([idCampo, valor]) => {
-      const el = document.getElementById(idCampo);
-      if (el) el.value = valor || "";
-    });
-    const titulo = document.getElementById("proveedorFormTitulo");
-    const btnGuardar = document.getElementById("btnGuardarProveedor");
-    const btnCancelar = document.getElementById("btnCancelarEdicionProveedor");
-    if (titulo) titulo.textContent = "Editar proveedor";
-    if (btnGuardar) btnGuardar.textContent = "Actualizar proveedor";
-    if (btnCancelar) btnCancelar.classList.remove("hidden");
+    const p = (window.proveedores || []).find(x => String(x.id) === String(id));
+    if (!p) return setMsg("proveedorMsg", "No encontré el proveedor para editar", "error");
+    window.proveedorEditandoId = p.id;
+    document.getElementById("provNombre") && (document.getElementById("provNombre").value = p.nombre || "");
+    document.getElementById("provTelefono") && (document.getElementById("provTelefono").value = p.telefono || "");
+    document.getElementById("provDireccion") && (document.getElementById("provDireccion").value = p.direccion || "");
+    document.getElementById("provObservaciones") && (document.getElementById("provObservaciones").value = p.observaciones || "");
+    document.getElementById("proveedorFormTitulo") && (document.getElementById("proveedorFormTitulo").textContent = "Editar proveedor");
+    document.getElementById("btnGuardarProveedor") && (document.getElementById("btnGuardarProveedor").textContent = "Actualizar proveedor");
+    document.getElementById("btnCancelarEdicionProveedor")?.classList.remove("hidden");
     document.getElementById("provNombre")?.focus();
   };
 
   window.guardarProveedor = async function(){
     const id = window.proveedorEditandoId || null;
-    const nombre = (document.getElementById("provNombre")?.value || "").trim();
-    const telefono = (document.getElementById("provTelefono")?.value || "").trim();
-    const direccion = (document.getElementById("provDireccion")?.value || "").trim();
-    const observaciones = (document.getElementById("provObservaciones")?.value || "").trim();
-    if (!nombre) {
-      mostrarMensaje?.("proveedorMsg", "El nombre del proveedor es obligatorio", "error");
-      return;
-    }
-    try {
-      const response = await fetch(id ? `/api/proveedores/${id}` : "/api/proveedores", {
+    const body = {
+      nombre: (document.getElementById("provNombre")?.value || "").trim(),
+      telefono: (document.getElementById("provTelefono")?.value || "").trim(),
+      direccion: (document.getElementById("provDireccion")?.value || "").trim(),
+      observaciones: (document.getElementById("provObservaciones")?.value || "").trim(),
+      activo: true
+    };
+    if (!body.nombre) return setMsg("proveedorMsg", "El nombre del proveedor es obligatorio", "error");
+    try{
+      const res = await fetch(id ? `/api/proveedores/${id}` : "/api/proveedores", {
         method: id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, telefono, direccion, observaciones, activo: true })
+        body: JSON.stringify(body)
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "Error al guardar proveedor");
-      mostrarMensaje?.("proveedorMsg", id ? "Proveedor actualizado correctamente" : "Proveedor creado correctamente", "ok");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error al guardar proveedor");
+      setMsg("proveedorMsg", id ? "Proveedor actualizado correctamente" : "Proveedor creado correctamente", "ok");
       window.limpiarFormularioProveedor();
       await window.cargarProveedores();
-      if (typeof cargarSelectsBase === "function") await cargarSelectsBase();
-    } catch (error) {
-      console.error("Error guardar proveedor FINAL:", error);
-      mostrarMensaje?.("proveedorMsg", error.message || "Error al guardar proveedor", "error");
+    }catch(error){
+      console.error("Error guardarProveedor:", error);
+      setMsg("proveedorMsg", error.message || "Error al guardar proveedor", "error");
     }
   };
 
   window.eliminarProveedor = async function(id){
-    const proveedor = (window.proveedores || []).find(p => String(p.id) === String(id));
-    const nombre = proveedor?.nombre ? ` "${proveedor.nombre}"` : "";
-    if (!confirm(`¿Eliminar proveedor${nombre}?`)) return;
-    try {
-      const response = await fetch(`/api/proveedores/${id}`, { method: "DELETE" });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "Error al eliminar proveedor");
-      mostrarMensaje?.("proveedorMsg", "Proveedor eliminado correctamente", "ok");
-      if (String(window.proveedorEditandoId || "") === String(id)) window.limpiarFormularioProveedor();
-      await window.cargarProveedores();
-      if (typeof cargarSelectsBase === "function") await cargarSelectsBase();
-    } catch (error) {
-      console.error("Error eliminar proveedor FINAL:", error);
-      mostrarMensaje?.("proveedorMsg", error.message || "Error al eliminar proveedor", "error");
-    }
-  };
-
-  const mostrarConfigSubtabAnterior = window.mostrarConfigSubtab;
-  window.mostrarConfigSubtab = function(nombre){
-    if (typeof mostrarConfigSubtabAnterior === "function") mostrarConfigSubtabAnterior(nombre);
-    if (nombre === "proveedores") window.cargarProveedores();
-    if (nombre === "usuarios" && typeof cargarUsuarios === "function") cargarUsuarios();
-    if (nombre === "clientes") {
-      document.getElementById("configSubpageClientes")?.classList.add("active");
-      document.getElementById("btnConfigTabClientes")?.classList.add("active");
-      if (typeof cargarClientesConfig === "function") cargarClientesConfig();
-    }
-  };
-
-  window.mostrarReporteUsuarios = async function(){
+    const p = (window.proveedores || []).find(x => String(x.id) === String(id));
+    if (!confirm(`¿Eliminar proveedor${p?.nombre ? " " + p.nombre : ""}?`)) return;
     try{
-      if (typeof limpiarResultadoReportes === "function") limpiarResultadoReportes();
-      if (typeof setReporteHTML === "function") setReporteHTML("Resultado · Usuarios",'<div class="reporte-empty">Cargando reporte de usuarios...</div>');
-      if (typeof registrarActividad === "function") await registrarActividad();
-
-      let data = null;
-      try {
-        const res = await fetch("/api/reportes/usuarios");
-        data = await res.json().catch(() => null);
-        if (!res.ok || !data) throw new Error(data?.error || "No respondió el reporte de usuarios");
-      } catch (errorReporte) {
-        console.warn("Fallback reporte usuarios:", errorReporte);
-        const resEmpleados = await fetch("/api/empleados");
-        const empleados = await resEmpleados.json().catch(() => []);
-        const lista = Array.isArray(empleados) ? empleados : [];
-        data = {
-          resumen: {
-            usuarios_registrados: lista.length,
-            usuarios_activos: lista.filter(u => u.activo !== false).length,
-            usuarios_en_linea: 0,
-            cajas_abiertas: 0
-          },
-          usuarios_en_linea: [],
-          cajas_abiertas: [],
-          cajas_olvidadas: []
-        };
-      }
-
-      const r = data.resumen || {};
-      const online = Array.isArray(data.usuarios_en_linea) ? data.usuarios_en_linea : [];
-      const cajas = Array.isArray(data.cajas_abiertas) ? data.cajas_abiertas : [];
-      const olvidadas = Array.isArray(data.cajas_olvidadas) ? data.cajas_olvidadas : [];
-
-      let filasOnline = online.map(u => `<tr><td><strong>🟢 ${safeTexto(u.nombre || u.usuario || "-")}</strong><div class="muted">${safeTexto(u.usuario || "")}</div></td><td>${safeTexto(u.rol || "-")}</td><td>${formatoFechaHora?.(u.ultima_actividad) || "-"}</td><td><span class="tag tag-green">${textoTiempo?.(u.segundos_sin_actividad) || "Activo"}</span></td></tr>`).join("");
-      if(!filasOnline) filasOnline='<tr><td colspan="4"><div class="reporte-empty">No hay usuarios en línea en este momento.</div></td></tr>';
-
-      let filasCajas = cajas.map(c => `<tr><td><strong>Caja #${c.id}</strong></td><td>${safeTexto(c.cajero_nombre || "-")}<div class="muted">${safeTexto(c.cajero_usuario || "")}</div></td><td>${formatoFechaHora?.(c.fecha_apertura) || "-"}</td><td><span class="tag ${c.caja_olvidada ? 'tag-red' : 'tag-blue'}">${textoTiempo?.(c.segundos_abierta) || "-"}</span></td><td>${c.caja_olvidada ? '⚠️ Sin cerrar' : '🟢 Abierta'}</td></tr>`).join("");
-      if(!filasCajas) filasCajas='<tr><td colspan="5"><div class="reporte-empty">No hay cajas abiertas.</div></td></tr>';
-
-      let filasOlvidadas = olvidadas.map(c => `<tr><td><strong>Caja #${c.id}</strong></td><td>${safeTexto(c.cajero_nombre || "-")}</td><td>${formatoFechaHora?.(c.fecha_apertura) || "-"}</td><td><span class="tag tag-red">${textoTiempo?.(c.segundos_abierta) || "-"}</span></td></tr>`).join("");
-      if(!filasOlvidadas) filasOlvidadas='<tr><td colspan="4"><div class="alerta-ok">✅ No hay cajas olvidadas abiertas.</div></td></tr>';
-
-      if (typeof setReporteHTML === "function") setReporteHTML("Resultado · Usuarios",`
-        <div class="reporte-metricas">
-          ${(typeof reporteCard === "function") ? reporteCard("Usuarios registrados", r.usuarios_registrados || 0) : ""}
-          ${(typeof reporteCard === "function") ? reporteCard("Usuarios activos", r.usuarios_activos || 0) : ""}
-          ${(typeof reporteCard === "function") ? reporteCard("Usuarios en línea", r.usuarios_en_linea || 0) : ""}
-          ${(typeof reporteCard === "function") ? reporteCard("Cajas abiertas", r.cajas_abiertas || 0) : ""}
-        </div>
-        <div class="grid-2">
-          <div class="card"><h3>🟢 Usuarios en línea</h3><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Usuario</th><th>Rol</th><th>Última actividad</th><th>Estado</th></tr></thead><tbody>${filasOnline}</tbody></table></div></div>
-          <div class="card"><h3>⚠️ Cajas olvidadas abiertas</h3><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Caja</th><th>Cajero</th><th>Apertura</th><th>Tiempo abierta</th></tr></thead><tbody>${filasOlvidadas}</tbody></table></div></div>
-        </div>
-        <div class="card"><h3>📦 Cajas abiertas</h3><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Caja</th><th>Cajero</th><th>Fecha/Hora apertura</th><th>Tiempo abierta</th><th>Estado</th></tr></thead><tbody>${filasCajas}</tbody></table></div></div>
-        <div class="muted">Se considera usuario en línea si tuvo actividad en los últimos 5 minutos. Caja olvidada: abierta hace 12 horas o más.</div>
-      `);
+      const res = await fetch(`/api/proveedores/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error al eliminar proveedor");
+      if (String(window.proveedorEditandoId || "") === String(id)) window.limpiarFormularioProveedor();
+      setMsg("proveedorMsg", "Proveedor eliminado correctamente", "ok");
+      await window.cargarProveedores();
     }catch(error){
-      console.error("Error reporte usuarios FINAL:", error);
-      if (typeof setReporteHTML === "function") setReporteHTML("Resultado · Usuarios",'<div class="reporte-empty">No se pudo cargar el reporte de usuarios.</div>');
+      console.error("Error eliminarProveedor:", error);
+      setMsg("proveedorMsg", error.message || "Error al eliminar proveedor", "error");
     }
   };
-})();
 
-</script>
-
-
-<script>
-/* ===== PARCHE FINAL REPORTE USUARIOS - SIN ERROR DE CONEXIÓN FALSO ===== */
-(function(){
-  function frineEscape(v){
-    if (typeof window.escapeHtml === "function") return window.escapeHtml(v || "");
-    return String(v ?? "").replace(/[&<>'"]/g, function(c){
-      return {"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c];
-    });
-  }
-
-  function frineFechaHora(v){
-    if (!v) return "-";
-    try {
-      return new Date(v).toLocaleString("es-AR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-    } catch(e) {
-      return "-";
-    }
-  }
-
-  function frineTiempo(segundos){
-    segundos = Number(segundos || 0);
-    if (!Number.isFinite(segundos) || segundos < 60) return "hace menos de 1 min";
-    const min = Math.floor(segundos / 60);
-    if (min < 60) return `hace ${min} min`;
-    const hs = Math.floor(min / 60);
-    const resto = min % 60;
-    if (hs < 24) return `hace ${hs} h${resto ? ` ${resto} min` : ""}`;
-    const dias = Math.floor(hs / 24);
-    const hsR = hs % 24;
-    return `hace ${dias} día${dias === 1 ? "" : "s"}${hsR ? ` ${hsR} h` : ""}`;
-  }
-
-  window.formatoFechaHora = window.formatoFechaHora || frineFechaHora;
-  window.textoTiempo = window.textoTiempo || frineTiempo;
-  window.escapeHtml = window.escapeHtml || frineEscape;
-
-  window.mostrarReporteUsuarios = async function(){
-    if (typeof limpiarResultadoReportes === "function") limpiarResultadoReportes();
-    if (typeof setReporteHTML === "function") {
-      setReporteHTML("Resultado · Usuarios", '<div class="reporte-empty">Cargando reporte de usuarios...</div>');
-    }
-
-    let data = null;
-    let aviso = "";
-
-    try {
-      if (typeof registrarActividad === "function") await registrarActividad();
-    } catch(e) {}
-
-    try {
-      const res = await fetch("/api/reportes/usuarios", { cache: "no-store" });
-      data = await res.json().catch(() => null);
-      if (!res.ok || !data) throw new Error(data?.error || "No respondió /api/reportes/usuarios");
-    } catch (errorReporte) {
-      aviso = "No se pudo leer el detalle completo del reporte. Muestro el resumen básico de usuarios.";
-      console.warn("Reporte usuarios: usando respaldo /api/empleados", errorReporte);
-      try {
-        const resEmpleados = await fetch("/api/empleados", { cache: "no-store" });
-        const empleados = await resEmpleados.json().catch(() => []);
-        const lista = Array.isArray(empleados) ? empleados : [];
-        data = {
-          resumen: {
-            usuarios_registrados: lista.length,
-            usuarios_activos: lista.filter(u => u.activo !== false).length,
-            usuarios_en_linea: 0,
-            cajas_abiertas: 0
-          },
-          usuarios_en_linea: [],
-          cajas_abiertas: [],
-          cajas_olvidadas: [],
-          aviso
-        };
-      } catch (errorEmpleados) {
-        console.error("Reporte usuarios: también falló /api/empleados", errorEmpleados);
-        data = {
-          resumen: { usuarios_registrados: 0, usuarios_activos: 0, usuarios_en_linea: 0, cajas_abiertas: 0 },
-          usuarios_en_linea: [],
-          cajas_abiertas: [],
-          cajas_olvidadas: [],
-          aviso: "No se pudo conectar con usuarios. Revisar el deploy de Render."
-        };
+  window.handleCodigoCompra = async function(event){
+    if (event && event.key !== "Enter") return;
+    if (event) event.preventDefault();
+    const input = document.getElementById("compraCodigo");
+    const codigo = (input?.value || "").trim();
+    if (!codigo) return;
+    try{
+      const res = await fetch(`/api/productos/codigo/${encodeURIComponent(codigo)}`, { cache: "no-store" });
+      const producto = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(producto.error || "Producto no encontrado");
+      if (producto.es_compra === false) throw new Error("Esta presentación no está habilitada para compras");
+      const productoId = Number(producto.id);
+      const presentacionId = producto.presentacion_id ? Number(producto.presentacion_id) : null;
+      const clave = `${productoId}-${presentacionId || 0}`;
+      const cantidadInicial = 1;
+      const costoBase = frineNum(producto.costo);
+      const factor = frineNum(producto.factor_presentacion || 1) || 1;
+      const costoUnitario = presentacionId ? frineNum(costoBase * factor) : costoBase;
+      const existente = itemsCompra.find(i => i.clave === clave);
+      if (existente) {
+        existente.cantidad = frineNum(existente.cantidad) + 1;
+        existente.subtotal = frineNum(existente.cantidad) * frineNum(existente.costo_unitario);
+      } else {
+        itemsCompra.unshift({
+          clave,
+          producto_id: productoId,
+          presentacion_id: presentacionId,
+          nombre: producto.nombre || "Producto",
+          detalle: producto.presentacion_nombre ? producto.presentacion_nombre : "",
+          cantidad: cantidadInicial,
+          costo_unitario: costoUnitario,
+          subtotal: cantidadInicial * costoUnitario
+        });
       }
-    }
-
-    const r = data.resumen || {};
-    const online = Array.isArray(data.usuarios_en_linea) ? data.usuarios_en_linea : [];
-    const cajas = Array.isArray(data.cajas_abiertas) ? data.cajas_abiertas : [];
-    const olvidadas = Array.isArray(data.cajas_olvidadas) ? data.cajas_olvidadas : [];
-
-    let filasOnline = online.map(u => `
-      <tr>
-        <td><strong>🟢 ${frineEscape(u.nombre || u.usuario || "-")}</strong><div class="muted">${frineEscape(u.usuario || "")}</div></td>
-        <td>${frineEscape(u.rol || "-")}</td>
-        <td>${frineFechaHora(u.ultima_actividad)}</td>
-        <td><span class="tag tag-green">${frineTiempo(u.segundos_sin_actividad)}</span></td>
-      </tr>`).join("");
-    if (!filasOnline) filasOnline = '<tr><td colspan="4"><div class="reporte-empty">No hay usuarios en línea en este momento.</div></td></tr>';
-
-    let filasCajas = cajas.map(c => `
-      <tr>
-        <td><strong>Caja #${frineEscape(c.id || "-")}</strong></td>
-        <td>${frineEscape(c.cajero_nombre || "-")}<div class="muted">${frineEscape(c.cajero_usuario || "")}</div></td>
-        <td>${frineFechaHora(c.fecha_apertura)}</td>
-        <td><span class="tag ${c.caja_olvidada ? "tag-red" : "tag-blue"}">${frineTiempo(c.segundos_abierta)}</span></td>
-        <td>${c.caja_olvidada ? "⚠️ Sin cerrar" : "🟢 Abierta"}</td>
-      </tr>`).join("");
-    if (!filasCajas) filasCajas = '<tr><td colspan="5"><div class="reporte-empty">No hay cajas abiertas.</div></td></tr>';
-
-    let filasOlvidadas = olvidadas.map(c => `
-      <tr>
-        <td><strong>Caja #${frineEscape(c.id || "-")}</strong></td>
-        <td>${frineEscape(c.cajero_nombre || "-")}</td>
-        <td>${frineFechaHora(c.fecha_apertura)}</td>
-        <td><span class="tag tag-red">${frineTiempo(c.segundos_abierta)}</span></td>
-      </tr>`).join("");
-    if (!filasOlvidadas) filasOlvidadas = '<tr><td colspan="4"><div class="alerta-ok">✅ No hay cajas olvidadas abiertas.</div></td></tr>';
-
-    const card = (label, valor) => (typeof reporteCard === "function")
-      ? reporteCard(label, valor)
-      : `<div class="reporte-metric-card"><div class="label">${frineEscape(label)}</div><div class="valor">${frineEscape(valor)}</div></div>`;
-
-    const avisoHTML = (data.aviso || aviso)
-      ? `<div class="message error" style="margin-bottom:14px;">${frineEscape(data.aviso || aviso)}</div>`
-      : "";
-
-    if (typeof setReporteHTML === "function") {
-      setReporteHTML("Resultado · Usuarios", `
-        ${avisoHTML}
-        <div class="reporte-metricas">
-          ${card("Usuarios registrados", r.usuarios_registrados || 0)}
-          ${card("Usuarios activos", r.usuarios_activos || 0)}
-          ${card("Usuarios en línea", r.usuarios_en_linea || 0)}
-          ${card("Cajas abiertas", r.cajas_abiertas || 0)}
-        </div>
-        <div class="grid-2">
-          <div class="card"><h3>🟢 Usuarios en línea</h3><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Usuario</th><th>Rol</th><th>Última actividad</th><th>Estado</th></tr></thead><tbody>${filasOnline}</tbody></table></div></div>
-          <div class="card"><h3>⚠️ Cajas olvidadas abiertas</h3><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Caja</th><th>Cajero</th><th>Apertura</th><th>Tiempo abierta</th></tr></thead><tbody>${filasOlvidadas}</tbody></table></div></div>
-        </div>
-        <div class="card"><h3>📦 Cajas abiertas</h3><div class="reporte-tabla-wrap"><table class="reporte-tabla"><thead><tr><th>Caja</th><th>Cajero</th><th>Fecha/Hora apertura</th><th>Tiempo abierta</th><th>Estado</th></tr></thead><tbody>${filasCajas}</tbody></table></div></div>
-        <div class="muted">Se considera usuario en línea si tuvo actividad en los últimos 5 minutos. Caja olvidada: abierta hace 12 horas o más.</div>
-      `);
+      if (input) input.value = "";
+      window.renderCompra();
+      input?.focus();
+    }catch(error){
+      console.error("Error handleCodigoCompra:", error);
+      setMsg("compraMsg", error.message || "No se pudo cargar el producto", "error");
+      input?.select();
     }
   };
+
+  window.renderCompra = function(){
+    const tbody = document.getElementById("comprasBody");
+    const totalEl = document.getElementById("compraTotal");
+    if (!tbody) return;
+    let total = 0;
+    if (!Array.isArray(itemsCompra)) itemsCompra = [];
+    if (!itemsCompra.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="muted">Todavía no agregaste productos.</td></tr>`;
+      if (totalEl) totalEl.textContent = frineMoney(0);
+      return;
+    }
+    tbody.innerHTML = itemsCompra.map((item, idx) => {
+      item.cantidad = frineNum(item.cantidad);
+      item.costo_unitario = frineNum(item.costo_unitario);
+      item.subtotal = item.cantidad * item.costo_unitario;
+      total += item.subtotal;
+      return `<tr>
+        <td><strong>${frineEsc(item.nombre)}</strong>${item.detalle ? `<div class="muted">${frineEsc(item.detalle)}</div>` : ""}</td>
+        <td><input type="number" step="0.001" min="0" value="${item.cantidad}" onchange="cambiarCantidadCompra(${idx}, this.value)" style="width:100px;" /></td>
+        <td><input type="number" step="0.01" min="0" value="${item.costo_unitario}" onchange="cambiarCostoCompra(${idx}, this.value)" style="width:120px;" /></td>
+        <td><strong>$ ${frineMoney(item.subtotal)}</strong></td>
+        <td><button class="btn btn-danger" style="padding:8px 10px;font-size:12px;" onclick="quitarItemCompra(${idx})">Quitar</button></td>
+      </tr>`;
+    }).join("");
+    if (totalEl) totalEl.textContent = frineMoney(total);
+  };
+
+  window.cambiarCantidadCompra = function(idx, valor){
+    if (!itemsCompra[idx]) return;
+    const n = frineNum(valor);
+    if (n <= 0) return setMsg("compraMsg", "La cantidad debe ser mayor a 0", "error");
+    itemsCompra[idx].cantidad = n;
+    itemsCompra[idx].subtotal = n * frineNum(itemsCompra[idx].costo_unitario);
+    window.renderCompra();
+  };
+  window.cambiarCostoCompra = function(idx, valor){
+    if (!itemsCompra[idx]) return;
+    const n = frineNum(valor);
+    if (n < 0) return setMsg("compraMsg", "El costo no puede ser negativo", "error");
+    itemsCompra[idx].costo_unitario = n;
+    itemsCompra[idx].subtotal = frineNum(itemsCompra[idx].cantidad) * n;
+    window.renderCompra();
+  };
+  window.quitarItemCompra = function(idx){ itemsCompra.splice(idx,1); window.renderCompra(); };
+  window.limpiarCompra = function(){
+    itemsCompra = [];
+    document.getElementById("compraCodigo") && (document.getElementById("compraCodigo").value = "");
+    document.getElementById("compraObs") && (document.getElementById("compraObs").value = "");
+    window.renderCompra();
+    document.getElementById("compraCodigo")?.focus();
+  };
+
+  window.guardarCompra = async function(){
+    if (!Array.isArray(itemsCompra) || !itemsCompra.length) return setMsg("compraMsg", "Agregá al menos un producto a la compra", "error");
+    const proveedorId = document.getElementById("compraProveedor")?.value || "";
+    if (!proveedorId) return setMsg("compraMsg", "Elegí un proveedor", "error");
+    const items = itemsCompra.map(i => ({
+      producto_id: i.producto_id,
+      presentacion_id: i.presentacion_id || null,
+      cantidad: frineNum(i.cantidad),
+      costo_unitario: frineNum(i.costo_unitario),
+      subtotal: frineNum(i.cantidad) * frineNum(i.costo_unitario)
+    }));
+    try{
+      const res = await fetch("/api/compras", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          proveedor_id: proveedorId,
+          empleado_id: usuarioActual?.id || null,
+          observaciones: document.getElementById("compraObs")?.value || "",
+          items
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error al guardar compra");
+      let msg = data.mensaje || "Compra guardada correctamente";
+      if (Array.isArray(data.precios_actualizados) && data.precios_actualizados.length) {
+        msg += ` Se actualizaron ${data.precios_actualizados.length} precio(s).`;
+      }
+      setMsg("compraMsg", msg, "ok");
+      window.limpiarCompra();
+      if (typeof cargarProductos === "function") cargarProductos();
+      if (typeof cargarResumen === "function") cargarResumen();
+    }catch(error){
+      console.error("Error guardarCompra:", error);
+      setMsg("compraMsg", error.message || "Error al guardar compra", "error");
+    }
+  };
+
+  const mostrarPaginaBase = typeof window.mostrarPagina === "function" ? window.mostrarPagina : null;
+  window.mostrarPagina = function(nombre){
+    if (mostrarPaginaBase) mostrarPaginaBase(nombre);
+    if (nombre === "compras") {
+      window.cargarProveedores();
+      window.renderCompra();
+      setTimeout(() => document.getElementById("compraCodigo")?.focus(), 120);
+    }
+    if (nombre === "configuracion" && typeof window.cargarProveedores === "function") window.cargarProveedores();
+  };
+
+  const mostrarConfigSubtabBase = typeof window.mostrarConfigSubtab === "function" ? window.mostrarConfigSubtab : null;
+  window.mostrarConfigSubtab = function(nombre){
+    if (mostrarConfigSubtabBase) mostrarConfigSubtabBase(nombre);
+    if (nombre === "proveedores") window.cargarProveedores();
+    if (nombre === "clientes" && typeof cargarClientesConfig === "function") cargarClientesConfig();
+  };
+
+  window.addEventListener("load", () => {
+    setTimeout(() => {
+      window.renderCompra();
+      window.cargarProveedores();
+    }, 250);
+  });
 })();
+
 </script>
+
 
 </body>
 </html>
