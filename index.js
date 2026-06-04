@@ -434,6 +434,19 @@ app.post("/api/actividad", async (req, res) => {
 });
 
 
+
+// Función puente para evitar error en Configuración.
+// La pantalla usa mostrarPagina("configuracion") y llamaba a cargarConfiguracion().
+async function cargarConfiguracion() {
+  try {
+    if (typeof cargarEmpleados === "function") await cargarEmpleados();
+    if (typeof cargarProveedores === "function") await cargarProveedores();
+    if (typeof cargarClientes === "function") await cargarClientes();
+  } catch (error) {
+    console.error("Error cargarConfiguracion:", error);
+  }
+}
+
 // ==========================================
 // LOGIN
 // ==========================================
@@ -780,8 +793,7 @@ app.post("/api/proveedores", async (req, res) => {
         String(nombre).trim(),
         telefono || "",
         direccion || "",
-        observaciones || "",
-        clienteIdFinal
+        observaciones || ""
       ]
     );
 
