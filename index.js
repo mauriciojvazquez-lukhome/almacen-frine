@@ -527,32 +527,38 @@ app.post("/api/login", async (req, res) => {
 // ==========================================
 app.get("/api/empleados", async (req, res) => {
   try {
+    await pool.query(`ALTER TABLE empleados ADD COLUMN IF NOT EXISTS ultima_actividad TIMESTAMP`).catch(() => {});
+    await pool.query(`ALTER TABLE empleados ADD COLUMN IF NOT EXISTS puede_recetas BOOLEAN DEFAULT false`).catch(() => {});
+
     const result = await pool.query(`
-      SELECT
-        id,
-        nombre,
-        usuario,
-        password,
-        rol,
-        activo,
-        puede_inicio,
-        puede_ventas,
-        puede_productos,
-        puede_compras,
-        puede_recetas,
-        puede_caja,
-        puede_reportes,
-        puede_configuracion,
-        ultima_actividad,
-        created_at
+      SELECT *
       FROM empleados
-      ORDER BY nombre ASC
+      ORDER BY COALESCE(nombre, usuario, id::text) ASC
     `);
 
-    res.json(result.rows);
+    const filas = result.rows.map(e => ({
+      id: e.id,
+      nombre: e.nombre || '',
+      usuario: e.usuario || '',
+      password: e.password || '',
+      rol: e.rol || '',
+      activo: e.activo === false ? false : true,
+      puede_inicio: e.puede_inicio === true,
+      puede_ventas: e.puede_ventas === true,
+      puede_productos: e.puede_productos === true,
+      puede_compras: e.puede_compras === true,
+      puede_recetas: e.puede_recetas === true,
+      puede_caja: e.puede_caja === true,
+      puede_reportes: e.puede_reportes === true,
+      puede_configuracion: e.puede_configuracion === true,
+      ultima_actividad: e.ultima_actividad || null,
+      created_at: e.created_at || null
+    }));
+
+    res.json(filas);
   } catch (error) {
     console.error("Error empleados:", error);
-    res.status(500).json({ error: "Error al obtener empleados" });
+    res.status(500).json({ error: "Error al obtener empleados", detalle: error.message });
   }
 });
 
@@ -2983,70 +2989,49 @@ app.get("/api/reportes/compras", async (req, res) => {
 
 app.get("/api/reportes/usuarios", async (req, res) => {
   try {
-    await pool.query(`
-      ALTER TABLE empleados
-      ADD COLUMN IF NOT EXISTS ultima_actividad TIMESTAMP
-    `).catch(() => {});
+    await pool.query(`ALTER TABLE empleados ADD COLUMN IF NOT EXISTS ultima_actividad TIMESTAMP`).catch(() => {});
+    await pool.query(`ALTER TABLE empleados ADD COLUMN IF NOT EXISTS puede_recetas BOOLEAN DEFAULT false`).catch(() => {});
 
-    const resumenUsuariosResult = await pool.query(`
-      SELECT
-        COUNT(*)::int AS usuarios_registrados,
-        COALESCE(SUM(CASE WHEN COALESCE(activo, true) = true THEN 1 ELSE 0 END), 0)::int AS usuarios_activos,
-        COALESCE(SUM(CASE WHEN COALESCE(activo, true) = true AND ultima_actividad IS NOT NULL AND ultima_actividad >= NOW() - INTERVAL '5 minutes' THEN 1 ELSE 0 END), 0)::int AS usuarios_en_linea
-      FROM empleados
-    `);
+    const empleadosResult = await pool.query(`SELECT * FROM empleados ORDER BY COALESCE(nombre, usuario, id::text) ASC`);
+    const empleados = empleadosResult.rows || [];
+    const activos = empleados.filter(e => e.activo !== false);
+    const ahora = Date.now();
 
-    const usuariosOnlineResult = await pool.query(`
-      SELECT
-        id,
-        nombre,
-        usuario,
-        rol,
-        ultima_actividad,
-        CASE
-          WHEN ultima_actividad IS NULL THEN 0
-          ELSE GREATEST(EXTRACT(EPOCH FROM (NOW() - ultima_actividad))::int, 0)
-        END AS segundos_sin_actividad
-      FROM empleados
-      WHERE COALESCE(activo, true) = true
-        AND ultima_actividad IS NOT NULL
-        AND ultima_actividad >= NOW() - INTERVAL '5 minutes'
-      ORDER BY ultima_actividad DESC
-    `);
+    const usuariosOnline = activos
+      .filter(e => e.ultima_actividad && (ahora - new Date(e.ultima_actividad).getTime()) <= 5 * 60 * 1000)
+      .map(e => ({
+        id: e.id,
+        nombre: e.nombre || '',
+        usuario: e.usuario || '',
+        rol: e.rol || '',
+        ultima_actividad: e.ultima_actividad,
+        segundos_sin_actividad: Math.max(Math.floor((ahora - new Date(e.ultima_actividad).getTime()) / 1000), 0)
+      }));
 
     let cajasAbiertas = [];
-
     try {
       const tablaCaja = await pool.query(`SELECT to_regclass('public.caja_sesiones') AS existe`);
       if (tablaCaja.rows[0] && tablaCaja.rows[0].existe) {
         const columnas = await pool.query(`
           SELECT column_name
           FROM information_schema.columns
-          WHERE table_schema = 'public'
-            AND table_name = 'caja_sesiones'
+          WHERE table_schema = 'public' AND table_name = 'caja_sesiones'
         `);
         const cols = new Set(columnas.rows.map(r => r.column_name));
         const colFecha = cols.has('fecha_apertura') ? 'fecha_apertura' : (cols.has('created_at') ? 'created_at' : null);
         const colEmpleado = cols.has('empleado_apertura_id') ? 'empleado_apertura_id' : null;
         const colEstado = cols.has('estado') ? 'estado' : null;
-
         if (colFecha && colEmpleado && colEstado) {
           const cajasResult = await pool.query(`
-            SELECT
-              cs.id,
-              cs.${colFecha} AS fecha_apertura,
-              cs.${colEstado} AS estado,
-              e.id AS empleado_id,
-              COALESCE(e.nombre, 'Sin empleado') AS cajero_nombre,
-              COALESCE(e.usuario, '') AS cajero_usuario,
-              COALESCE(e.rol, '') AS cajero_rol,
-              GREATEST(EXTRACT(EPOCH FROM (NOW() - cs.${colFecha}))::int, 0) AS segundos_abierta
+            SELECT cs.id, cs.${colFecha} AS fecha_apertura, cs.${colEstado} AS estado,
+                   e.id AS empleado_id, COALESCE(e.nombre, 'Sin empleado') AS cajero_nombre,
+                   COALESCE(e.usuario, '') AS cajero_usuario, COALESCE(e.rol, '') AS cajero_rol,
+                   GREATEST(EXTRACT(EPOCH FROM (NOW() - cs.${colFecha}))::int, 0) AS segundos_abierta
             FROM caja_sesiones cs
             LEFT JOIN empleados e ON e.id = cs.${colEmpleado}
             WHERE cs.${colEstado} = 'abierta'
             ORDER BY cs.${colFecha} ASC
           `);
-
           cajasAbiertas = cajasResult.rows.map(c => ({
             ...c,
             segundos_abierta: Number(c.segundos_abierta || 0),
@@ -3055,42 +3040,24 @@ app.get("/api/reportes/usuarios", async (req, res) => {
         }
       }
     } catch (errorCajas) {
-      console.warn('Reporte usuarios: no se pudo leer cajas abiertas:', errorCajas.message);
+      console.warn('Reporte usuarios: cajas abiertas no disponible:', errorCajas.message);
       cajasAbiertas = [];
     }
 
-    const resumenBase = resumenUsuariosResult.rows[0] || {};
-
     res.json({
       resumen: {
-        usuarios_registrados: Number(resumenBase.usuarios_registrados || 0),
-        usuarios_activos: Number(resumenBase.usuarios_activos || 0),
-        usuarios_en_linea: Number(resumenBase.usuarios_en_linea || 0),
+        usuarios_registrados: empleados.length,
+        usuarios_activos: activos.length,
+        usuarios_en_linea: usuariosOnline.length,
         cajas_abiertas: cajasAbiertas.length
       },
-      usuarios_en_linea: usuariosOnlineResult.rows.map(u => ({
-        ...u,
-        segundos_sin_actividad: Number(u.segundos_sin_actividad || 0)
-      })),
+      usuarios_en_linea: usuariosOnline,
       cajas_abiertas: cajasAbiertas,
       cajas_olvidadas: cajasAbiertas.filter(c => c.caja_olvidada)
     });
   } catch (error) {
     console.error("Error reporte usuarios:", error);
-
-    // Último respaldo: si algo raro pasa, no rompe la pantalla. Devuelve reporte vacío.
-    res.json({
-      resumen: {
-        usuarios_registrados: 0,
-        usuarios_activos: 0,
-        usuarios_en_linea: 0,
-        cajas_abiertas: 0
-      },
-      usuarios_en_linea: [],
-      cajas_abiertas: [],
-      cajas_olvidadas: [],
-      aviso: "No se pudo calcular el reporte completo, pero la pantalla sigue funcionando."
-    });
+    res.status(500).json({ error: "Error al obtener reporte de usuarios", detalle: error.message });
   }
 });
 
