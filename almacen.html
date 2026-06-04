@@ -802,7 +802,8 @@ async function cargarProveedores() {
         <td>${escapeHtml(proveedor.direccion || "")}</td>
         <td>${escapeHtml(proveedor.observaciones || "")}</td>
         <td>
-          <button class="btn btn-secondary" style="padding:8px 10px;font-size:12px;" onclick="editarProveedor(${proveedor.id})">Editar</button>
+          <button class="btn btn-secondary" style="padding:8px 10px;font-size:12px;margin-right:6px;" onclick="editarProveedor(${proveedor.id})">Editar</button>
+          <button class="btn btn-danger" style="padding:8px 10px;font-size:12px;" onclick="eliminarProveedor(${proveedor.id})">Eliminar</button>
         </td>
       </tr>
     `).join("");
@@ -1382,6 +1383,94 @@ async function verDetalleMovimientoCC(ventaId){
 
 
 // =====================================================
+// FIX CAJA / REPORTES / CONFIG - funciones faltantes
+// =====================================================
+function renderInformeCaja(data){
+  const estadoPre = document.getElementById("cajaEstadoPre");
+  const informe = document.getElementById("cajaInformeActual");
+  const movs = document.getElementById("cajaMovimientosActual");
+
+  cajaAbiertaActual = data && data.caja && data.caja.estado === "abierta" ? data.caja : null;
+  cajaInformeUltimo = data || null;
+
+  if(!data || !data.caja){
+    if(estadoPre) estadoPre.textContent = "No hay caja abierta para tu usuario.";
+    if(informe) informe.innerHTML = '<div class="reporte-empty">No tenés caja abierta. Abrí una caja para empezar a operar.</div>';
+    if(movs) movs.innerHTML = '<div class="reporte-empty">Sin movimientos.</div>';
+    return;
+  }
+
+  const c = data.caja;
+  const r = data.resumen || {};
+  const abierta = c.estado === "abierta";
+
+  if(estadoPre){
+    estadoPre.textContent = abierta
+      ? `Caja #${c.id} abierta · ${c.empleado_apertura_nombre || c.cajero_nombre || usuarioActual?.nombre || ""}`
+      : `Caja #${c.id} cerrada`;
+  }
+
+  const dif = r.diferencia;
+  const difT = r.diferencia_transferencia;
+  const claseDif = dif == null ? "caja-exacta" : Number(dif) < 0 ? "caja-faltante" : Number(dif) > 0 ? "caja-sobrante" : "caja-exacta";
+  const claseDifT = difT == null ? "caja-exacta" : Number(difT) < 0 ? "caja-faltante" : Number(difT) > 0 ? "caja-sobrante" : "caja-exacta";
+
+  if(informe){
+    informe.innerHTML = `
+      <div class="caja-informe">
+        <div class="caja-linea"><span>Caja</span><strong>#${escapeHtml(c.id || "-")}</strong></div>
+        <div class="caja-linea"><span>Estado</span><strong>${abierta ? "Abierta" : "Cerrada"}</strong></div>
+        <div class="caja-linea"><span>Cajero apertura</span><strong>${escapeHtml(c.empleado_apertura_nombre || c.cajero_nombre || usuarioActual?.nombre || "-")}</strong></div>
+        <div class="caja-linea"><span>Fecha apertura</span><strong>${formatoFechaHora(c.fecha_apertura)}</strong></div>
+        <div class="caja-linea"><span>Apertura</span><strong>${formatoDinero(r.apertura ?? c.monto_inicial)}</strong></div>
+        <div class="caja-linea"><span>Ventas efectivo</span><strong>${formatoDinero(r.ventas_efectivo)}</strong></div>
+        <div class="caja-linea"><span>Ingresos efectivo</span><strong>${formatoDinero(r.ingresos_efectivo ?? r.ingresos_manuales)}</strong></div>
+        <div class="caja-linea"><span>Retiros efectivo</span><strong>${formatoDinero(r.retiros_efectivo ?? r.retiros)}</strong></div>
+        <div class="caja-linea"><span>Efectivo esperado</span><strong>${formatoDinero(r.caja_esperada)}</strong></div>
+        <div class="caja-linea"><span>Ventas transferencia</span><strong>${formatoDinero(r.ventas_transferencia)}</strong></div>
+        <div class="caja-linea"><span>Ingresos transferencia</span><strong>${formatoDinero(r.ingresos_transferencia)}</strong></div>
+        <div class="caja-linea"><span>Retiros transferencia</span><strong>${formatoDinero(r.retiros_transferencia)}</strong></div>
+        <div class="caja-linea"><span>Transferencia esperada</span><strong>${formatoDinero(r.transferencia_esperada)}</strong></div>
+        ${abierta ? "" : `<div class="caja-diferencia ${claseDif}">Efectivo: ${formatoDinero(dif)}</div><div class="caja-diferencia ${claseDifT}">Transferencia: ${formatoDinero(difT)}</div>`}
+      </div>`;
+  }
+
+  if(abierta && typeof cargarMovimientosCajaActual === "function") cargarMovimientosCajaActual(c.id);
+  else if(movs) movs.innerHTML = '<div class="reporte-empty">Caja cerrada.</div>';
+}
+
+function cargarReportes(){
+  const titulo = document.getElementById("reportesTituloResultado");
+  const box = document.getElementById("reportesResultado");
+  if(titulo) titulo.textContent = "Resultado";
+  if(box) box.innerHTML = '<div class="reporte-empty">Elegí un reporte para ver la información.</div>';
+  if(typeof ocultarReporteCompras === "function") ocultarReporteCompras();
+}
+
+function cargarConfiguracion(){
+  if(typeof cargarUsuarios === "function") cargarUsuarios();
+  if(typeof cargarProveedoresConfig === "function") cargarProveedoresConfig();
+  if(typeof cargarClientesConfig === "function") cargarClientesConfig();
+  if(typeof mostrarConfigSubtab === "function") mostrarConfigSubtab("usuarios");
+}
+
+async function eliminarProveedor(id){
+  if(!id) return;
+  if(!confirm("¿Eliminar este proveedor? Quedará dado de baja y no aparecerá en la lista.")) return;
+  try{
+    const res = await fetch(`/api/proveedores/${id}`, { method:"DELETE" });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok){ mostrarMensaje("proveedorMsg", data.error || "Error al eliminar proveedor", "error"); return; }
+    mostrarMensaje("proveedorMsg", "Proveedor eliminado");
+    if(typeof cargarProveedoresConfig === "function") await cargarProveedoresConfig();
+    if(typeof cargarProveedores === "function") await cargarProveedores();
+  }catch(error){
+    mostrarMensaje("proveedorMsg", "Error de conexión al eliminar proveedor", "error");
+  }
+}
+
+
+// =====================================================
 // FIX PERMISOS MENÚ - Mostrar SOLO lo tildado
 // No ocultar Productos / Recetas por rol cajero
 // =====================================================
@@ -1443,14 +1532,16 @@ mostrarPagina = function(nombre){
   };
   document.getElementById(btnMap[nombre])?.classList.add('active');
 
-  if(nombre==='inicio') cargarDashboardInicio?.();
-  if(nombre==='productos') cargarProductos?.();
-  if(nombre==='compras') cargarProveedores?.();
-  if(nombre==='recetas') { cargarProductosRecetas?.(); cargarHistorialRecetas?.(); }
-  if(nombre==='caja') cargarEstadoCaja?.();
-  if(nombre==='historial-ventas') cargarHistorialVentas?.();
-  if(nombre==='reportes') cargarReportes?.();
-  if(nombre==='configuracion') cargarConfiguracion?.();
+  if(nombre==='inicio' && typeof cargarDashboardInicio === 'function') cargarDashboardInicio();
+  if(nombre==='inicio' && typeof cargarResumen === 'function') cargarResumen();
+  if(nombre==='ventas') { if(typeof actualizarModoPagoVisual === 'function') actualizarModoPagoVisual(); if(typeof activarFocoVenta === 'function') activarFocoVenta(); if(typeof renderTicketVenta === 'function') renderTicketVenta(); if(typeof cargarClientesSelect === 'function') cargarClientesSelect(); }
+  if(nombre==='productos' && typeof cargarProductos === 'function') cargarProductos();
+  if(nombre==='compras' && typeof cargarProveedores === 'function') cargarProveedores();
+  if(nombre==='recetas') { if(typeof cargarProductosRecetas === 'function') cargarProductosRecetas(); if(typeof cargarHistorialRecetas === 'function') cargarHistorialRecetas(); }
+  if(nombre==='caja' && typeof cargarEstadoCaja === 'function') cargarEstadoCaja();
+  if(nombre==='historial-ventas' && typeof cargarHistorialVentas === 'function') cargarHistorialVentas();
+  if(nombre==='reportes' && typeof cargarReportes === 'function') cargarReportes();
+  if(nombre==='configuracion' && typeof cargarConfiguracion === 'function') cargarConfiguracion();
 };
 
 
