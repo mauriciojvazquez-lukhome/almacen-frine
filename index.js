@@ -873,6 +873,33 @@ app.put("/api/proveedores/:id", async (req, res) => {
 });
 
 
+app.delete("/api/proveedores/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+      UPDATE proveedores
+      SET activo = false, updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+      `,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Proveedor no encontrado" });
+    }
+
+    res.json({ ok: true, proveedor: result.rows[0] });
+  } catch (error) {
+    console.error("Error eliminar proveedor:", error);
+    res.status(500).json({ error: "Error al eliminar proveedor" });
+  }
+});
+
+
+
 
 
 // ==========================================
@@ -2953,11 +2980,17 @@ app.get("/api/reportes/compras", async (req, res) => {
 
 app.get("/api/reportes/usuarios", async (req, res) => {
   try {
+    // Asegura columnas por si Render inició con una versión anterior o la base quedó sin migrar.
+    await pool.query(`
+      ALTER TABLE empleados
+      ADD COLUMN IF NOT EXISTS ultima_actividad TIMESTAMP
+    `);
+
     const resumenUsuariosResult = await pool.query(`
       SELECT
         COUNT(*)::int AS usuarios_registrados,
         COALESCE(SUM(CASE WHEN activo = true THEN 1 ELSE 0 END), 0)::int AS usuarios_activos,
-        COALESCE(SUM(CASE WHEN activo = true AND ultima_actividad >= NOW() - INTERVAL '5 minutes' THEN 1 ELSE 0 END), 0)::int AS usuarios_en_linea
+        COALESCE(SUM(CASE WHEN activo = true AND ultima_actividad IS NOT NULL AND ultima_actividad >= NOW() - INTERVAL '5 minutes' THEN 1 ELSE 0 END), 0)::int AS usuarios_en_linea
       FROM empleados
     `);
 
@@ -2968,22 +3001,27 @@ app.get("/api/reportes/usuarios", async (req, res) => {
         usuario,
         rol,
         ultima_actividad,
-        EXTRACT(EPOCH FROM (NOW() - ultima_actividad))::int AS segundos_sin_actividad
+        CASE
+          WHEN ultima_actividad IS NULL THEN NULL
+          ELSE EXTRACT(EPOCH FROM (NOW() - ultima_actividad))::int
+        END AS segundos_sin_actividad
       FROM empleados
       WHERE activo = true
+        AND ultima_actividad IS NOT NULL
         AND ultima_actividad >= NOW() - INTERVAL '5 minutes'
       ORDER BY ultima_actividad DESC
     `);
 
+    // Reporte de cajas abiertas. Usa COALESCE para evitar errores si hay datos viejos.
     const cajasAbiertasResult = await pool.query(`
       SELECT
         cs.id,
         cs.fecha_apertura,
         cs.estado,
         e.id AS empleado_id,
-        e.nombre AS cajero_nombre,
-        e.usuario AS cajero_usuario,
-        e.rol AS cajero_rol,
+        COALESCE(e.nombre, 'Sin empleado') AS cajero_nombre,
+        COALESCE(e.usuario, '') AS cajero_usuario,
+        COALESCE(e.rol, '') AS cajero_rol,
         EXTRACT(EPOCH FROM (NOW() - cs.fecha_apertura))::int AS segundos_abierta
       FROM caja_sesiones cs
       LEFT JOIN empleados e ON e.id = cs.empleado_apertura_id
@@ -3014,7 +3052,10 @@ app.get("/api/reportes/usuarios", async (req, res) => {
     });
   } catch (error) {
     console.error("Error reporte usuarios:", error);
-    res.status(500).json({ error: "Error al obtener reporte de usuarios" });
+    res.status(500).json({
+      error: "Error al obtener reporte de usuarios",
+      detalle: error.message
+    });
   }
 });
 
