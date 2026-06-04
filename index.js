@@ -543,6 +543,7 @@ app.get("/api/empleados", async (req, res) => {
         puede_caja,
         puede_reportes,
         puede_configuracion,
+        ultima_actividad,
         created_at
       FROM empleados
       ORDER BY nombre ASC
@@ -576,6 +577,7 @@ app.get("/api/empleados/:id", async (req, res) => {
         puede_caja,
         puede_reportes,
         puede_configuracion,
+        ultima_actividad,
         created_at
       FROM empleados
       WHERE id = $1
