@@ -2988,6 +2988,7 @@ app.get("/api/reportes/compras", async (req, res) => {
 
 
 app.get("/api/reportes/usuarios", async (req, res) => {
+  console.log("GET /api/reportes/usuarios llamado");
   try {
     await pool.query(`ALTER TABLE empleados ADD COLUMN IF NOT EXISTS ultima_actividad TIMESTAMP`).catch(() => {});
     await pool.query(`ALTER TABLE empleados ADD COLUMN IF NOT EXISTS puede_recetas BOOLEAN DEFAULT false`).catch(() => {});
