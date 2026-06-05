@@ -2988,9 +2988,9 @@ app.get("/api/reportes/compras", async (req, res) => {
 
 
 app.get("/api/reportes/usuarios", async (req, res) => {
+  console.log("GET /api/reportes/usuarios llamado");
   try {
     await pool.query(`ALTER TABLE empleados ADD COLUMN IF NOT EXISTS ultima_actividad TIMESTAMP`).catch(() => {});
-    await pool.query(`ALTER TABLE empleados ADD COLUMN IF NOT EXISTS puede_recetas BOOLEAN DEFAULT false`).catch(() => {});
 
     const empleadosResult = await pool.query(`
       SELECT
@@ -3015,86 +3015,46 @@ app.get("/api/reportes/usuarios", async (req, res) => {
 
     const empleados = empleadosResult.rows || [];
     const activos = empleados.filter(e => e.activo !== false);
-    const usuariosOnline = activos
-      .filter(e => e.en_linea)
+    const usuariosEnLinea = activos
+      .filter(e => e.en_linea === true)
       .map(e => ({
         id: e.id,
-        nombre: e.nombre || "",
-        usuario: e.usuario || "",
-        rol: e.rol || "",
+        nombre: e.nombre,
+        usuario: e.usuario,
+        rol: e.rol,
         ultima_actividad: e.ultima_actividad,
         segundos_sin_actividad: Number(e.segundos_sin_actividad || 0)
       }));
 
     let cajasAbiertas = [];
-
     try {
-      const tablaCaja = await pool.query(`SELECT to_regclass('public.caja_sesiones') AS existe`);
-      if (tablaCaja.rows[0] && tablaCaja.rows[0].existe) {
-        const columnas = await pool.query(`
-          SELECT column_name
-          FROM information_schema.columns
-          WHERE table_schema = 'public'
-            AND table_name = 'caja_sesiones'
-        `);
+      const cajasResult = await pool.query(`
+        SELECT
+          cs.id,
+          cs.fecha_apertura,
+          cs.estado,
+          cs.empleado_apertura_id AS empleado_id,
+          COALESCE(e.nombre, 'Sin empleado') AS cajero_nombre,
+          COALESCE(e.usuario, '') AS cajero_usuario,
+          COALESCE(e.rol, '') AS cajero_rol,
+          GREATEST(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - cs.fecha_apertura))::int, 0) AS segundos_abierta
+        FROM caja_sesiones cs
+        LEFT JOIN empleados e ON e.id = cs.empleado_apertura_id
+        WHERE LOWER(TRIM(COALESCE(cs.estado::text, ''))) = 'abierta'
+        ORDER BY cs.fecha_apertura ASC
+      `);
 
-        const cols = new Set(columnas.rows.map(r => r.column_name));
-
-        const colFecha =
-          cols.has("fecha_apertura") ? "fecha_apertura" :
-          cols.has("created_at") ? "created_at" :
-          cols.has("fecha") ? "fecha" :
-          null;
-
-        const colEmpleado =
-          cols.has("empleado_apertura_id") ? "empleado_apertura_id" :
-          cols.has("empleado_id") ? "empleado_id" :
-          cols.has("cajero_id") ? "cajero_id" :
-          null;
-
-        const colEstado = cols.has("estado") ? "estado" : null;
-        const colCierre =
-          cols.has("fecha_cierre") ? "fecha_cierre" :
-          cols.has("closed_at") ? "closed_at" :
-          null;
-
-        if (colFecha) {
-          let condicionAbierta = "1=1";
-          if (colEstado && colCierre) {
-            condicionAbierta = `(LOWER(TRIM(COALESCE(cs.${colEstado}::text, ''))) = 'abierta' OR cs.${colCierre} IS NULL)`;
-          } else if (colEstado) {
-            condicionAbierta = `LOWER(TRIM(COALESCE(cs.${colEstado}::text, ''))) = 'abierta'`;
-          } else if (colCierre) {
-            condicionAbierta = `cs.${colCierre} IS NULL`;
-          }
-
-          const joinEmpleado = colEmpleado ? `LEFT JOIN empleados e ON e.id = cs.${colEmpleado}` : `LEFT JOIN empleados e ON false`;
-          const empleadoSelect = colEmpleado ? `cs.${colEmpleado} AS empleado_id` : `NULL::integer AS empleado_id`;
-          const estadoSelect = colEstado ? `cs.${colEstado} AS estado` : `'abierta' AS estado`;
-
-          const cajasResult = await pool.query(`
-            SELECT
-              cs.id,
-              cs.${colFecha} AS fecha_apertura,
-              ${estadoSelect},
-              ${empleadoSelect},
-              COALESCE(e.nombre, 'Sin empleado') AS cajero_nombre,
-              COALESCE(e.usuario, '') AS cajero_usuario,
-              COALESCE(e.rol, '') AS cajero_rol,
-              GREATEST(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - cs.${colFecha}))::int, 0) AS segundos_abierta
-            FROM caja_sesiones cs
-            ${joinEmpleado}
-            WHERE ${condicionAbierta}
-            ORDER BY cs.${colFecha} ASC
-          `);
-
-          cajasAbiertas = cajasResult.rows.map(c => ({
-            ...c,
-            segundos_abierta: Number(c.segundos_abierta || 0),
-            caja_olvidada: Number(c.segundos_abierta || 0) >= 12 * 60 * 60
-          }));
-        }
-      }
+      cajasAbiertas = (cajasResult.rows || []).map(c => ({
+        id: c.id,
+        fecha_apertura: c.fecha_apertura,
+        estado: c.estado || "abierta",
+        empleado_id: c.empleado_id,
+        cajero_nombre: c.cajero_nombre || "Sin empleado",
+        cajero_usuario: c.cajero_usuario || "",
+        cajero_rol: c.cajero_rol || "",
+        segundos_abierta: Number(c.segundos_abierta || 0),
+        caja_olvidada: Number(c.segundos_abierta || 0) >= 12 * 60 * 60
+      }));
     } catch (errorCajas) {
       console.warn("Reporte usuarios: no se pudieron leer cajas abiertas:", errorCajas.message);
       cajasAbiertas = [];
@@ -3105,10 +3065,10 @@ app.get("/api/reportes/usuarios", async (req, res) => {
       resumen: {
         usuarios_registrados: empleados.length,
         usuarios_activos: activos.length,
-        usuarios_en_linea: usuariosOnline.length,
+        usuarios_en_linea: usuariosEnLinea.length,
         cajas_abiertas: cajasAbiertas.length
       },
-      usuarios_en_linea: usuariosOnline,
+      usuarios_en_linea: usuariosEnLinea,
       cajas_abiertas: cajasAbiertas,
       cajas_olvidadas: cajasAbiertas.filter(c => c.caja_olvidada)
     });
