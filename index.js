@@ -2992,46 +2992,102 @@ app.get("/api/reportes/usuarios", async (req, res) => {
     await pool.query(`ALTER TABLE empleados ADD COLUMN IF NOT EXISTS ultima_actividad TIMESTAMP`).catch(() => {});
     await pool.query(`ALTER TABLE empleados ADD COLUMN IF NOT EXISTS puede_recetas BOOLEAN DEFAULT false`).catch(() => {});
 
-    const empleadosResult = await pool.query(`SELECT * FROM empleados ORDER BY COALESCE(nombre, usuario, id::text) ASC`);
+    const empleadosResult = await pool.query(`
+      SELECT
+        id,
+        COALESCE(nombre, '') AS nombre,
+        COALESCE(usuario, '') AS usuario,
+        COALESCE(rol, '') AS rol,
+        COALESCE(activo, true) AS activo,
+        ultima_actividad,
+        CASE
+          WHEN ultima_actividad IS NOT NULL
+           AND ultima_actividad >= (CURRENT_TIMESTAMP - INTERVAL '30 minutes')
+          THEN true ELSE false
+        END AS en_linea,
+        CASE
+          WHEN ultima_actividad IS NULL THEN null
+          ELSE GREATEST(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ultima_actividad))::int, 0)
+        END AS segundos_sin_actividad
+      FROM empleados
+      ORDER BY COALESCE(nombre, usuario, id::text) ASC
+    `);
+
     const empleados = empleadosResult.rows || [];
     const activos = empleados.filter(e => e.activo !== false);
-    const ahora = Date.now();
-
     const usuariosOnline = activos
-      .filter(e => e.ultima_actividad && (ahora - new Date(e.ultima_actividad).getTime()) <= 5 * 60 * 1000)
+      .filter(e => e.en_linea)
       .map(e => ({
         id: e.id,
-        nombre: e.nombre || '',
-        usuario: e.usuario || '',
-        rol: e.rol || '',
+        nombre: e.nombre || "",
+        usuario: e.usuario || "",
+        rol: e.rol || "",
         ultima_actividad: e.ultima_actividad,
-        segundos_sin_actividad: Math.max(Math.floor((ahora - new Date(e.ultima_actividad).getTime()) / 1000), 0)
+        segundos_sin_actividad: Number(e.segundos_sin_actividad || 0)
       }));
 
     let cajasAbiertas = [];
+
     try {
       const tablaCaja = await pool.query(`SELECT to_regclass('public.caja_sesiones') AS existe`);
       if (tablaCaja.rows[0] && tablaCaja.rows[0].existe) {
         const columnas = await pool.query(`
           SELECT column_name
           FROM information_schema.columns
-          WHERE table_schema = 'public' AND table_name = 'caja_sesiones'
+          WHERE table_schema = 'public'
+            AND table_name = 'caja_sesiones'
         `);
+
         const cols = new Set(columnas.rows.map(r => r.column_name));
-        const colFecha = cols.has('fecha_apertura') ? 'fecha_apertura' : (cols.has('created_at') ? 'created_at' : null);
-        const colEmpleado = cols.has('empleado_apertura_id') ? 'empleado_apertura_id' : null;
-        const colEstado = cols.has('estado') ? 'estado' : null;
-        if (colFecha && colEmpleado && colEstado) {
+
+        const colFecha =
+          cols.has("fecha_apertura") ? "fecha_apertura" :
+          cols.has("created_at") ? "created_at" :
+          cols.has("fecha") ? "fecha" :
+          null;
+
+        const colEmpleado =
+          cols.has("empleado_apertura_id") ? "empleado_apertura_id" :
+          cols.has("empleado_id") ? "empleado_id" :
+          cols.has("cajero_id") ? "cajero_id" :
+          null;
+
+        const colEstado = cols.has("estado") ? "estado" : null;
+        const colCierre =
+          cols.has("fecha_cierre") ? "fecha_cierre" :
+          cols.has("closed_at") ? "closed_at" :
+          null;
+
+        if (colFecha) {
+          let condicionAbierta = "1=1";
+          if (colEstado && colCierre) {
+            condicionAbierta = `(LOWER(TRIM(COALESCE(cs.${colEstado}::text, ''))) = 'abierta' OR cs.${colCierre} IS NULL)`;
+          } else if (colEstado) {
+            condicionAbierta = `LOWER(TRIM(COALESCE(cs.${colEstado}::text, ''))) = 'abierta'`;
+          } else if (colCierre) {
+            condicionAbierta = `cs.${colCierre} IS NULL`;
+          }
+
+          const joinEmpleado = colEmpleado ? `LEFT JOIN empleados e ON e.id = cs.${colEmpleado}` : `LEFT JOIN empleados e ON false`;
+          const empleadoSelect = colEmpleado ? `cs.${colEmpleado} AS empleado_id` : `NULL::integer AS empleado_id`;
+          const estadoSelect = colEstado ? `cs.${colEstado} AS estado` : `'abierta' AS estado`;
+
           const cajasResult = await pool.query(`
-            SELECT cs.id, cs.${colFecha} AS fecha_apertura, cs.${colEstado} AS estado,
-                   e.id AS empleado_id, COALESCE(e.nombre, 'Sin empleado') AS cajero_nombre,
-                   COALESCE(e.usuario, '') AS cajero_usuario, COALESCE(e.rol, '') AS cajero_rol,
-                   GREATEST(EXTRACT(EPOCH FROM (NOW() - cs.${colFecha}))::int, 0) AS segundos_abierta
+            SELECT
+              cs.id,
+              cs.${colFecha} AS fecha_apertura,
+              ${estadoSelect},
+              ${empleadoSelect},
+              COALESCE(e.nombre, 'Sin empleado') AS cajero_nombre,
+              COALESCE(e.usuario, '') AS cajero_usuario,
+              COALESCE(e.rol, '') AS cajero_rol,
+              GREATEST(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - cs.${colFecha}))::int, 0) AS segundos_abierta
             FROM caja_sesiones cs
-            LEFT JOIN empleados e ON e.id = cs.${colEmpleado}
-            WHERE cs.${colEstado} = 'abierta'
+            ${joinEmpleado}
+            WHERE ${condicionAbierta}
             ORDER BY cs.${colFecha} ASC
           `);
+
           cajasAbiertas = cajasResult.rows.map(c => ({
             ...c,
             segundos_abierta: Number(c.segundos_abierta || 0),
@@ -3040,11 +3096,12 @@ app.get("/api/reportes/usuarios", async (req, res) => {
         }
       }
     } catch (errorCajas) {
-      console.warn('Reporte usuarios: cajas abiertas no disponible:', errorCajas.message);
+      console.warn("Reporte usuarios: no se pudieron leer cajas abiertas:", errorCajas.message);
       cajasAbiertas = [];
     }
 
     res.json({
+      ok: true,
       resumen: {
         usuarios_registrados: empleados.length,
         usuarios_activos: activos.length,
@@ -3057,7 +3114,11 @@ app.get("/api/reportes/usuarios", async (req, res) => {
     });
   } catch (error) {
     console.error("Error reporte usuarios:", error);
-    res.status(500).json({ error: "Error al obtener reporte de usuarios", detalle: error.message });
+    res.status(500).json({
+      ok: false,
+      error: "Error al obtener reporte de usuarios",
+      detalle: error.message
+    });
   }
 });
 
