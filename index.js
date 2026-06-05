@@ -3091,12 +3091,12 @@ app.get("/api/reportes/cajeros", async (req, res) => {
     let i = 1;
 
     if (desde) {
-      condiciones.push(`((cs.fecha_cierre AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) >= $${i++}`);
+      condiciones.push(`((cs.fecha_cierre AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) >= $${i++}::date`);
       valores.push(desde);
     }
 
     if (hasta) {
-      condiciones.push(`((cs.fecha_cierre AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) <= $${i++}`);
+      condiciones.push(`((cs.fecha_cierre AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) <= $${i++}::date`);
       valores.push(hasta);
     }
 
