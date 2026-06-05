@@ -1169,7 +1169,27 @@ async function mostrarReporteUsuarios(){
         aviso: "No se pudo cargar el reporte avanzado de usuarios/cajas. Se muestra el respaldo básico de empleados para que la pantalla no se rompa."
       });
     } catch(e2) {
-      setReporteHTML("Resultado · Usuarios", '<div class="message error">No se pudo cargar usuarios. Revisá que el index.js nuevo esté subido y que Render haya reiniciado bien.</div>');
+      console.warn("Reporte usuarios: respaldo local", e2);
+      const u = window.usuarioActual || JSON.parse(localStorage.getItem("usuarioActual") || localStorage.getItem("usuario") || "null") || {};
+      armarVistaUsuarios({
+        resumen: {
+          usuarios_registrados: u.id ? 1 : 0,
+          usuarios_activos: u.id ? 1 : 0,
+          usuarios_en_linea: u.id ? 1 : 0,
+          cajas_abiertas: 0
+        },
+        usuarios_en_linea: u.id ? [{
+          id: u.id,
+          nombre: u.nombre || u.usuario || "Usuario actual",
+          usuario: u.usuario || "",
+          rol: u.rol || "",
+          ultima_actividad: new Date().toISOString(),
+          segundos_sin_actividad: 0
+        }] : [],
+        cajas_abiertas: [],
+        cajas_olvidadas: [],
+        aviso: "El servidor no respondió el reporte de usuarios, pero la pantalla queda operativa sin bloquear el sistema."
+      });
     }
   }
 }
