@@ -438,7 +438,7 @@
     <pre id="historialVentaDetalle">Seleccioná una venta para ver el detalle.</pre>
   </div>
 </section>
-<section id="page-reportes" class="page"><div class="topbar"><div><h1 class="page-title">Reportes</h1><div class="page-subtitle">Ventas, stock y compras.</div></div></div><div class="row" style="margin-bottom:14px;"><button class="btn btn-primary" onclick="cargarReporteVentasPorProducto()">Ventas por producto</button><button class="btn btn-primary" onclick="cargarReporteVentasPorEmpleado()">Ventas por empleado</button><button class="btn btn-primary" onclick="mostrarReporteInventario()">Inventario</button><button class="btn btn-primary" onclick="cargarReporteCajeros()">Reporte de cajeros</button><button class="btn btn-primary" onclick="mostrarReporteCompras()">Compras</button><button class="btn btn-primary" onclick="mostrarReporteCuentaCorriente()">Cuenta corriente</button><button class="btn btn-primary" onclick="mostrarReporteUsuarios()">Usuarios</button></div><div class="card"><h3 id="reportesTituloResultado">Resultado</h3><div id="reportesResultado"><div class="reporte-empty">Elegí un reporte para ver la información.</div></div><pre id="reportesPre" class="hidden">Todavía no cargaste ningún reporte.</pre></div><div id="reportesComprasWrap" class="hidden"><div class="card"><h3>Filtros de compras</h3><div class="grid-4"><div class="field"><label>Desde</label><input type="date" id="repComprasDesde" /></div><div class="field"><label>Hasta</label><input type="date" id="repComprasHasta" /></div><div class="field"><label>Proveedor</label><select id="repComprasProveedor"><option value="">Todos</option></select></div><div class="field"><label>Producto</label><select id="repComprasProducto"><option value="">Todos</option></select></div></div><div class="row"><input id="repComprasBuscar" placeholder="Buscar por proveedor, producto, observación o N° compra" /><button class="btn btn-primary" onclick="cargarReporteCompras()">Buscar compras</button><button class="btn btn-secondary" onclick="limpiarFiltrosReporteCompras()">Limpiar filtros</button></div></div><div class="grid-4"><div class="card"><div class="metric" id="repComprasMetricCompras">0</div><div class="muted">Compras encontradas</div></div><div class="card"><div class="metric" id="repComprasMetricMonto">$0.00</div><div class="muted">Total comprado</div></div><div class="card"><div class="metric" id="repComprasMetricProveedores">0</div><div class="muted">Proveedores</div></div><div class="card"><div class="metric" id="repComprasMetricProductos">0</div><div class="muted">Productos</div></div></div><div class="card"><h3>Historial de compras</h3><div class="scroll-x"><table><thead><tr><th>Fecha</th><th>Compra</th><th>Proveedor</th><th>Producto</th><th>Cantidad</th><th>Costo unit.</th><th>Subtotal</th><th>Obs.</th></tr></thead><tbody id="repComprasHistorialBody"><tr><td colspan="8" class="muted">Todavía no cargaste ningún reporte de compras.</td></tr></tbody></table></div></div><div class="grid-2"><div class="card"><h3>Resumen por proveedor</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Compras</th><th>Total</th><th>Últ. precio</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasProveedorBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div><div class="card"><h3>Resumen por producto</h3><div class="scroll-x"><table><thead><tr><th>Producto</th><th>Veces</th><th>Cant. total</th><th>Promedio</th><th>Últ. precio</th></tr></thead><tbody id="repComprasProductoBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div></div><div class="card"><h3>Comparativa del producto filtrado</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Veces</th><th>Promedio</th><th>Mínimo</th><th>Máximo</th><th>Últ. precio</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasComparativaBody"><tr><td colspan="7" class="muted">Elegí un producto para comparar proveedores.</td></tr></tbody></table></div></div></div></section>
+<section id="page-reportes" class="page"><div class="topbar"><div><h1 class="page-title">Reportes</h1><div class="page-subtitle">Ventas, stock y compras.</div></div></div><div class="row" style="margin-bottom:14px;"><button class="btn btn-primary" onclick="cargarReporteVentasPorProducto()">Ventas por producto</button><button class="btn btn-primary" onclick="cargarReporteVentasPorEmpleado()">Ventas por empleado</button><button class="btn btn-primary" onclick="mostrarReporteInventario()">Inventario</button><button class="btn btn-primary" onclick="cargarReporteCajeros()">Reporte de cajeros</button><button class="btn btn-primary" onclick="mostrarReporteCompras()">Compras</button><button class="btn btn-primary" onclick="mostrarReporteCuentaCorriente()">Cuenta corriente</button><button class="btn btn-primary" onclick="mostrarReporteUsuariosFinal()">Usuarios</button></div><div class="card"><h3 id="reportesTituloResultado">Resultado</h3><div id="reportesResultado"><div class="reporte-empty">Elegí un reporte para ver la información.</div></div><pre id="reportesPre" class="hidden">Todavía no cargaste ningún reporte.</pre></div><div id="reportesComprasWrap" class="hidden"><div class="card"><h3>Filtros de compras</h3><div class="grid-4"><div class="field"><label>Desde</label><input type="date" id="repComprasDesde" /></div><div class="field"><label>Hasta</label><input type="date" id="repComprasHasta" /></div><div class="field"><label>Proveedor</label><select id="repComprasProveedor"><option value="">Todos</option></select></div><div class="field"><label>Producto</label><select id="repComprasProducto"><option value="">Todos</option></select></div></div><div class="row"><input id="repComprasBuscar" placeholder="Buscar por proveedor, producto, observación o N° compra" /><button class="btn btn-primary" onclick="cargarReporteCompras()">Buscar compras</button><button class="btn btn-secondary" onclick="limpiarFiltrosReporteCompras()">Limpiar filtros</button></div></div><div class="grid-4"><div class="card"><div class="metric" id="repComprasMetricCompras">0</div><div class="muted">Compras encontradas</div></div><div class="card"><div class="metric" id="repComprasMetricMonto">$0.00</div><div class="muted">Total comprado</div></div><div class="card"><div class="metric" id="repComprasMetricProveedores">0</div><div class="muted">Proveedores</div></div><div class="card"><div class="metric" id="repComprasMetricProductos">0</div><div class="muted">Productos</div></div></div><div class="card"><h3>Historial de compras</h3><div class="scroll-x"><table><thead><tr><th>Fecha</th><th>Compra</th><th>Proveedor</th><th>Producto</th><th>Cantidad</th><th>Costo unit.</th><th>Subtotal</th><th>Obs.</th></tr></thead><tbody id="repComprasHistorialBody"><tr><td colspan="8" class="muted">Todavía no cargaste ningún reporte de compras.</td></tr></tbody></table></div></div><div class="grid-2"><div class="card"><h3>Resumen por proveedor</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Compras</th><th>Total</th><th>Últ. precio</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasProveedorBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div><div class="card"><h3>Resumen por producto</h3><div class="scroll-x"><table><thead><tr><th>Producto</th><th>Veces</th><th>Cant. total</th><th>Promedio</th><th>Últ. precio</th></tr></thead><tbody id="repComprasProductoBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div></div><div class="card"><h3>Comparativa del producto filtrado</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Veces</th><th>Promedio</th><th>Mínimo</th><th>Máximo</th><th>Últ. precio</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasComparativaBody"><tr><td colspan="7" class="muted">Elegí un producto para comparar proveedores.</td></tr></tbody></table></div></div></div></section>
 <section id="page-configuracion" class="page"><div class="topbar"><div><h1 class="page-title">Configuración</h1><div class="page-subtitle">Usuarios, permisos, proveedores y clientes.</div></div></div><div class="subtabs"><button id="btnConfigTabUsuarios" class="subtab-btn active" onclick="mostrarConfigSubtab('usuarios')">Usuarios</button><button id="btnConfigTabProveedores" class="subtab-btn" onclick="mostrarConfigSubtab('proveedores')">Proveedores</button><button id="btnConfigTabClientes" class="subtab-btn" onclick="mostrarConfigSubtab('clientes')">Clientes</button></div><div id="configSubpageUsuarios" class="config-subpage active"><div class="split"><div class="card"><h3 id="configTituloForm">Nuevo usuario</h3><input type="hidden" id="cfgEmpleadoId" /><div class="grid-2"><div class="field"><label>Nombre</label><input id="cfgNombre" /></div><div class="field"><label>Usuario</label><input id="cfgUsuario" /></div><div class="field"><label>Contraseña</label><input id="cfgPassword" /></div><div class="field"><label>Rol</label><select id="cfgRol"><option value="cajero">Cajero</option><option value="encargado">Encargado</option><option value="admin">Admin</option></select></div></div><div class="field"><label>Estado</label><select id="cfgActivo"><option value="true">Activo</option><option value="false">Inactivo</option></select></div><h3 style="margin-top:18px;">Permisos</h3><div class="checks"><div class="check-item"><label><input type="checkbox" id="permInicio" /> Inicio</label></div><div class="check-item"><label><input type="checkbox" id="permVentas" /> Ventas</label></div><div class="check-item"><label><input type="checkbox" id="permProductos" /> Productos</label></div><div class="check-item"><label><input type="checkbox" id="permCompras" /> Compras</label></div><div class="check-item"><label><input type="checkbox" id="permRecetas" /> Recetas</label></div><div class="check-item"><label><input type="checkbox" id="permCaja" /> Caja</label></div><div class="check-item"><label><input type="checkbox" id="permReportes" /> Reportes</label></div><div class="check-item"><label><input type="checkbox" id="permConfiguracion" /> Configuración</label></div></div><div class="row" style="margin-top:16px;"><button class="btn btn-primary" id="btnGuardarUsuario" onclick="guardarUsuario()">Guardar usuario</button><button class="btn btn-secondary" onclick="limpiarFormularioUsuario()">Limpiar</button></div><div class="message hidden" id="configMsg"></div></div><div class="card"><h3>Usuarios</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Activo</th><th>Permisos</th><th></th></tr></thead><tbody id="usuariosBody"></tbody></table></div></div></div></div><div id="configSubpageProveedores" class="config-subpage"><div class="split"><div class="card"><h3 id="proveedorFormTitulo">Nuevo proveedor</h3><div class="grid-2"><div class="field"><label>Nombre</label><input id="provNombre" /></div><div class="field"><label>Teléfono</label><input id="provTelefono" /></div></div><div class="field"><label>Dirección</label><input id="provDireccion" /></div><div class="field"><label>Observaciones</label><textarea id="provObservaciones"></textarea></div><div class="row"><button class="btn btn-primary" id="btnGuardarProveedor" onclick="guardarProveedor()">Guardar proveedor</button><button class="btn btn-secondary" onclick="limpiarFormularioProveedor()">Limpiar</button><button id="btnCancelarEdicionProveedor" class="btn btn-secondary hidden" onclick="cancelarEdicionProveedor()">Cancelar edición</button></div><div class="message hidden" id="proveedorMsg"></div></div><div class="card"><h3>Proveedores</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody id="proveedoresConfigBody"></tbody></table></div></div></div></div><div id="configSubpageClientes" class="config-subpage"><div class="split"><div class="card"><h3>Nuevo cliente</h3><div class="grid-2"><div class="field"><label>Nombre</label><input id="cliNombre" /></div><div class="field"><label>Teléfono</label><input id="cliTelefono" /></div></div><div class="field"><label>Dirección</label><input id="cliDireccion" /></div><div class="field"><label>Límite de crédito</label><input id="cliLimite" type="number" step="0.01" value="0" /></div><div class="field"><label>Observaciones</label><textarea id="cliObservaciones"></textarea></div><div class="row"><button class="btn btn-primary" onclick="guardarCliente()">Guardar cliente</button><button class="btn btn-secondary" onclick="limpiarFormularioCliente()">Limpiar</button></div><div class="message hidden" id="clienteMsg"></div></div><div class="card"><h3>Clientes</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Saldo CC</th></tr></thead><tbody id="clientesConfigBody"></tbody></table></div></div></div></div></section>
 
 <div id="modalProducto" class="modal-backdrop hidden">
@@ -589,7 +589,148 @@ function imprimirTexto(html,titulo){
     .t-obs { margin-top: 1mm; word-break: break-word; }
     @media screen { body { background:#eee; } .ticket { background:#fff; min-height: 20mm; } }
     @media print { html, body { width: 58mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-  </style></head><body>${html}</body></html>`);
+  </style></head><body>${html}
+<script>
+/* ===== FIX FINAL REPORTE USUARIOS - NO QUEDA CARGANDO ===== */
+async function frineFetchJson(url) {
+  const resp = await fetch(url, { cache: "no-store" });
+  const txt = await resp.text();
+  let data = {};
+  try { data = txt ? JSON.parse(txt) : {}; } catch(e) { data = { ok:false, error: txt || "Respuesta inválida" }; }
+  if (!resp.ok) throw new Error(data.error || data.detalle || ("HTTP " + resp.status));
+  return data;
+}
+
+function frineFormatoTiempo(segundos) {
+  segundos = Number(segundos || 0);
+  const h = Math.floor(segundos / 3600);
+  const m = Math.floor((segundos % 3600) / 60);
+  if (h > 0) return h + "h " + m + "m";
+  return m + "m";
+}
+
+function frineFechaCorta(valor) {
+  if (!valor) return "-";
+  const d = new Date(valor);
+  if (isNaN(d.getTime())) return String(valor);
+  return d.toLocaleString("es-AR");
+}
+
+async function mostrarReporteUsuariosFinal() {
+  const cont = document.getElementById("resultadoReportes") || document.getElementById("reporteResultado") || document.getElementById("resultadoReporte");
+  if (!cont) {
+    alert("No se encontró el contenedor del reporte.");
+    return;
+  }
+
+  cont.innerHTML = '<div class="reporte-empty">Cargando reporte de usuarios...</div>';
+
+  try {
+    try { await registrarActividad(); } catch(e) {}
+
+    let data = await frineFetchJson("/api/reportes/usuarios");
+
+    const usuarioLocal = window.usuarioActual || JSON.parse(localStorage.getItem("frine_usuario") || "null");
+    const online = Array.isArray(data.usuarios_en_linea) ? data.usuarios_en_linea.slice() : [];
+    const cajas = Array.isArray(data.cajas_abiertas) ? data.cajas_abiertas.slice() : [];
+    const olvidadas = Array.isArray(data.cajas_olvidadas) ? data.cajas_olvidadas.slice() : [];
+
+    if (usuarioLocal && usuarioLocal.id && !online.some(u => String(u.id) === String(usuarioLocal.id))) {
+      online.push({
+        id: usuarioLocal.id,
+        nombre: usuarioLocal.nombre || usuarioLocal.usuario || "Usuario actual",
+        usuario: usuarioLocal.usuario || "",
+        rol: usuarioLocal.rol || "",
+        ultima_actividad: new Date().toISOString(),
+        segundos_sin_actividad: 0
+      });
+    }
+
+    const r = data.resumen || {};
+    const usuariosRegistrados = Math.max(Number(r.usuarios_registrados || 0), usuarioLocal?.id ? 1 : 0);
+    const usuariosActivos = Math.max(Number(r.usuarios_activos || 0), usuarioLocal?.id ? 1 : 0);
+    const usuariosEnLinea = Math.max(Number(r.usuarios_en_linea || 0), online.length);
+    const cajasAbiertas = Math.max(Number(r.cajas_abiertas || 0), cajas.length);
+
+    const filasOnline = online.length ? online.map(u => `
+      <tr>
+        <td><strong>${u.nombre || u.usuario || "-"}</strong></td>
+        <td>${u.rol || "-"}</td>
+        <td>${frineFechaCorta(u.ultima_actividad)}</td>
+        <td><span class="tag tag-green">En línea</span></td>
+      </tr>
+    `).join("") : `<tr><td colspan="4" class="reporte-empty">No hay usuarios en línea en este momento.</td></tr>`;
+
+    const filasCajas = cajas.length ? cajas.map(c => `
+      <tr>
+        <td>#${c.id || "-"}</td>
+        <td><strong>${c.cajero_nombre || c.empleado_nombre || c.nombre || "Sin empleado"}</strong></td>
+        <td>${frineFechaCorta(c.fecha_apertura || c.created_at || c.fecha)}</td>
+        <td>${frineFormatoTiempo(c.segundos_abierta)}</td>
+        <td><span class="tag tag-green">Abierta</span></td>
+      </tr>
+    `).join("") : `<tr><td colspan="5" class="reporte-empty">No hay cajas abiertas.</td></tr>`;
+
+    const filasOlvidadas = olvidadas.length ? olvidadas.map(c => `
+      <tr>
+        <td>#${c.id || "-"}</td>
+        <td><strong>${c.cajero_nombre || c.empleado_nombre || c.nombre || "Sin empleado"}</strong></td>
+        <td>${frineFechaCorta(c.fecha_apertura || c.created_at || c.fecha)}</td>
+        <td>${frineFormatoTiempo(c.segundos_abierta)}</td>
+      </tr>
+    `).join("") : `<tr><td colspan="4"><div class="message ok">✅ No hay cajas olvidadas abiertas.</div></td></tr>`;
+
+    cont.innerHTML = `
+      <div class="grid-4">
+        <div class="card"><h3>Usuarios registrados</h3><div class="metric">${usuariosRegistrados}</div></div>
+        <div class="card"><h3>Usuarios activos</h3><div class="metric">${usuariosActivos}</div></div>
+        <div class="card"><h3>Usuarios en línea</h3><div class="metric">${usuariosEnLinea}</div></div>
+        <div class="card"><h3>Cajas abiertas</h3><div class="metric">${cajasAbiertas}</div></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>🟢 Usuarios en línea</h3>
+          <div class="scroll-x"><table>
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Última actividad</th><th>Estado</th></tr></thead>
+            <tbody>${filasOnline}</tbody>
+          </table></div>
+        </div>
+
+        <div class="card">
+          <h3>⚠️ Cajas olvidadas abiertas</h3>
+          <div class="scroll-x"><table>
+            <thead><tr><th>Caja</th><th>Cajero</th><th>Apertura</th><th>Tiempo abierta</th></tr></thead>
+            <tbody>${filasOlvidadas}</tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>📦 Cajas abiertas</h3>
+        <div class="scroll-x"><table>
+          <thead><tr><th>Caja</th><th>Cajero</th><th>Fecha/hora apertura</th><th>Tiempo abierta</th><th>Estado</th></tr></thead>
+          <tbody>${filasCajas}</tbody>
+        </table></div>
+      </div>
+    `;
+  } catch (error) {
+    console.error("Error reporte usuarios final:", error);
+    cont.innerHTML = `
+      <div class="message error">
+        No se pudo cargar el reporte de usuarios.<br>
+        Error real: ${String(error.message || error)}
+      </div>
+    `;
+  }
+}
+
+// Piso cualquier versión anterior para que el botón Usuarios use esta.
+window.mostrarReporteUsuarios = mostrarReporteUsuariosFinal;
+window.cargarReporteUsuarios = mostrarReporteUsuariosFinal;
+</script>
+
+</body></html>`);
   w.document.close();
   w.focus();
   setTimeout(()=>w.print(),350);
@@ -2071,6 +2212,147 @@ window.addEventListener('load',()=>setTimeout(refrescarBotonAsistenteFrine,300))
 
 </script>
 
+
+
+<script>
+/* ===== FIX FINAL REPORTE USUARIOS - NO QUEDA CARGANDO ===== */
+async function frineFetchJson(url) {
+  const resp = await fetch(url, { cache: "no-store" });
+  const txt = await resp.text();
+  let data = {};
+  try { data = txt ? JSON.parse(txt) : {}; } catch(e) { data = { ok:false, error: txt || "Respuesta inválida" }; }
+  if (!resp.ok) throw new Error(data.error || data.detalle || ("HTTP " + resp.status));
+  return data;
+}
+
+function frineFormatoTiempo(segundos) {
+  segundos = Number(segundos || 0);
+  const h = Math.floor(segundos / 3600);
+  const m = Math.floor((segundos % 3600) / 60);
+  if (h > 0) return h + "h " + m + "m";
+  return m + "m";
+}
+
+function frineFechaCorta(valor) {
+  if (!valor) return "-";
+  const d = new Date(valor);
+  if (isNaN(d.getTime())) return String(valor);
+  return d.toLocaleString("es-AR");
+}
+
+async function mostrarReporteUsuariosFinal() {
+  const cont = document.getElementById("resultadoReportes") || document.getElementById("reporteResultado") || document.getElementById("resultadoReporte");
+  if (!cont) {
+    alert("No se encontró el contenedor del reporte.");
+    return;
+  }
+
+  cont.innerHTML = '<div class="reporte-empty">Cargando reporte de usuarios...</div>';
+
+  try {
+    try { await registrarActividad(); } catch(e) {}
+
+    let data = await frineFetchJson("/api/reportes/usuarios");
+
+    const usuarioLocal = window.usuarioActual || JSON.parse(localStorage.getItem("frine_usuario") || "null");
+    const online = Array.isArray(data.usuarios_en_linea) ? data.usuarios_en_linea.slice() : [];
+    const cajas = Array.isArray(data.cajas_abiertas) ? data.cajas_abiertas.slice() : [];
+    const olvidadas = Array.isArray(data.cajas_olvidadas) ? data.cajas_olvidadas.slice() : [];
+
+    if (usuarioLocal && usuarioLocal.id && !online.some(u => String(u.id) === String(usuarioLocal.id))) {
+      online.push({
+        id: usuarioLocal.id,
+        nombre: usuarioLocal.nombre || usuarioLocal.usuario || "Usuario actual",
+        usuario: usuarioLocal.usuario || "",
+        rol: usuarioLocal.rol || "",
+        ultima_actividad: new Date().toISOString(),
+        segundos_sin_actividad: 0
+      });
+    }
+
+    const r = data.resumen || {};
+    const usuariosRegistrados = Math.max(Number(r.usuarios_registrados || 0), usuarioLocal?.id ? 1 : 0);
+    const usuariosActivos = Math.max(Number(r.usuarios_activos || 0), usuarioLocal?.id ? 1 : 0);
+    const usuariosEnLinea = Math.max(Number(r.usuarios_en_linea || 0), online.length);
+    const cajasAbiertas = Math.max(Number(r.cajas_abiertas || 0), cajas.length);
+
+    const filasOnline = online.length ? online.map(u => `
+      <tr>
+        <td><strong>${u.nombre || u.usuario || "-"}</strong></td>
+        <td>${u.rol || "-"}</td>
+        <td>${frineFechaCorta(u.ultima_actividad)}</td>
+        <td><span class="tag tag-green">En línea</span></td>
+      </tr>
+    `).join("") : `<tr><td colspan="4" class="reporte-empty">No hay usuarios en línea en este momento.</td></tr>`;
+
+    const filasCajas = cajas.length ? cajas.map(c => `
+      <tr>
+        <td>#${c.id || "-"}</td>
+        <td><strong>${c.cajero_nombre || c.empleado_nombre || c.nombre || "Sin empleado"}</strong></td>
+        <td>${frineFechaCorta(c.fecha_apertura || c.created_at || c.fecha)}</td>
+        <td>${frineFormatoTiempo(c.segundos_abierta)}</td>
+        <td><span class="tag tag-green">Abierta</span></td>
+      </tr>
+    `).join("") : `<tr><td colspan="5" class="reporte-empty">No hay cajas abiertas.</td></tr>`;
+
+    const filasOlvidadas = olvidadas.length ? olvidadas.map(c => `
+      <tr>
+        <td>#${c.id || "-"}</td>
+        <td><strong>${c.cajero_nombre || c.empleado_nombre || c.nombre || "Sin empleado"}</strong></td>
+        <td>${frineFechaCorta(c.fecha_apertura || c.created_at || c.fecha)}</td>
+        <td>${frineFormatoTiempo(c.segundos_abierta)}</td>
+      </tr>
+    `).join("") : `<tr><td colspan="4"><div class="message ok">✅ No hay cajas olvidadas abiertas.</div></td></tr>`;
+
+    cont.innerHTML = `
+      <div class="grid-4">
+        <div class="card"><h3>Usuarios registrados</h3><div class="metric">${usuariosRegistrados}</div></div>
+        <div class="card"><h3>Usuarios activos</h3><div class="metric">${usuariosActivos}</div></div>
+        <div class="card"><h3>Usuarios en línea</h3><div class="metric">${usuariosEnLinea}</div></div>
+        <div class="card"><h3>Cajas abiertas</h3><div class="metric">${cajasAbiertas}</div></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>🟢 Usuarios en línea</h3>
+          <div class="scroll-x"><table>
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Última actividad</th><th>Estado</th></tr></thead>
+            <tbody>${filasOnline}</tbody>
+          </table></div>
+        </div>
+
+        <div class="card">
+          <h3>⚠️ Cajas olvidadas abiertas</h3>
+          <div class="scroll-x"><table>
+            <thead><tr><th>Caja</th><th>Cajero</th><th>Apertura</th><th>Tiempo abierta</th></tr></thead>
+            <tbody>${filasOlvidadas}</tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>📦 Cajas abiertas</h3>
+        <div class="scroll-x"><table>
+          <thead><tr><th>Caja</th><th>Cajero</th><th>Fecha/hora apertura</th><th>Tiempo abierta</th><th>Estado</th></tr></thead>
+          <tbody>${filasCajas}</tbody>
+        </table></div>
+      </div>
+    `;
+  } catch (error) {
+    console.error("Error reporte usuarios final:", error);
+    cont.innerHTML = `
+      <div class="message error">
+        No se pudo cargar el reporte de usuarios.<br>
+        Error real: ${String(error.message || error)}
+      </div>
+    `;
+  }
+}
+
+// Piso cualquier versión anterior para que el botón Usuarios use esta.
+window.mostrarReporteUsuarios = mostrarReporteUsuariosFinal;
+window.cargarReporteUsuarios = mostrarReporteUsuariosFinal;
+</script>
 
 </body>
 </html>
