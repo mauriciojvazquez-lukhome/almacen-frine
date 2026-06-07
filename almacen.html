@@ -431,7 +431,7 @@
       </div>
       <div class="field">
         <label>Buscar</label>
-        <input id="historialBuscar" placeholder="N° venta / cajero / observación" />
+        <input id="historialBuscar" placeholder="N° venta / cajero / producto / observación" />
       </div>
     </div>
 
@@ -2593,6 +2593,109 @@ window.addEventListener('load',()=>setTimeout(refrescarBotonAsistenteFrine,300))
   setInterval(frineActividadNoBloqueante, 15000);
 })();
 
+
+
+/* =====================================================
+   FIX HISTORIAL DE VENTAS
+   - Carga ventas aunque el filtro anterior quedara en cero.
+   - Permite buscar por producto vendido: pan, coca, yerba, etc.
+   ===================================================== */
+(function(){
+  function hvMoney(valor){
+    if (typeof money === "function") return money(valor);
+    return Number(valor || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function hvEsc(valor){
+    if (typeof escapeHtml === "function") return escapeHtml(valor);
+    return String(valor ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c] || c));
+  }
+  function hvFecha(valor){
+    if (!valor) return "-";
+    try { return new Date(valor).toLocaleString("es-AR"); } catch(e) { return String(valor); }
+  }
+  function hvSet(id, texto){
+    const el = document.getElementById(id);
+    if (el) el.textContent = texto;
+  }
+
+  window.cargarHistorialVentas = async function(){
+    const desde = document.getElementById("historialDesde")?.value || "";
+    const hasta = document.getElementById("historialHasta")?.value || "";
+    const formaPago = document.getElementById("historialFormaPago")?.value || "";
+    const q = (document.getElementById("historialBuscar")?.value || "").trim();
+    const body = document.getElementById("historialVentasBody");
+    const pill = document.getElementById("historialResumenPill");
+
+    if (pill) pill.textContent = "Cargando...";
+    if (body) body.innerHTML = '<tr><td colspan="8" class="muted">Buscando ventas...</td></tr>';
+
+    const params = new URLSearchParams();
+    if (desde) params.append("desde", desde);
+    if (hasta) params.append("hasta", hasta);
+    if (formaPago) params.append("forma_pago", formaPago);
+    if (q) params.append("q", q);
+
+    try {
+      const url = params.toString() ? "/api/ventas?" + params.toString() : "/api/ventas";
+      const res = await fetch(url + (url.includes("?") ? "&" : "?") + "ts=" + Date.now());
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.detalle || "Error al cargar historial");
+
+      const ventas = Array.isArray(data) ? data : [];
+      let total = 0;
+      let totalEfectivo = 0;
+      let totalTransferencia = 0;
+
+      if (body) body.innerHTML = "";
+
+      ventas.forEach(v => {
+        const monto = Number(v.total || 0);
+        total += monto;
+        if (String(v.forma_pago || "").toLowerCase() === "efectivo") totalEfectivo += monto;
+        if (String(v.forma_pago || "").toLowerCase() === "transferencia") totalTransferencia += monto;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${hvEsc(v.id)}</td>
+          <td>${hvFecha(v.fecha)}</td>
+          <td>${hvEsc(v.empleado_nombre || "-")}</td>
+          <td>${hvEsc(v.forma_pago || "-")}</td>
+          <td><strong>$${hvMoney(monto)}</strong></td>
+          <td>${hvEsc(v.productos_vendidos || "-")}</td>
+          <td>${hvEsc(v.observaciones || "-")}</td>
+          <td>
+            <button class="btn btn-secondary" onclick="verDetalleVenta(${Number(v.id)})">Ver</button>
+            <button class="btn btn-ghost" onclick="reimprimirVenta(${Number(v.id)})">Reimprimir</button>
+          </td>`;
+        if (body) body.appendChild(tr);
+      });
+
+      if (!ventas.length && body) {
+        body.innerHTML = '<tr><td colspan="8" class="muted">No hay ventas para los filtros elegidos. Probá limpiar filtros o ampliar la fecha.</td></tr>';
+      }
+
+      hvSet("historialMetricVentas", ventas.length);
+      hvSet("historialMetricMonto", "$" + hvMoney(total));
+      hvSet("historialMetricEfectivo", "$" + hvMoney(totalEfectivo));
+      hvSet("historialMetricTransferencia", "$" + hvMoney(totalTransferencia));
+      if (pill) pill.textContent = `${ventas.length} ventas filtradas`;
+    } catch(error) {
+      console.error("Error historial ventas:", error);
+      if (body) body.innerHTML = `<tr><td colspan="8" class="muted">Error al cargar historial: ${hvEsc(error.message || error)}</td></tr>`;
+      if (pill) pill.textContent = "Error";
+    }
+  };
+
+  window.limpiarFiltrosHistorial = function(){
+    const hoy = new Date().toISOString().slice(0,10);
+    if (document.getElementById("historialDesde")) document.getElementById("historialDesde").value = hoy;
+    if (document.getElementById("historialHasta")) document.getElementById("historialHasta").value = hoy;
+    if (document.getElementById("historialFormaPago")) document.getElementById("historialFormaPago").value = "";
+    if (document.getElementById("historialBuscar")) document.getElementById("historialBuscar").value = "";
+    if (document.getElementById("historialVentaDetalle")) document.getElementById("historialVentaDetalle").textContent = "Seleccioná una venta para ver el detalle.";
+    cargarHistorialVentas();
+  };
+})();
 </script>
 
 
