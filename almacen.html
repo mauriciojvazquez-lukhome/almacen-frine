@@ -252,6 +252,37 @@
   .frine-assistant-input input { width: 100%; border: 1px solid #d1d5db; border-radius: 14px; padding: 12px; outline: none; }
   .frine-assistant-input button { border: 0; border-radius: 14px; background: #2563eb; color: white; padding: 0 15px; font-weight: 900; cursor: pointer; }
 
+
+  /* ===== REPORTE COMPRAS PRO ETAPA 1 ===== */
+  .compras-pro-hero { background: linear-gradient(135deg, #0f172a, #1d4ed8); color: white; border-radius: 24px; padding: 22px; margin-bottom: 18px; box-shadow: 0 18px 45px rgba(15,23,42,.18); }
+  .compras-pro-hero h2 { margin: 0 0 6px 0; font-size: 26px; }
+  .compras-pro-hero p { margin: 0; color: rgba(255,255,255,.78); font-weight: 700; }
+  .compras-pro-kpis { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:16px; margin-bottom:18px; }
+  .compras-pro-kpi { position:relative; overflow:hidden; background:white; border:1px solid #dbe3ef; border-radius:20px; padding:20px; box-shadow:0 12px 35px rgba(15,23,42,.06); min-height:124px; }
+  .compras-pro-kpi:after { content:""; position:absolute; right:-34px; top:-38px; width:110px; height:110px; border-radius:999px; background:#eef4ff; }
+  .compras-pro-kpi .label { color:#64748b; font-size:13px; font-weight:900; margin-bottom:8px; text-transform:uppercase; letter-spacing:.03em; }
+  .compras-pro-kpi .value { color:#071126; font-weight:950; font-size:30px; line-height:1.05; position:relative; z-index:1; word-break:break-word; }
+  .compras-pro-kpi .foot { color:#64748b; font-weight:800; margin-top:10px; font-size:13px; position:relative; z-index:1; }
+  .compras-pro-grid { display:grid; grid-template-columns: 1.05fr .95fr; gap:18px; margin-bottom:18px; }
+  .compras-pro-ranking { display:flex; flex-direction:column; gap:12px; }
+  .compras-pro-rank-row { display:grid; grid-template-columns: 34px 1fr 130px; gap:10px; align-items:center; border:1px solid #e5e7eb; background:#f8fafc; border-radius:15px; padding:12px; }
+  .compras-pro-rank-num { width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:999px; background:#dbeafe; color:#1d4ed8; font-weight:950; }
+  .compras-pro-rank-name { font-weight:950; color:#0f172a; margin-bottom:6px; }
+  .compras-pro-bar-bg { height:12px; border-radius:999px; background:#e5e7eb; overflow:hidden; }
+  .compras-pro-bar-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#2563eb,#60a5fa); min-width:4px; }
+  .compras-pro-rank-money { text-align:right; font-weight:950; color:#0f172a; }
+  .compras-pro-rank-money span { display:block; color:#64748b; font-size:12px; margin-top:3px; }
+  .compras-pro-donut-wrap { display:grid; grid-template-columns: 180px 1fr; gap:18px; align-items:center; min-height:260px; }
+  .compras-pro-donut { width:170px; height:170px; border-radius:999px; background:conic-gradient(#2563eb 0 100%); position:relative; margin:auto; box-shadow:0 14px 35px rgba(15,23,42,.10); }
+  .compras-pro-donut:after { content:""; position:absolute; inset:42px; border-radius:999px; background:white; box-shadow:inset 0 0 0 1px #e5e7eb; }
+  .compras-pro-donut-center { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; z-index:2; pointer-events:none; font-weight:950; color:#0f172a; font-size:14px; }
+  .compras-pro-legend { display:flex; flex-direction:column; gap:10px; }
+  .compras-pro-legend-item { display:grid; grid-template-columns:14px 1fr auto; gap:8px; align-items:center; font-weight:850; font-size:13px; }
+  .compras-pro-dot { width:12px; height:12px; border-radius:999px; background:#2563eb; }
+  .compras-pro-empty { padding:18px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:14px; color:#64748b; font-weight:800; text-align:center; }
+  @media (max-width: 1200px) { .compras-pro-kpis { grid-template-columns: repeat(2, 1fr); } .compras-pro-grid { grid-template-columns:1fr; } }
+  @media (max-width: 760px) { .compras-pro-kpis { grid-template-columns:1fr; } .compras-pro-donut-wrap { grid-template-columns:1fr; } .compras-pro-rank-row { grid-template-columns: 34px 1fr; } .compras-pro-rank-money { grid-column:2; text-align:left; } }
+
 </style>
 </head>
 <body>
@@ -438,7 +469,57 @@
     <pre id="historialVentaDetalle">Seleccioná una venta para ver el detalle.</pre>
   </div>
 </section>
-<section id="page-reportes" class="page"><div class="topbar"><div><h1 class="page-title">Reportes</h1><div class="page-subtitle">Ventas, stock y compras.</div></div></div><div class="row" style="margin-bottom:14px;"><button class="btn btn-primary" onclick="cargarReporteVentasPorProducto()">Ventas por producto</button><button class="btn btn-primary" onclick="cargarReporteVentasPorEmpleado()">Ventas por empleado</button><button class="btn btn-primary" onclick="mostrarReporteInventario()">Inventario</button><button class="btn btn-primary" onclick="cargarReporteCajeros()">Reporte de cajeros</button><button class="btn btn-primary" onclick="mostrarReporteCompras()">Compras</button><button class="btn btn-primary" onclick="mostrarReporteCuentaCorriente()">Cuenta corriente</button><button class="btn btn-primary" onclick="mostrarReporteUsuarios()">Usuarios</button></div><div class="card"><h3 id="reportesTituloResultado">Resultado</h3><div id="reportesResultado"><div class="reporte-empty">Elegí un reporte para ver la información.</div></div><pre id="reportesPre" class="hidden">Todavía no cargaste ningún reporte.</pre></div><div id="reportesComprasWrap" class="hidden"><div class="card"><h3>Filtros de compras</h3><div class="grid-4"><div class="field"><label>Desde</label><input type="date" id="repComprasDesde" /></div><div class="field"><label>Hasta</label><input type="date" id="repComprasHasta" /></div><div class="field"><label>Proveedor</label><select id="repComprasProveedor"><option value="">Todos</option></select></div><div class="field"><label>Producto</label><select id="repComprasProducto"><option value="">Todos</option></select></div></div><div class="row"><input id="repComprasBuscar" placeholder="Buscar por proveedor, producto, observación o N° compra" /><button class="btn btn-primary" onclick="cargarReporteCompras()">Buscar compras</button><button class="btn btn-secondary" onclick="limpiarFiltrosReporteCompras()">Limpiar filtros</button></div></div><div class="grid-4"><div class="card"><div class="metric" id="repComprasMetricCompras">0</div><div class="muted">Compras encontradas</div></div><div class="card"><div class="metric" id="repComprasMetricMonto">$0.00</div><div class="muted">Total comprado</div></div><div class="card"><div class="metric" id="repComprasMetricProveedores">0</div><div class="muted">Proveedores</div></div><div class="card"><div class="metric" id="repComprasMetricProductos">0</div><div class="muted">Productos</div></div></div><div class="card"><h3>Historial de compras</h3><div class="scroll-x"><table><thead><tr><th>Fecha</th><th>Compra</th><th>Proveedor</th><th>Producto</th><th>Cantidad</th><th>Costo unit.</th><th>Subtotal</th><th>Obs.</th></tr></thead><tbody id="repComprasHistorialBody"><tr><td colspan="8" class="muted">Todavía no cargaste ningún reporte de compras.</td></tr></tbody></table></div></div><div class="grid-2"><div class="card"><h3>Resumen por proveedor</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Compras</th><th>Total</th><th>Últ. precio</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasProveedorBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div><div class="card"><h3>Resumen por producto</h3><div class="scroll-x"><table><thead><tr><th>Producto</th><th>Veces</th><th>Cant. total</th><th>Promedio</th><th>Últ. precio</th></tr></thead><tbody id="repComprasProductoBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div></div><div class="card"><h3>Comparativa del producto filtrado</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Veces</th><th>Promedio</th><th>Mínimo</th><th>Máximo</th><th>Últ. precio</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasComparativaBody"><tr><td colspan="7" class="muted">Elegí un producto para comparar proveedores.</td></tr></tbody></table></div></div></div></section>
+<section id="page-reportes" class="page"><div class="topbar"><div><h1 class="page-title">Reportes</h1><div class="page-subtitle">Ventas, stock y compras.</div></div></div><div class="row" style="margin-bottom:14px;"><button class="btn btn-primary" onclick="cargarReporteVentasPorProducto()">Ventas por producto</button><button class="btn btn-primary" onclick="cargarReporteVentasPorEmpleado()">Ventas por empleado</button><button class="btn btn-primary" onclick="mostrarReporteInventario()">Inventario</button><button class="btn btn-primary" onclick="cargarReporteCajeros()">Reporte de cajeros</button><button class="btn btn-primary" onclick="mostrarReporteCompras()">Compras</button><button class="btn btn-primary" onclick="mostrarReporteCuentaCorriente()">Cuenta corriente</button><button class="btn btn-primary" onclick="mostrarReporteUsuarios()">Usuarios</button></div><div class="card"><h3 id="reportesTituloResultado">Resultado</h3><div id="reportesResultado"><div class="reporte-empty">Elegí un reporte para ver la información.</div></div><pre id="reportesPre" class="hidden">Todavía no cargaste ningún reporte.</pre></div><div id="reportesComprasWrap" class="hidden">
+  <div class="compras-pro-hero">
+    <h2>Compras PRO · Etapa 1</h2>
+    <p>Resumen profesional por proveedor, ranking, torta y detalle histórico.</p>
+  </div>
+
+  <div class="card">
+    <h3>Filtros de compras</h3>
+    <div class="grid-4">
+      <div class="field"><label>Desde</label><input type="date" id="repComprasDesde" /></div>
+      <div class="field"><label>Hasta</label><input type="date" id="repComprasHasta" /></div>
+      <div class="field"><label>Proveedor</label><select id="repComprasProveedor"><option value="">Todos</option></select></div>
+      <div class="field"><label>Producto</label><select id="repComprasProducto"><option value="">Todos</option></select></div>
+    </div>
+    <div class="row">
+      <input id="repComprasBuscar" placeholder="Buscar por proveedor, producto, observación o N° compra" />
+      <button class="btn btn-primary" onclick="cargarReporteCompras()">Buscar compras</button>
+      <button class="btn btn-secondary" onclick="limpiarFiltrosReporteCompras()">Limpiar filtros</button>
+    </div>
+  </div>
+
+  <div class="compras-pro-kpis">
+    <div class="compras-pro-kpi"><div class="label">Total comprado</div><div class="value" id="repComprasMetricMonto">$0,00</div><div class="foot">Según filtros elegidos</div></div>
+    <div class="compras-pro-kpi"><div class="label">Compras</div><div class="value" id="repComprasMetricCompras">0</div><div class="foot">Comprobantes únicos</div></div>
+    <div class="compras-pro-kpi"><div class="label">Proveedores</div><div class="value" id="repComprasMetricProveedores">0</div><div class="foot" id="repComprasTopProveedor">Top proveedor: -</div></div>
+    <div class="compras-pro-kpi"><div class="label">Ticket promedio</div><div class="value" id="repComprasMetricPromedio">$0,00</div><div class="foot"><span id="repComprasMetricProductos">0</span> productos distintos</div></div>
+  </div>
+
+  <div class="compras-pro-grid">
+    <div class="card">
+      <h3>Ranking de proveedores</h3>
+      <div id="repComprasRankingProveedores" class="compras-pro-ranking"><div class="compras-pro-empty">Sin datos.</div></div>
+    </div>
+    <div class="card">
+      <h3>Gráfico de compras por proveedor</h3>
+      <div class="compras-pro-donut-wrap">
+        <div class="compras-pro-donut" id="repComprasDonut"><div class="compras-pro-donut-center" id="repComprasDonutCenter">$0</div></div>
+        <div class="compras-pro-legend" id="repComprasDonutLegend"><div class="compras-pro-empty">Sin datos.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card"><h3>Resumen por proveedor</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Compras</th><th>Total</th><th>%</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasProveedorBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div>
+    <div class="card"><h3>Productos más comprados</h3><div class="scroll-x"><table><thead><tr><th>Producto</th><th>Veces</th><th>Cant. total</th><th>Total</th><th>Últ. precio</th></tr></thead><tbody id="repComprasProductoBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div>
+  </div>
+
+  <div class="card"><h3>Detalle de compras</h3><div class="scroll-x"><table><thead><tr><th>Fecha</th><th>Compra</th><th>Proveedor</th><th>Producto</th><th>Cantidad</th><th>Costo unit.</th><th>Subtotal</th><th>Obs.</th></tr></thead><tbody id="repComprasHistorialBody"><tr><td colspan="8" class="muted">Todavía no cargaste ningún reporte de compras.</td></tr></tbody></table></div></div>
+
+  <div class="card"><h3>Comparativa del producto filtrado</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Veces</th><th>Promedio</th><th>Mínimo</th><th>Máximo</th><th>Últ. precio</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasComparativaBody"><tr><td colspan="7" class="muted">Elegí un producto para comparar proveedores.</td></tr></tbody></table></div></div>
+</div></section>
 <section id="page-configuracion" class="page"><div class="topbar"><div><h1 class="page-title">Configuración</h1><div class="page-subtitle">Usuarios, permisos, proveedores y clientes.</div></div></div><div class="subtabs"><button id="btnConfigTabUsuarios" class="subtab-btn active" onclick="mostrarConfigSubtab('usuarios')">Usuarios</button><button id="btnConfigTabProveedores" class="subtab-btn" onclick="mostrarConfigSubtab('proveedores')">Proveedores</button><button id="btnConfigTabClientes" class="subtab-btn" onclick="mostrarConfigSubtab('clientes')">Clientes</button></div><div id="configSubpageUsuarios" class="config-subpage active"><div class="split"><div class="card"><h3 id="configTituloForm">Nuevo usuario</h3><input type="hidden" id="cfgEmpleadoId" /><div class="grid-2"><div class="field"><label>Nombre</label><input id="cfgNombre" /></div><div class="field"><label>Usuario</label><input id="cfgUsuario" /></div><div class="field"><label>Contraseña</label><input id="cfgPassword" /></div><div class="field"><label>Rol</label><select id="cfgRol"><option value="cajero">Cajero</option><option value="encargado">Encargado</option><option value="admin">Admin</option></select></div></div><div class="field"><label>Estado</label><select id="cfgActivo"><option value="true">Activo</option><option value="false">Inactivo</option></select></div><h3 style="margin-top:18px;">Permisos</h3><div class="checks"><div class="check-item"><label><input type="checkbox" id="permInicio" /> Inicio</label></div><div class="check-item"><label><input type="checkbox" id="permVentas" /> Ventas</label></div><div class="check-item"><label><input type="checkbox" id="permProductos" /> Productos</label></div><div class="check-item"><label><input type="checkbox" id="permCompras" /> Compras</label></div><div class="check-item"><label><input type="checkbox" id="permRecetas" /> Recetas</label></div><div class="check-item"><label><input type="checkbox" id="permCaja" /> Caja</label></div><div class="check-item"><label><input type="checkbox" id="permReportes" /> Reportes</label></div><div class="check-item"><label><input type="checkbox" id="permConfiguracion" /> Configuración</label></div></div><div class="row" style="margin-top:16px;"><button class="btn btn-primary" id="btnGuardarUsuario" onclick="guardarUsuario()">Guardar usuario</button><button class="btn btn-secondary" onclick="limpiarFormularioUsuario()">Limpiar</button></div><div class="message hidden" id="configMsg"></div></div><div class="card"><h3>Usuarios</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Activo</th><th>Permisos</th><th></th></tr></thead><tbody id="usuariosBody"></tbody></table></div></div></div></div><div id="configSubpageProveedores" class="config-subpage"><div class="split"><div class="card"><h3 id="proveedorFormTitulo">Nuevo proveedor</h3><div class="grid-2"><div class="field"><label>Nombre</label><input id="provNombre" /></div><div class="field"><label>Teléfono</label><input id="provTelefono" /></div></div><div class="field"><label>Dirección</label><input id="provDireccion" /></div><div class="field"><label>Observaciones</label><textarea id="provObservaciones"></textarea></div><div class="row"><button class="btn btn-primary" id="btnGuardarProveedor" onclick="guardarProveedor()">Guardar proveedor</button><button class="btn btn-secondary" onclick="limpiarFormularioProveedor()">Limpiar</button><button id="btnCancelarEdicionProveedor" class="btn btn-secondary hidden" onclick="cancelarEdicionProveedor()">Cancelar edición</button></div><div class="message hidden" id="proveedorMsg"></div></div><div class="card"><h3>Proveedores</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody id="proveedoresConfigBody"></tbody></table></div></div></div></div><div id="configSubpageClientes" class="config-subpage"><div class="split"><div class="card"><h3>Nuevo cliente</h3><div class="grid-2"><div class="field"><label>Nombre</label><input id="cliNombre" /></div><div class="field"><label>Teléfono</label><input id="cliTelefono" /></div></div><div class="field"><label>Dirección</label><input id="cliDireccion" /></div><div class="field"><label>Límite de crédito</label><input id="cliLimite" type="number" step="0.01" value="0" /></div><div class="field"><label>Observaciones</label><textarea id="cliObservaciones"></textarea></div><div class="row"><button class="btn btn-primary" onclick="guardarCliente()">Guardar cliente</button><button class="btn btn-secondary" onclick="limpiarFormularioCliente()">Limpiar</button></div><div class="message hidden" id="clienteMsg"></div></div><div class="card"><h3>Clientes</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Saldo CC</th></tr></thead><tbody id="clientesConfigBody"></tbody></table></div></div></div></div></section>
 
 <div id="modalProducto" class="modal-backdrop hidden">
@@ -1293,6 +1374,46 @@ function fechaCompra(c){return c.fecha||c.fecha_compra||c.created_at||c.fecha_cr
 function subtotalCompra(c){return Number(c.subtotal??c.total_item??c.total??0);}
 function costoUnitCompra(c){return Number(c.costo_unitario??c.costo??c.precio_costo??0);}
 function cantidadCompra(c){return Number(c.cantidad??0);}
+function idCompra(c){return c.compra_id||c.id||c.numero_compra||"-";}
+
+const COLORES_COMPRAS_PRO=["#2563eb","#16a34a","#f97316","#7e22ce","#dc2626","#0891b2","#ca8a04","#64748b"];
+
+function resumenProveedoresCompras(compras){
+  const mapa={};
+  compras.forEach(c=>{
+    const nombre=nombreProveedorCompra(c)||"Sin proveedor";
+    if(!mapa[nombre])mapa[nombre]={nombre,compras:new Set(),lineas:0,total:0,fecha:""};
+    mapa[nombre].compras.add(String(idCompra(c)));
+    mapa[nombre].lineas++;
+    mapa[nombre].total+=subtotalCompra(c);
+    const f=fechaCompra(c);
+    if(!mapa[nombre].fecha || String(f)>String(mapa[nombre].fecha))mapa[nombre].fecha=f;
+  });
+  return Object.values(mapa).map(r=>({...r, compras_cantidad:r.compras.size})).sort((a,b)=>b.total-a.total);
+}
+
+function actualizarMetricasComprasPro(compras, proveedoresResumen){
+  const comprasUnicas=new Set();
+  const productos=new Set();
+  let total=0;
+  compras.forEach(c=>{
+    comprasUnicas.add(String(idCompra(c)));
+    const prod=nombreProductoCompra(c);
+    if(prod&&prod!=="-")productos.add(prod);
+    total+=subtotalCompra(c);
+  });
+  const cantidadCompras=comprasUnicas.size;
+  const promedio=cantidadCompras?total/cantidadCompras:0;
+  const top=proveedoresResumen[0];
+  document.getElementById("repComprasMetricCompras").textContent=cantidadCompras;
+  document.getElementById("repComprasMetricMonto").textContent=formatoDinero(total);
+  document.getElementById("repComprasMetricProveedores").textContent=proveedoresResumen.length;
+  document.getElementById("repComprasMetricProductos").textContent=productos.size;
+  const prom=document.getElementById("repComprasMetricPromedio");
+  if(prom)prom.textContent=formatoDinero(promedio);
+  const topEl=document.getElementById("repComprasTopProveedor");
+  if(topEl)topEl.textContent=top?`Top proveedor: ${top.nombre}`:"Top proveedor: -";
+}
 
 async function cargarReporteCompras(){
   const resultado=document.getElementById("reportesResultado");
@@ -1317,28 +1438,23 @@ async function cargarReporteCompras(){
     if(!res.ok)throw new Error(data.error||"Error al cargar compras");
 
     const compras=listaComprasDesdeRespuesta(data);
-    let total=0;
-    const proveedores=new Set(), productos=new Set();
+    const proveedoresResumen=resumenProveedoresCompras(compras);
+    actualizarMetricasComprasPro(compras, proveedoresResumen);
+
     let filas="";
     compras.forEach(c=>{
       const prov=nombreProveedorCompra(c), prod=nombreProductoCompra(c), cant=cantidadCompra(c), costo=costoUnitCompra(c), sub=subtotalCompra(c);
-      total+=sub;
-      if(prov&&prov!=="-")proveedores.add(prov);
-      if(prod&&prod!=="-")productos.add(prod);
-      filas+=`<tr><td>${fechaCorta(fechaCompra(c))}</td><td>#${c.compra_id||c.id||"-"}</td><td>${escapeHtml(prov)}</td><td><strong>${escapeHtml(prod)}</strong></td><td>${qty(cant)}</td><td>${formatoDinero(costo)}</td><td><strong>${formatoDinero(sub)}</strong></td><td>${escapeHtml(c.observaciones||c.obs||"")}</td></tr>`;
+      filas+=`<tr><td>${fechaCorta(fechaCompra(c))}</td><td>#${idCompra(c)}</td><td>${escapeHtml(prov)}</td><td><strong>${escapeHtml(prod)}</strong></td><td>${qty(cant)}</td><td>${formatoDinero(costo)}</td><td><strong>${formatoDinero(sub)}</strong></td><td>${escapeHtml(c.observaciones||c.obs||"")}</td></tr>`;
     });
     if(!filas)filas='<tr><td colspan="8"><div class="reporte-empty">No hay compras para los filtros elegidos.</div></td></tr>';
-
-    document.getElementById("repComprasMetricCompras").textContent=compras.length;
-    document.getElementById("repComprasMetricMonto").textContent=formatoDinero(total);
-    document.getElementById("repComprasMetricProveedores").textContent=proveedores.size;
-    document.getElementById("repComprasMetricProductos").textContent=productos.size;
     document.getElementById("repComprasHistorialBody").innerHTML=filas;
 
-    renderResumenComprasProveedor(compras);
+    renderRankingComprasProveedor(proveedoresResumen);
+    renderDonutComprasProveedor(proveedoresResumen);
+    renderResumenComprasProveedor(compras, proveedoresResumen);
     renderResumenComprasProducto(compras);
     renderComparativaComprasProducto(compras);
-    if(resultado)resultado.innerHTML='<div class="reporte-empty">Reporte de compras cargado. Usá los filtros de abajo para buscar por proveedor, producto o fecha.</div>';
+    if(resultado)resultado.innerHTML='<div class="reporte-empty">Reporte de compras cargado. Ahora tenés resumen, ranking, torta y detalle histórico.</div>';
   }catch(error){
     if(resultado)resultado.innerHTML='<div class="reporte-empty">No se pudo cargar el reporte de compras. Revisá que el backend tenga activo <strong>/api/reportes/compras</strong>.</div>';
     const body=document.getElementById("repComprasHistorialBody");
@@ -1346,18 +1462,61 @@ async function cargarReporteCompras(){
   }
 }
 
-function renderResumenComprasProveedor(compras){
-  const mapa={};
-  compras.forEach(c=>{
-    const k=nombreProveedorCompra(c);
-    if(!mapa[k])mapa[k]={nombre:k,compras:0,total:0,ultimo:0,fecha:""};
-    mapa[k].compras++;
-    mapa[k].total+=subtotalCompra(c);
-    const f=fechaCompra(c);
-    if(!mapa[k].fecha || String(f)>String(mapa[k].fecha)){mapa[k].fecha=f;mapa[k].ultimo=costoUnitCompra(c);}
+function renderRankingComprasProveedor(resumen){
+  const cont=document.getElementById("repComprasRankingProveedores");
+  if(!cont)return;
+  const total=resumen.reduce((a,r)=>a+r.total,0);
+  const max=resumen[0]?.total||0;
+  const filas=resumen.slice(0,8).map((r,idx)=>{
+    const pct=total?((r.total/total)*100):0;
+    const ancho=max?((r.total/max)*100):0;
+    return `<div class="compras-pro-rank-row"><div class="compras-pro-rank-num">${idx+1}</div><div><div class="compras-pro-rank-name">${escapeHtml(r.nombre)}</div><div class="compras-pro-bar-bg"><div class="compras-pro-bar-fill" style="width:${ancho}%"></div></div></div><div class="compras-pro-rank-money">${formatoDinero(r.total)}<span>${pct.toFixed(1).replace('.',',')}% · ${r.compras_cantidad} compras</span></div></div>`;
+  }).join("");
+  cont.innerHTML=filas||'<div class="compras-pro-empty">Sin datos.</div>';
+}
+
+function renderDonutComprasProveedor(resumen){
+  const donut=document.getElementById("repComprasDonut");
+  const legend=document.getElementById("repComprasDonutLegend");
+  const center=document.getElementById("repComprasDonutCenter");
+  if(!donut||!legend)return;
+  const total=resumen.reduce((a,r)=>a+r.total,0);
+  if(center)center.textContent=formatoDinero(total);
+  if(!total){
+    donut.style.background="conic-gradient(#e5e7eb 0 100%)";
+    legend.innerHTML='<div class="compras-pro-empty">Sin datos.</div>';
+    return;
+  }
+  const principales=resumen.slice(0,7);
+  const resto=resumen.slice(7).reduce((a,r)=>a+r.total,0);
+  const partes=resto>0?[...principales,{nombre:"Otros",total:resto,compras_cantidad:0}]:principales;
+  let acumulado=0;
+  const segmentos=[];
+  partes.forEach((r,idx)=>{
+    const inicio=acumulado;
+    const fin=acumulado+(r.total/total)*100;
+    const color=COLORES_COMPRAS_PRO[idx%COLORES_COMPRAS_PRO.length];
+    segmentos.push(`${color} ${inicio}% ${fin}%`);
+    acumulado=fin;
   });
-  const filas=Object.values(mapa).sort((a,b)=>b.total-a.total).map(r=>`<tr><td><strong>${escapeHtml(r.nombre)}</strong></td><td>${r.compras}</td><td>${formatoDinero(r.total)}</td><td>${formatoDinero(r.ultimo)}</td><td>${fechaCorta(r.fecha)}</td></tr>`).join("");
-  document.getElementById("repComprasProveedorBody").innerHTML=filas||'<tr><td colspan="5" class="muted">Sin datos.</td></tr>';
+  donut.style.background=`conic-gradient(${segmentos.join(',')})`;
+  legend.innerHTML=partes.map((r,idx)=>{
+    const pct=total?((r.total/total)*100):0;
+    const color=COLORES_COMPRAS_PRO[idx%COLORES_COMPRAS_PRO.length];
+    return `<div class="compras-pro-legend-item"><span class="compras-pro-dot" style="background:${color}"></span><span>${escapeHtml(r.nombre)}</span><strong>${pct.toFixed(1).replace('.',',')}%</strong></div>`;
+  }).join("");
+}
+
+function renderResumenComprasProveedor(compras, resumen=null){
+  const tbody=document.getElementById("repComprasProveedorBody");
+  if(!tbody)return;
+  const datos=resumen||resumenProveedoresCompras(compras);
+  const total=datos.reduce((a,r)=>a+r.total,0);
+  const filas=datos.map(r=>{
+    const pct=total?((r.total/total)*100):0;
+    return `<tr><td><strong>${escapeHtml(r.nombre)}</strong></td><td>${r.compras_cantidad}</td><td><strong>${formatoDinero(r.total)}</strong></td><td>${pct.toFixed(1).replace('.',',')}%</td><td>${fechaCorta(r.fecha)}</td></tr>`;
+  }).join("");
+  tbody.innerHTML=filas||'<tr><td colspan="5" class="muted">Sin datos.</td></tr>';
 }
 
 function renderResumenComprasProducto(compras){
@@ -1371,7 +1530,7 @@ function renderResumenComprasProducto(compras){
     const f=fechaCompra(c);
     if(!mapa[k].fecha || String(f)>String(mapa[k].fecha)){mapa[k].fecha=f;mapa[k].ultimo=costoUnitCompra(c);}
   });
-  const filas=Object.values(mapa).sort((a,b)=>b.totalCosto-a.totalCosto).map(r=>`<tr><td><strong>${escapeHtml(r.nombre)}</strong></td><td>${r.veces}</td><td>${qty(r.cant)}</td><td>${formatoDinero(r.cant?r.totalCosto/r.cant:0)}</td><td>${formatoDinero(r.ultimo)}</td></tr>`).join("");
+  const filas=Object.values(mapa).sort((a,b)=>b.totalCosto-a.totalCosto).slice(0,20).map(r=>`<tr><td><strong>${escapeHtml(r.nombre)}</strong></td><td>${r.veces}</td><td>${qty(r.cant)}</td><td><strong>${formatoDinero(r.totalCosto)}</strong></td><td>${formatoDinero(r.ultimo)}</td></tr>`).join("");
   document.getElementById("repComprasProductoBody").innerHTML=filas||'<tr><td colspan="5" class="muted">Sin datos.</td></tr>';
 }
 
