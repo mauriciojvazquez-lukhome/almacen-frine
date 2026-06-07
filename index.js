@@ -3588,8 +3588,120 @@ async function armarAuditoriaFrine() {
   return "Encontré esto en Frine:\n\n" + partes.join("\n");
 }
 
-async function armarContextoAsistenteFrineEtapa1() {
-  const [ventasHoy, topProductosHoy, stockBajo, stockNegativo, cajasAbiertas] = await Promise.all([
+
+function normalizarTextoIA(valor) {
+  return String(valor || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9ñ\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extraerBusquedaIA(pregunta) {
+  const original = String(pregunta || '').trim();
+  const normal = normalizarTextoIA(original);
+  const patrones = [
+    /(?:vendi|vendí|venta|ventas|facture|facturé|compre|compré|compra|compras|stock|precio|producto|productos)\s+(?:de|del|la|el)?\s+(.+)/i,
+    /(?:de|del)\s+(.+)/i
+  ];
+
+  let texto = '';
+  for (const p of patrones) {
+    const m = normal.match(p);
+    if (m && m[1]) { texto = m[1]; break; }
+  }
+  if (!texto) texto = normal;
+
+  const quitar = new Set([
+    'hoy','ayer','mes','este','esta','semana','cuanto','cuanta','cuantos','cuantas','total','vendido','vendida','vendidos','vendidas',
+    'vendi','vendí','ventas','venta','facture','facturé','facturado','producto','productos','stock','precio','compra','compras','compre','compré',
+    'proveedor','proveedores','principal','mas','más','mejor','top','ranking','por','favor','frine','decime','dame','ver','quiero','saber'
+  ]);
+
+  const limpio = texto.split(' ').filter(w => w && !quitar.has(w)).join(' ').trim();
+  return limpio || '';
+}
+
+function necesitaBusquedaProductoIA(pregunta) {
+  return contieneAlguna(pregunta, [
+    'vendi de', 'vendí de', 'venta de', 'ventas de', 'cuanto vendi de', 'cuánto vendí de', 'stock de', 'precio de',
+    'producto', 'pan', 'coca', 'yerba', 'leche', 'azucar', 'azúcar', 'compré de', 'compre de', 'compras de'
+  ]);
+}
+
+async function armarDetalleProductoIA(pregunta) {
+  const q = extraerBusquedaIA(pregunta);
+  if (!q || q.length < 2) return null;
+  const like = `%${q}%`;
+
+  const productoResult = await pool.query(`
+    SELECT id, nombre, codigo_barras, plu, stock_actual, stock_minimo, precio_costo, precio_venta
+    FROM productos
+    WHERE activo = true
+      AND (
+        nombre ILIKE $1
+        OR COALESCE(codigo_barras,'') ILIKE $1
+        OR COALESCE(plu,'') ILIKE $1
+      )
+    ORDER BY
+      CASE WHEN nombre ILIKE $2 THEN 0 ELSE 1 END,
+      nombre ASC
+    LIMIT 5
+  `, [like, `${q}%`]);
+
+  const productos = productoResult.rows;
+  const ids = productos.map(p => p.id);
+  if (!ids.length) return { busqueda: q, productos: [], ventas_hoy: [], ventas_mes: [], compras_mes: [] };
+
+  const [ventasHoy, ventasMes, comprasMes] = await Promise.all([
+    pool.query(`
+      SELECT p.id, p.nombre, COALESCE(SUM(vd.cantidad),0) AS cantidad, COALESCE(SUM(vd.subtotal),0) AS total
+      FROM ventas_detalle vd
+      INNER JOIN ventas v ON v.id = vd.venta_id
+      LEFT JOIN productos p ON p.id = vd.producto_id
+      WHERE vd.producto_id = ANY($1::int[])
+        AND v.fecha::date = ${SQL_HOY_ARGENTINA}
+      GROUP BY p.id, p.nombre
+      ORDER BY total DESC
+    `, [ids]),
+    pool.query(`
+      SELECT p.id, p.nombre, COALESCE(SUM(vd.cantidad),0) AS cantidad, COALESCE(SUM(vd.subtotal),0) AS total
+      FROM ventas_detalle vd
+      INNER JOIN ventas v ON v.id = vd.venta_id
+      LEFT JOIN productos p ON p.id = vd.producto_id
+      WHERE vd.producto_id = ANY($1::int[])
+        AND date_trunc('month', v.fecha AT TIME ZONE 'America/Argentina/Buenos_Aires') = date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')
+      GROUP BY p.id, p.nombre
+      ORDER BY total DESC
+    `, [ids]),
+    pool.query(`
+      SELECT p.id, p.nombre, pr.nombre AS proveedor_nombre, COALESCE(SUM(cd.cantidad),0) AS cantidad, COALESCE(SUM(cd.subtotal),0) AS total
+      FROM compras_detalle cd
+      INNER JOIN compras c ON c.id = cd.compra_id
+      LEFT JOIN productos p ON p.id = cd.producto_id
+      LEFT JOIN proveedores pr ON pr.id = c.proveedor_id
+      WHERE cd.producto_id = ANY($1::int[])
+        AND date_trunc('month', COALESCE(c.fecha, c.created_at) AT TIME ZONE 'America/Argentina/Buenos_Aires') = date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')
+      GROUP BY p.id, p.nombre, pr.nombre
+      ORDER BY total DESC
+    `, [ids]).catch(() => ({ rows: [] }))
+  ]);
+
+  return {
+    busqueda: q,
+    productos,
+    ventas_hoy: ventasHoy.rows,
+    ventas_mes: ventasMes.rows,
+    compras_mes: comprasMes.rows
+  };
+}
+
+async function armarContextoAsistenteFrineEtapa2(pregunta = '') {
+  const detalleProducto = necesitaBusquedaProductoIA(pregunta) ? await armarDetalleProductoIA(pregunta).catch(() => null) : null;
+
+  const [ventasHoy, topProductosHoy, ventasPorCajeroHoy, stockBajo, stockNegativo, cajasAbiertas, comprasHoy, comprasMes, topProveedoresMes, topCompradosMes] = await Promise.all([
     pool.query(`
       SELECT
         COUNT(*)::int AS cantidad_ventas,
@@ -3601,10 +3713,7 @@ async function armarContextoAsistenteFrineEtapa1() {
       WHERE fecha::date = ${SQL_HOY_ARGENTINA}
     `),
     pool.query(`
-      SELECT
-        p.nombre,
-        COALESCE(SUM(vd.cantidad),0) AS cantidad,
-        COALESCE(SUM(vd.subtotal),0) AS total
+      SELECT p.nombre, COALESCE(SUM(vd.cantidad),0) AS cantidad, COALESCE(SUM(vd.subtotal),0) AS total
       FROM ventas_detalle vd
       INNER JOIN ventas v ON v.id = vd.venta_id
       LEFT JOIN productos p ON p.id = vd.producto_id
@@ -3614,20 +3723,27 @@ async function armarContextoAsistenteFrineEtapa1() {
       LIMIT 10
     `),
     pool.query(`
-      SELECT nombre, stock_actual, stock_minimo
+      SELECT e.nombre AS cajero, COUNT(*)::int AS ventas, COALESCE(SUM(v.total),0) AS total
+      FROM ventas v
+      LEFT JOIN empleados e ON e.id = v.empleado_id
+      WHERE v.fecha::date = ${SQL_HOY_ARGENTINA}
+      GROUP BY e.nombre
+      ORDER BY total DESC
+      LIMIT 10
+    `),
+    pool.query(`
+      SELECT nombre, stock_actual, stock_minimo, precio_costo, precio_venta
       FROM productos
-      WHERE activo = true
-        AND COALESCE(stock_minimo,0) > 0
-        AND stock_actual <= stock_minimo
+      WHERE activo = true AND COALESCE(stock_minimo,0) > 0 AND stock_actual <= stock_minimo
       ORDER BY (stock_actual - stock_minimo) ASC, nombre ASC
-      LIMIT 20
+      LIMIT 25
     `),
     pool.query(`
       SELECT nombre, stock_actual
       FROM productos
       WHERE activo = true AND stock_actual < 0
       ORDER BY stock_actual ASC, nombre ASC
-      LIMIT 20
+      LIMIT 25
     `),
     pool.query(`
       SELECT cs.id, cs.fecha_apertura, e.nombre AS empleado_nombre
@@ -3636,51 +3752,113 @@ async function armarContextoAsistenteFrineEtapa1() {
       WHERE cs.estado = 'abierta'
       ORDER BY cs.fecha_apertura ASC
       LIMIT 10
-    `)
+    `),
+    pool.query(`
+      SELECT COUNT(DISTINCT c.id)::int AS cantidad_compras, COALESCE(SUM(cd.subtotal),0) AS total_comprado
+      FROM compras c
+      LEFT JOIN compras_detalle cd ON cd.compra_id = c.id
+      WHERE COALESCE(c.fecha, c.created_at)::date = ${SQL_HOY_ARGENTINA}
+    `).catch(() => ({ rows: [{ cantidad_compras: 0, total_comprado: 0 }] })),
+    pool.query(`
+      SELECT COUNT(DISTINCT c.id)::int AS cantidad_compras, COALESCE(SUM(cd.subtotal),0) AS total_comprado
+      FROM compras c
+      LEFT JOIN compras_detalle cd ON cd.compra_id = c.id
+      WHERE date_trunc('month', COALESCE(c.fecha, c.created_at) AT TIME ZONE 'America/Argentina/Buenos_Aires') = date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')
+    `).catch(() => ({ rows: [{ cantidad_compras: 0, total_comprado: 0 }] })),
+    pool.query(`
+      SELECT COALESCE(pr.nombre,'Sin proveedor') AS proveedor_nombre, COUNT(DISTINCT c.id)::int AS compras, COALESCE(SUM(cd.subtotal),0) AS total
+      FROM compras c
+      LEFT JOIN compras_detalle cd ON cd.compra_id = c.id
+      LEFT JOIN proveedores pr ON pr.id = c.proveedor_id
+      WHERE date_trunc('month', COALESCE(c.fecha, c.created_at) AT TIME ZONE 'America/Argentina/Buenos_Aires') = date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')
+      GROUP BY pr.nombre
+      ORDER BY total DESC
+      LIMIT 10
+    `).catch(() => ({ rows: [] })),
+    pool.query(`
+      SELECT p.nombre, COALESCE(SUM(cd.cantidad),0) AS cantidad, COALESCE(SUM(cd.subtotal),0) AS total
+      FROM compras_detalle cd
+      INNER JOIN compras c ON c.id = cd.compra_id
+      LEFT JOIN productos p ON p.id = cd.producto_id
+      WHERE date_trunc('month', COALESCE(c.fecha, c.created_at) AT TIME ZONE 'America/Argentina/Buenos_Aires') = date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')
+      GROUP BY p.nombre
+      ORDER BY total DESC
+      LIMIT 10
+    `).catch(() => ({ rows: [] }))
   ]);
 
   return {
     fecha_argentina: fechaArgentinaISO(),
     ventas_hoy: ventasHoy.rows[0] || {},
     top_productos_hoy: topProductosHoy.rows,
+    ventas_por_cajero_hoy: ventasPorCajeroHoy.rows,
     stock_bajo: stockBajo.rows,
     stock_negativo: stockNegativo.rows,
-    cajas_abiertas: cajasAbiertas.rows
+    cajas_abiertas: cajasAbiertas.rows,
+    compras_hoy: comprasHoy.rows[0] || {},
+    compras_mes: comprasMes.rows[0] || {},
+    top_proveedores_mes: topProveedoresMes.rows,
+    top_comprados_mes: topCompradosMes.rows,
+    detalle_producto: detalleProducto
   };
 }
 
 function resumenContextoAsistenteFrine(ctx) {
   const v = ctx.ventas_hoy || {};
+  const ch = ctx.compras_hoy || {};
+  const cm = ctx.compras_mes || {};
   const partes = [];
   partes.push(`Fecha Argentina: ${ctx.fecha_argentina}`);
   partes.push(`Ventas hoy: ${v.cantidad_ventas || 0} ventas · total ${formatearDineroAr(v.total_vendido)} · efectivo ${formatearDineroAr(v.efectivo)} · transferencia ${formatearDineroAr(v.transferencia)} · cuenta corriente ${formatearDineroAr(v.cuenta_corriente)}`);
+  partes.push(`Compras hoy: ${ch.cantidad_compras || 0} compras · total ${formatearDineroAr(ch.total_comprado)}`);
+  partes.push(`Compras del mes: ${cm.cantidad_compras || 0} compras · total ${formatearDineroAr(cm.total_comprado)}`);
 
-  partes.push('Top productos de hoy:');
-  if (ctx.top_productos_hoy.length) {
-    ctx.top_productos_hoy.forEach(x => partes.push(`- ${x.nombre || 'Producto'}: cant. ${formatearCantidadAr(x.cantidad)} · ${formatearDineroAr(x.total)}`));
-  } else {
-    partes.push('- Sin ventas de productos hoy.');
-  }
+  partes.push('Top productos vendidos hoy:');
+  if (ctx.top_productos_hoy.length) ctx.top_productos_hoy.forEach(x => partes.push(`- ${x.nombre || 'Producto'}: cant. ${formatearCantidadAr(x.cantidad)} · ${formatearDineroAr(x.total)}`));
+  else partes.push('- Sin ventas de productos hoy.');
+
+  partes.push('Ventas por cajero hoy:');
+  if (ctx.ventas_por_cajero_hoy.length) ctx.ventas_por_cajero_hoy.forEach(x => partes.push(`- ${x.cajero || 'Sin cajero'}: ${x.ventas} ventas · ${formatearDineroAr(x.total)}`));
+  else partes.push('- Sin ventas por cajero hoy.');
+
+  partes.push('Top proveedores del mes por monto comprado:');
+  if (ctx.top_proveedores_mes.length) ctx.top_proveedores_mes.forEach(x => partes.push(`- ${x.proveedor_nombre}: ${x.compras} compras · ${formatearDineroAr(x.total)}`));
+  else partes.push('- Sin compras del mes para proveedores.');
+
+  partes.push('Productos más comprados del mes:');
+  if (ctx.top_comprados_mes.length) ctx.top_comprados_mes.forEach(x => partes.push(`- ${x.nombre || 'Producto'}: cant. ${formatearCantidadAr(x.cantidad)} · ${formatearDineroAr(x.total)}`));
+  else partes.push('- Sin compras de productos este mes.');
 
   partes.push('Stock bajo:');
-  if (ctx.stock_bajo.length) {
-    ctx.stock_bajo.forEach(x => partes.push(`- ${x.nombre}: stock ${formatearCantidadAr(x.stock_actual)} · mínimo ${formatearCantidadAr(x.stock_minimo)}`));
-  } else {
-    partes.push('- No hay productos por debajo del mínimo.');
-  }
+  if (ctx.stock_bajo.length) ctx.stock_bajo.forEach(x => partes.push(`- ${x.nombre}: stock ${formatearCantidadAr(x.stock_actual)} · mínimo ${formatearCantidadAr(x.stock_minimo)} · costo ${formatearDineroAr(x.precio_costo)} · venta ${formatearDineroAr(x.precio_venta)}`));
+  else partes.push('- No hay productos por debajo del mínimo.');
 
   partes.push('Stock negativo:');
-  if (ctx.stock_negativo.length) {
-    ctx.stock_negativo.forEach(x => partes.push(`- ${x.nombre}: stock ${formatearCantidadAr(x.stock_actual)}`));
-  } else {
-    partes.push('- No hay productos con stock negativo.');
-  }
+  if (ctx.stock_negativo.length) ctx.stock_negativo.forEach(x => partes.push(`- ${x.nombre}: stock ${formatearCantidadAr(x.stock_actual)}`));
+  else partes.push('- No hay productos con stock negativo.');
 
   partes.push('Cajas abiertas:');
-  if (ctx.cajas_abiertas.length) {
-    ctx.cajas_abiertas.forEach(x => partes.push(`- Caja #${x.id} · ${x.empleado_nombre || 'Sin empleado'}`));
-  } else {
-    partes.push('- No hay cajas abiertas.');
+  if (ctx.cajas_abiertas.length) ctx.cajas_abiertas.forEach(x => partes.push(`- Caja #${x.id} · ${x.empleado_nombre || 'Sin empleado'}`));
+  else partes.push('- No hay cajas abiertas.');
+
+  if (ctx.detalle_producto) {
+    const d = ctx.detalle_producto;
+    partes.push(`Detalle buscado por producto: ${d.busqueda}`);
+    if (!d.productos.length) {
+      partes.push('- No encontré productos que coincidan con esa búsqueda.');
+    } else {
+      partes.push('Productos encontrados:');
+      d.productos.forEach(p => partes.push(`- ${p.nombre}: stock ${formatearCantidadAr(p.stock_actual)} · mínimo ${formatearCantidadAr(p.stock_minimo)} · costo ${formatearDineroAr(p.precio_costo)} · venta ${formatearDineroAr(p.precio_venta)} · PLU ${p.plu || '-'} · código ${p.codigo_barras || '-'}`));
+      partes.push('Ventas de esos productos hoy:');
+      if (d.ventas_hoy.length) d.ventas_hoy.forEach(x => partes.push(`- ${x.nombre}: cant. ${formatearCantidadAr(x.cantidad)} · ${formatearDineroAr(x.total)}`));
+      else partes.push('- Hoy no se vendieron esos productos.');
+      partes.push('Ventas de esos productos este mes:');
+      if (d.ventas_mes.length) d.ventas_mes.forEach(x => partes.push(`- ${x.nombre}: cant. ${formatearCantidadAr(x.cantidad)} · ${formatearDineroAr(x.total)}`));
+      else partes.push('- Este mes no se vendieron esos productos.');
+      partes.push('Compras de esos productos este mes:');
+      if (d.compras_mes.length) d.compras_mes.forEach(x => partes.push(`- ${x.nombre}: ${x.proveedor_nombre || 'Sin proveedor'} · cant. ${formatearCantidadAr(x.cantidad)} · ${formatearDineroAr(x.total)}`));
+      else partes.push('- Este mes no se compraron esos productos.');
+    }
   }
 
   return partes.join('\n');
@@ -3701,7 +3879,7 @@ async function responderConOpenAIFrine(pregunta, contextoTexto) {
       input: [
         {
           role: 'system',
-          content: 'Sos el Asistente Frine dentro de un sistema de almacén/POS. Respondé en español argentino, claro y directo. Usá SOLO los datos del contexto. No inventes datos. No des instrucciones para modificar base de datos. No hagas acciones; solo analizá y explicá. Si faltan datos, decilo.'
+          content: 'Sos el Asistente Frine dentro de un sistema de almacén/POS. Respondé en español argentino, claro y directo. Usá SOLO los datos reales del contexto. No inventes datos. No hagas acciones ni modifiques información. Si el usuario pregunta por un producto específico, usá el bloque "Detalle buscado por producto". Si faltan datos, decilo. Siempre respondé con importes en formato argentino.'
         },
         {
           role: 'user',
@@ -3709,7 +3887,7 @@ async function responderConOpenAIFrine(pregunta, contextoTexto) {
         }
       ],
       temperature: 0.2,
-      max_output_tokens: 700
+      max_output_tokens: 900
     })
   });
 
@@ -3730,7 +3908,7 @@ app.post("/api/asistente-frine", async (req, res) => {
     const esModificacion = contieneAlguna(pregunta, ["cambia", "cambiar", "modifica", "modificar", "borra", "borrar", "elimina", "eliminar", "cerrar caja", "abrir caja", "crear producto", "guardar", "actualiza", "actualizar"]);
     if (esModificacion) return res.json({ respuesta: "No puedo modificar información. Solo puedo analizar Frine y mostrarte datos para que vos decidas." });
 
-    const contexto = await armarContextoAsistenteFrineEtapa1();
+    const contexto = await armarContextoAsistenteFrineEtapa2(pregunta);
     const contextoTexto = resumenContextoAsistenteFrine(contexto);
 
     try {
@@ -3740,12 +3918,45 @@ app.post("/api/asistente-frine", async (req, res) => {
       console.error("Error IA OpenAI, uso respuesta interna:", errorIA.message);
     }
 
-    // Respaldo si falta OPENAI_API_KEY o si OpenAI no responde.
     if (contieneAlguna(pregunta, ["problema", "raro", "mal cargado", "audita", "auditoria", "revisa", "diagnostico", "diagnóstico"])) return res.json({ respuesta: await armarAuditoriaFrine() });
+
+    if (contexto.detalle_producto && necesitaBusquedaProductoIA(pregunta)) {
+      const d = contexto.detalle_producto;
+      if (!d.productos.length) return res.json({ respuesta: `No encontré productos que coincidan con "${d.busqueda}".` });
+      const lineas = [];
+      lineas.push(`Búsqueda: ${d.busqueda}`);
+      lineas.push('Productos encontrados:');
+      d.productos.forEach(p => lineas.push(`• ${p.nombre}: stock ${formatearCantidadAr(p.stock_actual)} · venta ${formatearDineroAr(p.precio_venta)}`));
+      if (d.ventas_hoy.length) {
+        lineas.push('\nVentas de hoy:');
+        d.ventas_hoy.forEach(x => lineas.push(`• ${x.nombre}: ${formatearCantidadAr(x.cantidad)} unidades · ${formatearDineroAr(x.total)}`));
+      } else lineas.push('\nHoy no se vendió ese producto.');
+      if (d.ventas_mes.length) {
+        lineas.push('\nVentas del mes:');
+        d.ventas_mes.forEach(x => lineas.push(`• ${x.nombre}: ${formatearCantidadAr(x.cantidad)} unidades · ${formatearDineroAr(x.total)}`));
+      }
+      return res.json({ respuesta: lineas.join('\n') });
+    }
 
     if (contieneAlguna(pregunta, ["vendi hoy", "vendí hoy", "ventas hoy", "facture hoy", "facturé hoy", "cuanto vendi", "cuánto vendí"])) {
       const v = contexto.ventas_hoy || {};
       return res.json({ respuesta: `Hoy llevás ${v.cantidad_ventas || 0} ventas por un total de ${formatearDineroAr(v.total_vendido)}.\n\nEfectivo: ${formatearDineroAr(v.efectivo)}\nTransferencia: ${formatearDineroAr(v.transferencia)}\nCuenta corriente: ${formatearDineroAr(v.cuenta_corriente)}` });
+    }
+
+    if (contieneAlguna(pregunta, ["cajero", "cajeros", "quien vendio", "quién vendió"])) {
+      if (!contexto.ventas_por_cajero_hoy.length) return res.json({ respuesta: "Hoy no hay ventas por cajero para mostrar." });
+      return res.json({ respuesta: "Ventas por cajero hoy:\n\n" + contexto.ventas_por_cajero_hoy.map(x => `• ${x.cajero || 'Sin cajero'}: ${x.ventas} ventas · ${formatearDineroAr(x.total)}`).join("\n") });
+    }
+
+    if (contieneAlguna(pregunta, ["proveedor", "proveedores", "a quien compre", "a quién compré", "principal proveedor"])) {
+      if (!contexto.top_proveedores_mes.length) return res.json({ respuesta: "Este mes no encontré compras por proveedor." });
+      return res.json({ respuesta: "Proveedores principales del mes:\n\n" + contexto.top_proveedores_mes.map(x => `• ${x.proveedor_nombre}: ${x.compras} compras · ${formatearDineroAr(x.total)}`).join("\n") });
+    }
+
+    if (contieneAlguna(pregunta, ["compras", "compre", "compré", "comprado", "proveedor"])) {
+      const ch = contexto.compras_hoy || {};
+      const cm = contexto.compras_mes || {};
+      return res.json({ respuesta: `Compras de hoy: ${ch.cantidad_compras || 0} compras por ${formatearDineroAr(ch.total_comprado)}.\nCompras del mes: ${cm.cantidad_compras || 0} compras por ${formatearDineroAr(cm.total_comprado)}.` });
     }
 
     if (contieneAlguna(pregunta, ["top", "producto", "mas vendido", "más vendido"])) {
@@ -3760,7 +3971,7 @@ app.post("/api/asistente-frine", async (req, res) => {
 
     if (contieneAlguna(pregunta, ["comprar", "reponer", "reposicion", "reposición", "stock bajo", "que falta", "qué falta"])) {
       if (!contexto.stock_bajo.length) return res.json({ respuesta: "No hay productos por debajo del stock mínimo." });
-      return res.json({ respuesta: "Conviene revisar reposición de estos productos:\n\n" + contexto.stock_bajo.map(x => `• ${x.nombre}: stock ${formatearCantidadAr(x.stock_actual)} · mínimo ${formatearCantidadAr(x.stock_minimo)}`).join("\n") });
+      return res.json({ respuesta: "Conviene revisar reposición de estos productos:\n\n" + contexto.stock_bajo.map(x => `• ${x.nombre}: stock ${formatearCantidadAr(x.stock_actual)} · mínimo ${formatearCantidadAr(x.stock_minimo)} · costo ${formatearDineroAr(x.precio_costo)} · venta ${formatearDineroAr(x.precio_venta)}`).join("\n") });
     }
 
     if (contieneAlguna(pregunta, ["caja abierta", "cajas abiertas", "caja"])) {
@@ -3768,7 +3979,7 @@ app.post("/api/asistente-frine", async (req, res) => {
       return res.json({ respuesta: "Cajas abiertas:\n\n" + contexto.cajas_abiertas.map(x => `• Caja #${x.id} · ${x.empleado_nombre || 'Sin empleado'}`).join("\n") });
     }
 
-    return res.json({ respuesta: "Etapa 1 activa. Podés preguntarme:\n\n• ¿Cuánto vendí hoy?\n• ¿Cuáles son los productos más vendidos hoy?\n• ¿Qué tengo que comprar?\n• ¿Hay stock negativo?\n• ¿Hay cajas abiertas?" });
+    return res.json({ respuesta: "Etapa 2 activa. Podés preguntarme:\n\n• ¿Cuánto vendí hoy?\n• ¿Cuánto vendí de pan?\n• ¿Stock de Coca?\n• ¿Qué cajero vendió más hoy?\n• ¿Cuál fue mi proveedor principal del mes?\n• ¿Qué productos compré más este mes?\n• ¿Qué tengo que comprar?" });
   } catch (error) {
     console.error("Error asistente Frine:", error);
     res.status(500).json({ error: "Error al consultar el asistente" });
