@@ -564,25 +564,29 @@
   <div class="frine-assistant-head">
     <div>
       <div class="frine-assistant-title">🤖 Asistente Frine</div>
-      <div class="frine-assistant-sub">IA real · ventas, stock y caja · no modifica nada</div>
+      <div class="frine-assistant-sub">IA real · ventas, productos, compras, proveedores, stock y caja</div>
     </div>
     <button class="frine-assistant-close" onclick="toggleAsistenteFrine(false)">✕</button>
   </div>
   <div class="frine-assistant-suggestions">
     <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Cuánto vendí hoy?')">Ventas hoy</button>
-    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Cuáles son los productos más vendidos hoy?')">Top productos</button>
+    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Cuánto vendí de pan?')">Producto</button>
+    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Qué cajero vendió más hoy?')">Cajeros</button>
+    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Cuál fue mi proveedor principal del mes?')">Proveedores</button>
     <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Qué tengo que comprar?')">Comprar</button>
-    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Hay cajas abiertas?')">Cajas</button>
   </div>
   <div id="frineAssistantBody" class="frine-assistant-body">
-    <div class="frine-msg bot">Hola Maury. La IA ya puede analizar datos reales de Frine.
+    <div class="frine-msg bot">Hola Maury. Etapa 2 activa.
+
+Ahora puedo analizar datos reales de Frine por producto, cajero, proveedor, compras, stock y caja.
 
 Probá:
-¿Cuánto vendí hoy?
-¿Cuáles son los productos más vendidos hoy?
-¿Qué tengo que comprar?
-¿Hay stock negativo?
-¿Hay cajas abiertas?</div>
+¿Cuánto vendí de pan?
+¿Stock de Coca?
+¿Qué cajero vendió más hoy?
+¿Cuál fue mi proveedor principal del mes?
+¿Qué productos compré más este mes?
+¿Qué tengo que comprar?</div>
   </div>
   <div class="frine-assistant-input">
     <input id="frineAssistantInput" placeholder="Escribí tu consulta..." onkeydown="handleAsistenteFrineEnter(event)" />
