@@ -3637,7 +3637,7 @@ async function armarDetalleProductoIA(pregunta) {
   const like = `%${q}%`;
 
   const productoResult = await pool.query(`
-    SELECT id, nombre, codigo_barras, plu, stock_actual, stock_minimo, precio_costo, precio_venta
+    SELECT id, nombre, codigo_barras, plu, stock_actual, stock_minimo, costo, precio_venta
     FROM productos
     WHERE activo = true
       AND (
@@ -3732,7 +3732,7 @@ async function armarContextoAsistenteFrineEtapa2(pregunta = '') {
       LIMIT 10
     `),
     pool.query(`
-      SELECT nombre, stock_actual, stock_minimo, precio_costo, precio_venta
+      SELECT nombre, stock_actual, stock_minimo, costo, precio_venta
       FROM productos
       WHERE activo = true AND COALESCE(stock_minimo,0) > 0 AND stock_actual <= stock_minimo
       ORDER BY (stock_actual - stock_minimo) ASC, nombre ASC
@@ -3830,7 +3830,7 @@ function resumenContextoAsistenteFrine(ctx) {
   else partes.push('- Sin compras de productos este mes.');
 
   partes.push('Stock bajo:');
-  if (ctx.stock_bajo.length) ctx.stock_bajo.forEach(x => partes.push(`- ${x.nombre}: stock ${formatearCantidadAr(x.stock_actual)} · mínimo ${formatearCantidadAr(x.stock_minimo)} · costo ${formatearDineroAr(x.precio_costo)} · venta ${formatearDineroAr(x.precio_venta)}`));
+  if (ctx.stock_bajo.length) ctx.stock_bajo.forEach(x => partes.push(`- ${x.nombre}: stock ${formatearCantidadAr(x.stock_actual)} · mínimo ${formatearCantidadAr(x.stock_minimo)} · costo ${formatearDineroAr(x.costo)} · venta ${formatearDineroAr(x.precio_venta)}`));
   else partes.push('- No hay productos por debajo del mínimo.');
 
   partes.push('Stock negativo:');
@@ -3848,7 +3848,7 @@ function resumenContextoAsistenteFrine(ctx) {
       partes.push('- No encontré productos que coincidan con esa búsqueda.');
     } else {
       partes.push('Productos encontrados:');
-      d.productos.forEach(p => partes.push(`- ${p.nombre}: stock ${formatearCantidadAr(p.stock_actual)} · mínimo ${formatearCantidadAr(p.stock_minimo)} · costo ${formatearDineroAr(p.precio_costo)} · venta ${formatearDineroAr(p.precio_venta)} · PLU ${p.plu || '-'} · código ${p.codigo_barras || '-'}`));
+      d.productos.forEach(p => partes.push(`- ${p.nombre}: stock ${formatearCantidadAr(p.stock_actual)} · mínimo ${formatearCantidadAr(p.stock_minimo)} · costo ${formatearDineroAr(p.costo)} · venta ${formatearDineroAr(p.precio_venta)} · PLU ${p.plu || '-'} · código ${p.codigo_barras || '-'}`));
       partes.push('Ventas de esos productos hoy:');
       if (d.ventas_hoy.length) d.ventas_hoy.forEach(x => partes.push(`- ${x.nombre}: cant. ${formatearCantidadAr(x.cantidad)} · ${formatearDineroAr(x.total)}`));
       else partes.push('- Hoy no se vendieron esos productos.');
@@ -3971,7 +3971,7 @@ app.post("/api/asistente-frine", async (req, res) => {
 
     if (contieneAlguna(pregunta, ["comprar", "reponer", "reposicion", "reposición", "stock bajo", "que falta", "qué falta"])) {
       if (!contexto.stock_bajo.length) return res.json({ respuesta: "No hay productos por debajo del stock mínimo." });
-      return res.json({ respuesta: "Conviene revisar reposición de estos productos:\n\n" + contexto.stock_bajo.map(x => `• ${x.nombre}: stock ${formatearCantidadAr(x.stock_actual)} · mínimo ${formatearCantidadAr(x.stock_minimo)} · costo ${formatearDineroAr(x.precio_costo)} · venta ${formatearDineroAr(x.precio_venta)}`).join("\n") });
+      return res.json({ respuesta: "Conviene revisar reposición de estos productos:\n\n" + contexto.stock_bajo.map(x => `• ${x.nombre}: stock ${formatearCantidadAr(x.stock_actual)} · mínimo ${formatearCantidadAr(x.stock_minimo)} · costo ${formatearDineroAr(x.costo)} · venta ${formatearDineroAr(x.precio_venta)}`).join("\n") });
     }
 
     if (contieneAlguna(pregunta, ["caja abierta", "cajas abiertas", "caja"])) {
