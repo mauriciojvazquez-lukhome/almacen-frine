@@ -2138,18 +2138,21 @@ app.get("/api/ventas", async (req, res) => {
     const valores = [];
     let i = 1;
 
+    // FIX HISTORIAL VENTAS:
+    // Se usa v.fecha::date para evitar que el filtro de fecha quede corrido por zona horaria
+    // y deje el historial en cero aunque existan ventas cargadas.
     if (desde) {
-      condiciones.push(`((v.fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) >= $${i++}`);
-      valores.push(desde);
+      condiciones.push(`v.fecha::date >= $${i++}::date`);
+      valores.push(String(desde).trim());
     }
 
     if (hasta) {
-      condiciones.push(`((v.fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) <= $${i++}`);
-      valores.push(hasta);
+      condiciones.push(`v.fecha::date <= $${i++}::date`);
+      valores.push(String(hasta).trim());
     }
 
     if (forma_pago) {
-      condiciones.push(`v.forma_pago = $${i++}`);
+      condiciones.push(`LOWER(COALESCE(v.forma_pago, '')) = $${i++}`);
       valores.push(String(forma_pago).trim().toLowerCase());
     }
 
@@ -2159,6 +2162,17 @@ app.get("/api/ventas", async (req, res) => {
         OR COALESCE(e.nombre, '') ILIKE $${i}
         OR COALESCE(c.nombre, '') ILIKE $${i}
         OR COALESCE(v.observaciones, '') ILIKE $${i}
+        OR EXISTS (
+          SELECT 1
+          FROM ventas_detalle vdq
+          LEFT JOIN productos pq ON pq.id = vdq.producto_id
+          WHERE vdq.venta_id = v.id
+            AND (
+              COALESCE(pq.nombre, '') ILIKE $${i}
+              OR COALESCE(pq.codigo_barra, '') ILIKE $${i}
+              OR COALESCE(pq.plu, '') ILIKE $${i}
+            )
+        )
       )`);
       valores.push(`%${String(q).trim()}%`);
       i++;
@@ -2171,12 +2185,23 @@ app.get("/api/ventas", async (req, res) => {
       SELECT
         v.*,
         e.nombre AS empleado_nombre,
-        c.nombre AS cliente_nombre
+        c.nombre AS cliente_nombre,
+        COALESCE(det.productos_vendidos, '') AS productos_vendidos
       FROM ventas v
       LEFT JOIN empleados e ON e.id = v.empleado_id
       LEFT JOIN clientes c ON c.id = v.cliente_id
+      LEFT JOIN LATERAL (
+        SELECT STRING_AGG(
+          COALESCE(p.nombre, 'Producto') || ' x ' || TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM COALESCE(vd.cantidad, 0)::numeric::text)),
+          ', ' ORDER BY vd.id
+        ) AS productos_vendidos
+        FROM ventas_detalle vd
+        LEFT JOIN productos p ON p.id = vd.producto_id
+        WHERE vd.venta_id = v.id
+      ) det ON true
       ${where}
       ORDER BY v.id DESC
+      LIMIT 500
       `,
       valores
     );
@@ -2184,10 +2209,9 @@ app.get("/api/ventas", async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error("Error ventas:", error);
-    res.status(500).json({ error: "Error al obtener ventas" });
+    res.status(500).json({ error: "Error al obtener ventas", detalle: error.message });
   }
 });
-
 
 app.get("/api/ventas/:id", async (req, res) => {
   try {
