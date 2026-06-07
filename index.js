@@ -2169,7 +2169,7 @@ app.get("/api/ventas", async (req, res) => {
           WHERE vdq.venta_id = v.id
             AND (
               COALESCE(pq.nombre, '') ILIKE $${i}
-              OR COALESCE(pq.codigo_barra, '') ILIKE $${i}
+              OR COALESCE(pq.codigo_barras, '') ILIKE $${i}
               OR COALESCE(pq.plu, '') ILIKE $${i}
             )
         )
