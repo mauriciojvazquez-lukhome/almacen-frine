@@ -282,6 +282,22 @@
   .compras-pro-empty { padding:18px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:14px; color:#64748b; font-weight:800; text-align:center; }
   @media (max-width: 1200px) { .compras-pro-kpis { grid-template-columns: repeat(2, 1fr); } .compras-pro-grid { grid-template-columns:1fr; } }
   @media (max-width: 760px) { .compras-pro-kpis { grid-template-columns:1fr; } .compras-pro-donut-wrap { grid-template-columns:1fr; } .compras-pro-rank-row { grid-template-columns: 34px 1fr; } .compras-pro-rank-money { grid-column:2; text-align:left; } }
+  .compras-pro-bars { display:flex; align-items:flex-end; gap:12px; min-height:250px; padding:12px 4px 4px; border-top:1px solid #eef2f7; overflow-x:auto; }
+  .compras-pro-bar-month { min-width:58px; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:8px; height:245px; }
+  .compras-pro-bar-v { width:100%; max-width:52px; min-height:8px; border-radius:12px 12px 4px 4px; background:linear-gradient(180deg,#60a5fa,#2563eb); box-shadow:0 8px 18px rgba(37,99,235,.20); }
+  .compras-pro-bar-label { font-size:12px; color:#334155; font-weight:900; white-space:nowrap; }
+  .compras-pro-bar-money { font-size:11px; color:#64748b; font-weight:800; white-space:nowrap; }
+  .compras-pro-alerta-precio { display:inline-block; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:950; }
+  .compras-pro-alerta-subio { background:#fee2e2; color:#991b1b; }
+  .compras-pro-alerta-bajo { background:#dcfce7; color:#166534; }
+  .compras-pro-alerta-igual { background:#e5e7eb; color:#334155; }
+  .compras-pro-ficha { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px; margin-bottom:14px; }
+  .compras-pro-ficha-card { background:#f8fafc; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+  .compras-pro-ficha-card .label { color:#64748b; font-size:12px; font-weight:900; text-transform:uppercase; margin-bottom:6px; }
+  .compras-pro-ficha-card .value { color:#0f172a; font-size:22px; font-weight:950; word-break:break-word; }
+  @media (max-width: 900px) { .compras-pro-ficha { grid-template-columns:1fr 1fr; } }
+  @media (max-width: 620px) { .compras-pro-ficha { grid-template-columns:1fr; } }
+
 
 </style>
 </head>
@@ -471,8 +487,8 @@
 </section>
 <section id="page-reportes" class="page"><div class="topbar"><div><h1 class="page-title">Reportes</h1><div class="page-subtitle">Ventas, stock y compras.</div></div></div><div class="row" style="margin-bottom:14px;"><button class="btn btn-primary" onclick="cargarReporteVentasPorProducto()">Ventas por producto</button><button class="btn btn-primary" onclick="cargarReporteVentasPorEmpleado()">Ventas por empleado</button><button class="btn btn-primary" onclick="mostrarReporteInventario()">Inventario</button><button class="btn btn-primary" onclick="cargarReporteCajeros()">Reporte de cajeros</button><button class="btn btn-primary" onclick="mostrarReporteCompras()">Compras</button><button class="btn btn-primary" onclick="mostrarReporteCuentaCorriente()">Cuenta corriente</button><button class="btn btn-primary" onclick="mostrarReporteUsuarios()">Usuarios</button></div><div class="card"><h3 id="reportesTituloResultado">Resultado</h3><div id="reportesResultado"><div class="reporte-empty">Elegí un reporte para ver la información.</div></div><pre id="reportesPre" class="hidden">Todavía no cargaste ningún reporte.</pre></div><div id="reportesComprasWrap" class="hidden">
   <div class="compras-pro-hero">
-    <h2>Compras PRO · Etapa 1</h2>
-    <p>Resumen profesional por proveedor, ranking, torta y detalle histórico.</p>
+    <h2>Compras PRO · Etapa 2</h2>
+    <p>Panel profesional con proveedores, evolución mensual, aumentos, ficha de proveedor y detalle histórico.</p>
   </div>
 
   <div class="card">
@@ -516,9 +532,19 @@
     <div class="card"><h3>Productos más comprados</h3><div class="scroll-x"><table><thead><tr><th>Producto</th><th>Veces</th><th>Cant. total</th><th>Total</th><th>Últ. precio</th></tr></thead><tbody id="repComprasProductoBody"><tr><td colspan="5" class="muted">Sin datos.</td></tr></tbody></table></div></div>
   </div>
 
-  <div class="card"><h3>Detalle de compras</h3><div class="scroll-x"><table><thead><tr><th>Fecha</th><th>Compra</th><th>Proveedor</th><th>Producto</th><th>Cantidad</th><th>Costo unit.</th><th>Subtotal</th><th>Obs.</th></tr></thead><tbody id="repComprasHistorialBody"><tr><td colspan="8" class="muted">Todavía no cargaste ningún reporte de compras.</td></tr></tbody></table></div></div>
+  <div class="grid-2">
+    <div class="card"><h3>Evolución mensual de compras</h3><div id="repComprasEvolucionMensual" class="compras-pro-bars"><div class="compras-pro-empty">Sin datos.</div></div></div>
+    <div class="card"><h3>Control de aumentos</h3><div class="scroll-x"><table><thead><tr><th>Producto</th><th>Anterior</th><th>Último</th><th>Variación</th><th>Proveedor</th><th>Fecha</th></tr></thead><tbody id="repComprasAumentosBody"><tr><td colspan="6" class="muted">Sin datos.</td></tr></tbody></table></div></div>
+  </div>
+
+  <div class="card">
+    <div class="topbar" style="margin-bottom:12px;"><div><h3 style="margin:0;">Ficha del proveedor</h3><div class="page-subtitle">Usa el proveedor filtrado; si no elegís uno, muestra el proveedor con mayor compra.</div></div><div class="row" style="flex:0 0 auto;"><button class="btn btn-secondary" onclick="imprimirReporteCompras()">Imprimir reporte</button></div></div>
+    <div id="repComprasFichaProveedor"><div class="compras-pro-empty">Sin datos.</div></div>
+  </div>
 
   <div class="card"><h3>Comparativa del producto filtrado</h3><div class="scroll-x"><table><thead><tr><th>Proveedor</th><th>Veces</th><th>Promedio</th><th>Mínimo</th><th>Máximo</th><th>Últ. precio</th><th>Últ. fecha</th></tr></thead><tbody id="repComprasComparativaBody"><tr><td colspan="7" class="muted">Elegí un producto para comparar proveedores.</td></tr></tbody></table></div></div>
+
+  <div class="card"><h3>Detalle de compras</h3><div class="scroll-x"><table><thead><tr><th>Fecha</th><th>Compra</th><th>Proveedor</th><th>Producto</th><th>Cantidad</th><th>Costo unit.</th><th>Subtotal</th><th>Obs.</th></tr></thead><tbody id="repComprasHistorialBody"><tr><td colspan="8" class="muted">Todavía no cargaste ningún reporte de compras.</td></tr></tbody></table></div></div>
 </div></section>
 <section id="page-configuracion" class="page"><div class="topbar"><div><h1 class="page-title">Configuración</h1><div class="page-subtitle">Usuarios, permisos, proveedores y clientes.</div></div></div><div class="subtabs"><button id="btnConfigTabUsuarios" class="subtab-btn active" onclick="mostrarConfigSubtab('usuarios')">Usuarios</button><button id="btnConfigTabProveedores" class="subtab-btn" onclick="mostrarConfigSubtab('proveedores')">Proveedores</button><button id="btnConfigTabClientes" class="subtab-btn" onclick="mostrarConfigSubtab('clientes')">Clientes</button></div><div id="configSubpageUsuarios" class="config-subpage active"><div class="split"><div class="card"><h3 id="configTituloForm">Nuevo usuario</h3><input type="hidden" id="cfgEmpleadoId" /><div class="grid-2"><div class="field"><label>Nombre</label><input id="cfgNombre" /></div><div class="field"><label>Usuario</label><input id="cfgUsuario" /></div><div class="field"><label>Contraseña</label><input id="cfgPassword" /></div><div class="field"><label>Rol</label><select id="cfgRol"><option value="cajero">Cajero</option><option value="encargado">Encargado</option><option value="admin">Admin</option></select></div></div><div class="field"><label>Estado</label><select id="cfgActivo"><option value="true">Activo</option><option value="false">Inactivo</option></select></div><h3 style="margin-top:18px;">Permisos</h3><div class="checks"><div class="check-item"><label><input type="checkbox" id="permInicio" /> Inicio</label></div><div class="check-item"><label><input type="checkbox" id="permVentas" /> Ventas</label></div><div class="check-item"><label><input type="checkbox" id="permProductos" /> Productos</label></div><div class="check-item"><label><input type="checkbox" id="permCompras" /> Compras</label></div><div class="check-item"><label><input type="checkbox" id="permRecetas" /> Recetas</label></div><div class="check-item"><label><input type="checkbox" id="permCaja" /> Caja</label></div><div class="check-item"><label><input type="checkbox" id="permReportes" /> Reportes</label></div><div class="check-item"><label><input type="checkbox" id="permConfiguracion" /> Configuración</label></div></div><div class="row" style="margin-top:16px;"><button class="btn btn-primary" id="btnGuardarUsuario" onclick="guardarUsuario()">Guardar usuario</button><button class="btn btn-secondary" onclick="limpiarFormularioUsuario()">Limpiar</button></div><div class="message hidden" id="configMsg"></div></div><div class="card"><h3>Usuarios</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Activo</th><th>Permisos</th><th></th></tr></thead><tbody id="usuariosBody"></tbody></table></div></div></div></div><div id="configSubpageProveedores" class="config-subpage"><div class="split"><div class="card"><h3 id="proveedorFormTitulo">Nuevo proveedor</h3><div class="grid-2"><div class="field"><label>Nombre</label><input id="provNombre" /></div><div class="field"><label>Teléfono</label><input id="provTelefono" /></div></div><div class="field"><label>Dirección</label><input id="provDireccion" /></div><div class="field"><label>Observaciones</label><textarea id="provObservaciones"></textarea></div><div class="row"><button class="btn btn-primary" id="btnGuardarProveedor" onclick="guardarProveedor()">Guardar proveedor</button><button class="btn btn-secondary" onclick="limpiarFormularioProveedor()">Limpiar</button><button id="btnCancelarEdicionProveedor" class="btn btn-secondary hidden" onclick="cancelarEdicionProveedor()">Cancelar edición</button></div><div class="message hidden" id="proveedorMsg"></div></div><div class="card"><h3>Proveedores</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody id="proveedoresConfigBody"></tbody></table></div></div></div></div><div id="configSubpageClientes" class="config-subpage"><div class="split"><div class="card"><h3>Nuevo cliente</h3><div class="grid-2"><div class="field"><label>Nombre</label><input id="cliNombre" /></div><div class="field"><label>Teléfono</label><input id="cliTelefono" /></div></div><div class="field"><label>Dirección</label><input id="cliDireccion" /></div><div class="field"><label>Límite de crédito</label><input id="cliLimite" type="number" step="0.01" value="0" /></div><div class="field"><label>Observaciones</label><textarea id="cliObservaciones"></textarea></div><div class="row"><button class="btn btn-primary" onclick="guardarCliente()">Guardar cliente</button><button class="btn btn-secondary" onclick="limpiarFormularioCliente()">Limpiar</button></div><div class="message hidden" id="clienteMsg"></div></div><div class="card"><h3>Clientes</h3><div class="scroll-x"><table><thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Saldo CC</th></tr></thead><tbody id="clientesConfigBody"></tbody></table></div></div></div></div></section>
 
@@ -1453,8 +1479,11 @@ async function cargarReporteCompras(){
     renderDonutComprasProveedor(proveedoresResumen);
     renderResumenComprasProveedor(compras, proveedoresResumen);
     renderResumenComprasProducto(compras);
+    renderEvolucionMensualCompras(compras);
+    renderControlAumentosCompras(compras);
+    renderFichaProveedorCompras(compras, proveedoresResumen);
     renderComparativaComprasProducto(compras);
-    if(resultado)resultado.innerHTML='<div class="reporte-empty">Reporte de compras cargado. Ahora tenés resumen, ranking, torta y detalle histórico.</div>';
+    if(resultado)resultado.innerHTML='<div class="reporte-empty">Reporte de compras cargado. Etapa 2 activa: evolución mensual, aumentos, ficha proveedor, ranking, torta y detalle.</div>';
   }catch(error){
     if(resultado)resultado.innerHTML='<div class="reporte-empty">No se pudo cargar el reporte de compras. Revisá que el backend tenga activo <strong>/api/reportes/compras</strong>.</div>';
     const body=document.getElementById("repComprasHistorialBody");
@@ -1532,6 +1561,116 @@ function renderResumenComprasProducto(compras){
   });
   const filas=Object.values(mapa).sort((a,b)=>b.totalCosto-a.totalCosto).slice(0,20).map(r=>`<tr><td><strong>${escapeHtml(r.nombre)}</strong></td><td>${r.veces}</td><td>${qty(r.cant)}</td><td><strong>${formatoDinero(r.totalCosto)}</strong></td><td>${formatoDinero(r.ultimo)}</td></tr>`).join("");
   document.getElementById("repComprasProductoBody").innerHTML=filas||'<tr><td colspan="5" class="muted">Sin datos.</td></tr>';
+}
+
+
+function claveMesCompra(fecha){
+  if(!fecha)return "Sin fecha";
+  const d=new Date(fecha);
+  if(Number.isNaN(d.getTime()))return String(fecha).slice(0,7)||"Sin fecha";
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function etiquetaMesCompra(clave){
+  if(!clave||clave==="Sin fecha")return "Sin fecha";
+  const partes=String(clave).split('-');
+  const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const m=Number(partes[1]||1)-1;
+  return `${meses[m]||partes[1]}/${String(partes[0]||'').slice(-2)}`;
+}
+
+function renderEvolucionMensualCompras(compras){
+  const cont=document.getElementById('repComprasEvolucionMensual');
+  if(!cont)return;
+  const mapa={};
+  compras.forEach(c=>{
+    const k=claveMesCompra(fechaCompra(c));
+    mapa[k]=(mapa[k]||0)+subtotalCompra(c);
+  });
+  const datos=Object.entries(mapa).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))).slice(-12);
+  const max=Math.max(...datos.map(d=>d[1]),0);
+  if(!datos.length||!max){cont.innerHTML='<div class="compras-pro-empty">Sin datos.</div>';return;}
+  cont.innerHTML=datos.map(([mes,total])=>{
+    const h=Math.max(8,Math.round((total/max)*200));
+    return `<div class="compras-pro-bar-month"><div class="compras-pro-bar-money">${formatoDinero(total)}</div><div class="compras-pro-bar-v" style="height:${h}px"></div><div class="compras-pro-bar-label">${etiquetaMesCompra(mes)}</div></div>`;
+  }).join('');
+}
+
+function renderControlAumentosCompras(compras){
+  const tbody=document.getElementById('repComprasAumentosBody');
+  if(!tbody)return;
+  const mapa={};
+  compras.forEach(c=>{
+    const prod=nombreProductoCompra(c);
+    if(!prod||prod==='-')return;
+    if(!mapa[prod])mapa[prod]=[];
+    mapa[prod].push(c);
+  });
+  const cambios=[];
+  Object.entries(mapa).forEach(([prod,items])=>{
+    const ordenados=items.filter(c=>costoUnitCompra(c)>0).sort((a,b)=>new Date(fechaCompra(a)).getTime()-new Date(fechaCompra(b)).getTime() || Number(idCompra(a))-Number(idCompra(b)));
+    if(ordenados.length<2)return;
+    const ultimo=ordenados[ordenados.length-1];
+    let anterior=null;
+    for(let i=ordenados.length-2;i>=0;i--){
+      if(costoUnitCompra(ordenados[i])!==costoUnitCompra(ultimo)){anterior=ordenados[i];break;}
+    }
+    if(!anterior)return;
+    const ant=costoUnitCompra(anterior), ult=costoUnitCompra(ultimo);
+    const varPct=ant?((ult-ant)/ant)*100:0;
+    cambios.push({prod,ant,ult,varPct,proveedor:nombreProveedorCompra(ultimo),fecha:fechaCompra(ultimo)});
+  });
+  cambios.sort((a,b)=>Math.abs(b.varPct)-Math.abs(a.varPct));
+  const filas=cambios.slice(0,20).map(r=>{
+    const cls=r.varPct>0?'compras-pro-alerta-subio':r.varPct<0?'compras-pro-alerta-bajo':'compras-pro-alerta-igual';
+    const signo=r.varPct>0?'+':'';
+    return `<tr><td><strong>${escapeHtml(r.prod)}</strong></td><td>${formatoDinero(r.ant)}</td><td><strong>${formatoDinero(r.ult)}</strong></td><td><span class="compras-pro-alerta-precio ${cls}">${signo}${r.varPct.toFixed(1).replace('.',',')}%</span></td><td>${escapeHtml(r.proveedor)}</td><td>${fechaCorta(r.fecha)}</td></tr>`;
+  }).join('');
+  tbody.innerHTML=filas||'<tr><td colspan="6" class="muted">Todavía no hay suficientes compras repetidas para calcular aumentos.</td></tr>';
+}
+
+function renderFichaProveedorCompras(compras, resumen){
+  const cont=document.getElementById('repComprasFichaProveedor');
+  if(!cont)return;
+  const proveedorFiltro=document.getElementById('repComprasProveedor')?.value||'';
+  let nombreElegido='';
+  if(proveedorFiltro){
+    const item=compras.find(c=>String(c.proveedor_id||'')===String(proveedorFiltro));
+    nombreElegido=item?nombreProveedorCompra(item):'';
+  }else if(resumen&&resumen[0]){
+    nombreElegido=resumen[0].nombre;
+  }
+  if(!nombreElegido){cont.innerHTML='<div class="compras-pro-empty">Sin datos.</div>';return;}
+  const items=compras.filter(c=>nombreProveedorCompra(c)===nombreElegido);
+  const comprasUnicas=new Set(items.map(c=>String(idCompra(c))));
+  const total=items.reduce((a,c)=>a+subtotalCompra(c),0);
+  const productos=new Set(items.map(nombreProductoCompra).filter(Boolean));
+  const ultima=items.slice().sort((a,b)=>String(fechaCompra(b)).localeCompare(String(fechaCompra(a))))[0];
+  const mapaProd={};
+  items.forEach(c=>{
+    const p=nombreProductoCompra(c);
+    if(!mapaProd[p])mapaProd[p]={nombre:p,cant:0,total:0,ultimo:0,fecha:''};
+    mapaProd[p].cant+=cantidadCompra(c);
+    mapaProd[p].total+=subtotalCompra(c);
+    if(String(fechaCompra(c))>String(mapaProd[p].fecha)){mapaProd[p].fecha=fechaCompra(c);mapaProd[p].ultimo=costoUnitCompra(c);}
+  });
+  const productosHtml=Object.values(mapaProd).sort((a,b)=>b.total-a.total).slice(0,10).map(r=>`<tr><td><strong>${escapeHtml(r.nombre)}</strong></td><td>${qty(r.cant)}</td><td>${formatoDinero(r.total)}</td><td>${formatoDinero(r.ultimo)}</td></tr>`).join('');
+  const ultimasHtml=items.slice().sort((a,b)=>String(fechaCompra(b)).localeCompare(String(fechaCompra(a)))).slice(0,8).map(c=>`<tr><td>${fechaCorta(fechaCompra(c))}</td><td>#${idCompra(c)}</td><td><strong>${escapeHtml(nombreProductoCompra(c))}</strong></td><td>${qty(cantidadCompra(c))}</td><td>${formatoDinero(subtotalCompra(c))}</td></tr>`).join('');
+  cont.innerHTML=`
+    <div class="compras-pro-ficha">
+      <div class="compras-pro-ficha-card"><div class="label">Proveedor</div><div class="value">${escapeHtml(nombreElegido)}</div></div>
+      <div class="compras-pro-ficha-card"><div class="label">Total comprado</div><div class="value">${formatoDinero(total)}</div></div>
+      <div class="compras-pro-ficha-card"><div class="label">Compras</div><div class="value">${comprasUnicas.size}</div></div>
+      <div class="compras-pro-ficha-card"><div class="label">Última compra</div><div class="value">${ultima?fechaCorta(fechaCompra(ultima)):'-'}</div></div>
+    </div>
+    <div class="grid-2">
+      <div><h3>Productos principales del proveedor</h3><div class="scroll-x"><table><thead><tr><th>Producto</th><th>Cantidad</th><th>Total</th><th>Últ. precio</th></tr></thead><tbody>${productosHtml||'<tr><td colspan="4" class="muted">Sin datos.</td></tr>'}</tbody></table></div></div>
+      <div><h3>Últimas compras al proveedor</h3><div class="scroll-x"><table><thead><tr><th>Fecha</th><th>Compra</th><th>Producto</th><th>Cant.</th><th>Total</th></tr></thead><tbody>${ultimasHtml||'<tr><td colspan="5" class="muted">Sin datos.</td></tr>'}</tbody></table></div></div>
+    </div>`;
+}
+
+function imprimirReporteCompras(){
+  window.print();
 }
 
 function renderComparativaComprasProducto(compras){
