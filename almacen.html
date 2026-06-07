@@ -471,7 +471,8 @@
             <th>Cajero</th>
             <th>Forma pago</th>
             <th>Total</th>
-            <th>Observaciones</th><th>Acciones</th>
+            <th>Productos</th>
+            <th>Observaciones</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -2639,7 +2640,7 @@ window.addEventListener('load',()=>setTimeout(refrescarBotonAsistenteFrine,300))
       const url = params.toString() ? "/api/ventas?" + params.toString() : "/api/ventas";
       const res = await fetch(url + (url.includes("?") ? "&" : "?") + "ts=" + Date.now());
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || data.detalle || "Error al cargar historial");
+      if (!res.ok) throw new Error(data.detalle || data.error || "Error al cargar historial");
 
       const ventas = Array.isArray(data) ? data : [];
       let total = 0;
