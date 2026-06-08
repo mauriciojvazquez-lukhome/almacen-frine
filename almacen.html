@@ -569,24 +569,30 @@
     <button class="frine-assistant-close" onclick="toggleAsistenteFrine(false)">✕</button>
   </div>
   <div class="frine-assistant-suggestions">
-    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Cuánto vendí hoy?')">Ventas hoy</button>
-    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Cuánto vendí de pan?')">Producto</button>
-    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Qué cajero vendió más hoy?')">Cajeros</button>
-    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Cuál fue mi proveedor principal del mes?')">Proveedores</button>
+    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('Dame un resumen del negocio')">Resumen</button>
+    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Qué urgencias tengo hoy?')">Urgencias</button>
+    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Qué productos son más rentables hoy?')">Rentabilidad</button>
     <button class="frine-suggestion" onclick="preguntarAsistenteRapido('¿Qué tengo que comprar?')">Comprar</button>
+    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('Abrí reporte de compras')">Abrir compras</button>
+    <button class="frine-suggestion" onclick="preguntarAsistenteRapido('Abrí reporte de usuarios')">Abrir usuarios</button>
   </div>
   <div id="frineAssistantBody" class="frine-assistant-body">
-    <div class="frine-msg bot">Hola Maury. Etapa 2 activa.
+    <div class="frine-msg bot">Hola Maury. Etapa 3 activa.
 
-Ahora puedo analizar datos reales de Frine por producto, cajero, proveedor, compras, stock y caja.
+Ahora puedo trabajar como IA gerente y también abrir secciones del sistema sin modificar datos.
 
-Probá:
-¿Cuánto vendí de pan?
-¿Stock de Coca?
-¿Qué cajero vendió más hoy?
-¿Cuál fue mi proveedor principal del mes?
-¿Qué productos compré más este mes?
-¿Qué tengo que comprar?</div>
+Puedo responder:
+• Dame un resumen del negocio
+• ¿Qué urgencias tengo hoy?
+• ¿Qué productos son más rentables?
+• ¿Qué tengo que comprar?
+
+También puedo abrir pantallas:
+• Abrí reporte de compras
+• Abrí inventario
+• Abrí caja
+• Abrí productos
+• Abrí proveedores</div>
   </div>
   <div class="frine-assistant-input">
     <input id="frineAssistantInput" placeholder="Escribí tu consulta..." onkeydown="handleAsistenteFrineEnter(event)" />
@@ -2044,6 +2050,19 @@ function preguntarAsistenteRapido(texto){
   if(input) input.value=texto;
   enviarAsistenteFrine();
 }
+
+function ejecutarAccionAsistenteFrine(accion){
+  if(!accion || accion.tipo!=='abrir_pagina') return;
+  try{
+    if(accion.pagina && typeof mostrarPagina === 'function') mostrarPagina(accion.pagina);
+    if(accion.subtab && typeof mostrarConfigSubtab === 'function') setTimeout(()=>mostrarConfigSubtab(accion.subtab),120);
+    if(accion.ejecutar && typeof window[accion.ejecutar] === 'function') setTimeout(()=>window[accion.ejecutar](),180);
+    setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),220);
+  }catch(e){
+    console.error('No pude ejecutar acción del asistente:', e);
+  }
+}
+
 async function enviarAsistenteFrine(){
   const input=document.getElementById('frineAssistantInput');
   const pregunta=(input?.value||'').trim();
@@ -2055,6 +2074,7 @@ async function enviarAsistenteFrine(){
     const res=await fetch('/api/asistente-frine',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pregunta,empleado_id:usuarioActual?.id})});
     const data=await res.json();
     cargando.textContent=data.respuesta || data.error || 'No pude responder esa consulta.';
+    if(data.accion) ejecutarAccionAsistenteFrine(data.accion);
   }catch(e){
     cargando.textContent='Error de conexión con el asistente.';
   }
