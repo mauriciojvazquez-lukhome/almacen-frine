@@ -3698,8 +3698,121 @@ async function armarDetalleProductoIA(pregunta) {
   };
 }
 
+
+
+function detectarPeriodoAsistenteFrine(pregunta = '') {
+  const q = normalizarTextoIA(pregunta);
+  const hoy = fechaArgentinaISO();
+  if (contieneAlguna(q, ['ayer', 'dia anterior', 'día anterior'])) {
+    return { tipo: 'ayer', etiqueta: 'ayer', desdeSql: `${SQL_HOY_ARGENTINA} - INTERVAL '1 day'`, hastaSql: `${SQL_HOY_ARGENTINA}` };
+  }
+  if (contieneAlguna(q, ['anteayer'])) {
+    return { tipo: 'anteayer', etiqueta: 'anteayer', desdeSql: `${SQL_HOY_ARGENTINA} - INTERVAL '2 day'`, hastaSql: `${SQL_HOY_ARGENTINA} - INTERVAL '1 day'` };
+  }
+  if (contieneAlguna(q, ['semana', 'esta semana', 'semanal'])) {
+    return { tipo: 'semana', etiqueta: 'esta semana', desdeSql: `date_trunc('week', CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')`, hastaSql: `${SQL_HOY_ARGENTINA} + INTERVAL '1 day'` };
+  }
+  if (contieneAlguna(q, ['mes', 'este mes', 'mensual'])) {
+    return { tipo: 'mes', etiqueta: 'este mes', desdeSql: `date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')`, hastaSql: `${SQL_HOY_ARGENTINA} + INTERVAL '1 day'` };
+  }
+  if (contieneAlguna(q, ['hoy', 'dia', 'día'])) {
+    return { tipo: 'hoy', etiqueta: 'hoy', desdeSql: `${SQL_HOY_ARGENTINA}`, hastaSql: `${SQL_HOY_ARGENTINA} + INTERVAL '1 day'` };
+  }
+
+  const m = q.match(/(?:del|dia|día|fecha)\s+(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
+  if (m) {
+    const yyyy = m[3] ? (m[3].length === 2 ? `20${m[3]}` : m[3]) : hoy.slice(0, 4);
+    const mm = String(m[2]).padStart(2, '0');
+    const dd = String(m[1]).padStart(2, '0');
+    const fecha = `${yyyy}-${mm}-${dd}`;
+    return { tipo: 'fecha', etiqueta: `el ${dd}/${mm}/${yyyy}`, desdeSql: `'${fecha}'::date`, hastaSql: `'${fecha}'::date + INTERVAL '1 day'` };
+  }
+
+  return null;
+}
+
+function esConsultaVentasPeriodoIA(pregunta = '') {
+  const q = normalizarTextoIA(pregunta);
+  return contieneAlguna(q, ['vendio', 'vendió', 'vendi', 'vendí', 'ventas', 'venta', 'facture', 'facturé', 'facturacion', 'facturación', 'recaudacion', 'recaudación'])
+    && !!detectarPeriodoAsistenteFrine(pregunta);
+}
+
+async function consultarVentasPeriodoAsistenteFrine(pregunta = '') {
+  const periodo = detectarPeriodoAsistenteFrine(pregunta) || detectarPeriodoAsistenteFrine('hoy');
+  const desde = periodo.desdeSql;
+  const hasta = periodo.hastaSql;
+
+  const [resumen, cajeros, productos, pagos] = await Promise.all([
+    pool.query(`
+      SELECT
+        COUNT(*)::int AS cantidad_ventas,
+        COALESCE(SUM(total),0) AS total_vendido,
+        COALESCE(SUM(CASE WHEN forma_pago = 'efectivo' THEN total ELSE 0 END),0) AS efectivo,
+        COALESCE(SUM(CASE WHEN forma_pago = 'transferencia' THEN total ELSE 0 END),0) AS transferencia,
+        COALESCE(SUM(CASE WHEN forma_pago = 'cuenta_corriente' THEN total ELSE 0 END),0) AS cuenta_corriente,
+        COALESCE(SUM(CASE WHEN forma_pago = 'debito' THEN total ELSE 0 END),0) AS debito,
+        COALESCE(SUM(CASE WHEN forma_pago = 'credito' THEN total ELSE 0 END),0) AS credito
+      FROM ventas
+      WHERE (fecha AT TIME ZONE 'America/Argentina/Buenos_Aires') >= ${desde}
+        AND (fecha AT TIME ZONE 'America/Argentina/Buenos_Aires') < ${hasta}
+    `),
+    pool.query(`
+      SELECT COALESCE(e.nombre,'Sin cajero') AS cajero, COUNT(*)::int AS ventas, COALESCE(SUM(v.total),0) AS total
+      FROM ventas v
+      LEFT JOIN empleados e ON e.id = v.empleado_id
+      WHERE (v.fecha AT TIME ZONE 'America/Argentina/Buenos_Aires') >= ${desde}
+        AND (v.fecha AT TIME ZONE 'America/Argentina/Buenos_Aires') < ${hasta}
+      GROUP BY e.nombre
+      ORDER BY total DESC
+      LIMIT 20
+    `),
+    pool.query(`
+      SELECT COALESCE(p.nombre,'Producto') AS nombre, COALESCE(SUM(vd.cantidad),0) AS cantidad, COALESCE(SUM(vd.subtotal),0) AS total
+      FROM ventas_detalle vd
+      INNER JOIN ventas v ON v.id = vd.venta_id
+      LEFT JOIN productos p ON p.id = vd.producto_id
+      WHERE (v.fecha AT TIME ZONE 'America/Argentina/Buenos_Aires') >= ${desde}
+        AND (v.fecha AT TIME ZONE 'America/Argentina/Buenos_Aires') < ${hasta}
+      GROUP BY p.nombre
+      ORDER BY total DESC
+      LIMIT 10
+    `).catch(() => ({ rows: [] })),
+    pool.query(`
+      SELECT COALESCE(forma_pago,'Sin forma') AS forma_pago, COUNT(*)::int AS ventas, COALESCE(SUM(total),0) AS total
+      FROM ventas
+      WHERE (fecha AT TIME ZONE 'America/Argentina/Buenos_Aires') >= ${desde}
+        AND (fecha AT TIME ZONE 'America/Argentina/Buenos_Aires') < ${hasta}
+      GROUP BY forma_pago
+      ORDER BY total DESC
+    `)
+  ]);
+
+  return { periodo, resumen: resumen.rows[0] || {}, cajeros: cajeros.rows, productos: productos.rows, pagos: pagos.rows };
+}
+
+function responderVentasPeriodoAsistenteFrine(datos) {
+  const r = datos.resumen || {};
+  const lineas = [];
+  lineas.push(`Ventas de ${datos.periodo.etiqueta}: ${r.cantidad_ventas || 0} ventas · ${formatearDineroAr(r.total_vendido)}.`);
+  lineas.push(`Efectivo: ${formatearDineroAr(r.efectivo)} · Transferencia: ${formatearDineroAr(r.transferencia)} · Cuenta corriente: ${formatearDineroAr(r.cuenta_corriente)}.`);
+  if (Number(r.debito || 0) > 0 || Number(r.credito || 0) > 0) lineas.push(`Débito: ${formatearDineroAr(r.debito)} · Crédito: ${formatearDineroAr(r.credito)}.`);
+
+  if (datos.cajeros.length) {
+    lineas.push('\nPor cajera/cajero:');
+    datos.cajeros.forEach(x => lineas.push(`• ${x.cajero}: ${x.ventas} ventas · ${formatearDineroAr(x.total)}`));
+  }
+
+  if (datos.productos.length) {
+    lineas.push('\nProductos más vendidos:');
+    datos.productos.slice(0, 5).forEach(x => lineas.push(`• ${x.nombre}: ${formatearCantidadAr(x.cantidad)} · ${formatearDineroAr(x.total)}`));
+  }
+
+  return lineas.join('\n');
+}
+
 async function armarContextoAsistenteFrineEtapa2(pregunta = '') {
   const detalleProducto = necesitaBusquedaProductoIA(pregunta) ? await armarDetalleProductoIA(pregunta).catch(() => null) : null;
+  const ventasPeriodoDetectado = esConsultaVentasPeriodoIA(pregunta) ? await consultarVentasPeriodoAsistenteFrine(pregunta).catch(() => null) : null;
 
   const [ventasHoy, topProductosHoy, ventasPorCajeroHoy, stockBajo, stockNegativo, cajasAbiertas, comprasHoy, comprasMes, topProveedoresMes, topCompradosMes] = await Promise.all([
     pool.query(`
@@ -3830,6 +3943,7 @@ async function armarContextoAsistenteFrineEtapa2(pregunta = '') {
 
   return {
     fecha_argentina: fechaArgentinaISO(),
+    ventas_periodo_detectado: ventasPeriodoDetectado,
     ventas_hoy: ventasHoy.rows[0] || {},
     ventas_mes: ventasMes.rows[0] || {},
     rentabilidad_hoy: rentabilidadHoy.rows,
@@ -3998,6 +4112,10 @@ app.post("/api/asistente-frine", async (req, res) => {
     const contexto = await armarContextoAsistenteFrineEtapa2(pregunta);
     const contextoTexto = resumenContextoAsistenteFrine(contexto);
 
+    if (contexto.ventas_periodo_detectado && esConsultaVentasPeriodoIA(pregunta)) {
+      return res.json({ respuesta: responderVentasPeriodoAsistenteFrine(contexto.ventas_periodo_detectado) });
+    }
+
     try {
       const respuestaIA = await responderConOpenAIFrine(pregunta, contextoTexto);
       if (respuestaIA) return res.json({ respuesta: respuestaIA });
@@ -4109,6 +4227,8 @@ app.post("/api/asistente-frine", async (req, res) => {
     return res.json({ respuesta: `Etapa 3 activa. Podés preguntarme o pedirme abrir secciones:
 
 • ¿Cuánto vendí hoy?
+• ¿Cuánto se vendió ayer?
+• ¿Cuánto vendió cada cajera ayer?
 • ¿Cuánto vendí de pan?
 • ¿Stock de Coca?
 • ¿Qué cajero vendió más hoy?
