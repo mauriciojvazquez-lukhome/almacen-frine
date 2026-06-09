@@ -232,6 +232,13 @@
     .grid-4, .grid-3, .grid-2, .checks, .venta-atajos { grid-template-columns: 1fr; }
   }
 
+  /* ===== RR.HH FRINE ===== */
+  .rrhh-hero { background: linear-gradient(135deg,#0f172a,#7e22ce); color:white; border-radius:24px; padding:22px; margin-bottom:18px; box-shadow:0 18px 45px rgba(15,23,42,.18); }
+  .rrhh-hero h2 { margin:0 0 6px 0; font-size:26px; }
+  .rrhh-hero p { margin:0; color:rgba(255,255,255,.78); font-weight:700; }
+  .rrhh-concepto { display:none; }
+  .rrhh-badge { display:inline-block; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:900; background:#f3e8ff; color:#6b21a8; }
+
 
   /* Asistente Frine Admin */
   .frine-assistant-btn { position: fixed; right: 24px; bottom: 24px; width: 68px; height: 68px; border-radius: 999px; border: 0; background: linear-gradient(135deg,#0f172a,#2563eb); color: white; font-size: 28px; box-shadow: 0 18px 45px rgba(15,23,42,.35); cursor: pointer; z-index: 9998; display: none; align-items: center; justify-content: center; }
@@ -303,7 +310,7 @@
 </head>
 <body>
 <div id="loginScreen"><div class="login-card"><h1>FRINE</h1><p>Ingresá con tu usuario y contraseña.</p><div class="field"><label>Usuario</label><input id="loginUsuario" placeholder="Ej: admin" /></div><div class="field"><label>Contraseña</label><input id="loginPassword" type="password" placeholder="Tu contraseña" /></div><button class="btn btn-primary" style="width:100%" onclick="hacerLogin()">Ingresar</button><div id="loginError" class="login-error"></div></div></div>
-<div id="app"><div class="layout"><aside class="sidebar"><div class="brand">FRINE</div><div class="brand-sub">Sistema de almacén</div><div class="user-box"><div class="name" id="sidebarNombre">-</div><div class="role" id="sidebarRol">-</div></div><div class="nav-scroll"><button id="btnNavInicio" class="nav-btn" onclick="mostrarPagina('inicio')">Inicio</button><button id="btnNavVentas" class="nav-btn" onclick="mostrarPagina('ventas')">Ventas</button><button id="btnNavProductos" class="nav-btn" onclick="mostrarPagina('productos')">Productos</button><button id="btnNavCompras" class="nav-btn" onclick="mostrarPagina('compras')">Compras</button><button id="btnNavRecetas" class="nav-btn" onclick="mostrarPagina('recetas')">Recetas</button><button id="btnNavCaja" class="nav-btn" onclick="mostrarPagina('caja')">Caja</button><button id="btnNavHistorialVentas" class="nav-btn" onclick="mostrarPagina('historial-ventas')">Historial ventas</button><button id="btnNavReportes" class="nav-btn" onclick="mostrarPagina('reportes')">Reportes</button><button id="btnNavConfiguracion" class="nav-btn" onclick="mostrarPagina('configuracion')">Configuración</button></div><div class="sidebar-footer"><button class="btn btn-danger" style="width:100%" onclick="logout()">Salir</button></div></aside><main class="content">
+<div id="app"><div class="layout"><aside class="sidebar"><div class="brand">FRINE</div><div class="brand-sub">Sistema de almacén</div><div class="user-box"><div class="name" id="sidebarNombre">-</div><div class="role" id="sidebarRol">-</div></div><div class="nav-scroll"><button id="btnNavInicio" class="nav-btn" onclick="mostrarPagina('inicio')">Inicio</button><button id="btnNavVentas" class="nav-btn" onclick="mostrarPagina('ventas')">Ventas</button><button id="btnNavProductos" class="nav-btn" onclick="mostrarPagina('productos')">Productos</button><button id="btnNavCompras" class="nav-btn" onclick="mostrarPagina('compras')">Compras</button><button id="btnNavRecetas" class="nav-btn" onclick="mostrarPagina('recetas')">Recetas</button><button id="btnNavCaja" class="nav-btn" onclick="mostrarPagina('caja')">Caja</button><button id="btnNavRRHH" class="nav-btn" onclick="mostrarPagina('rrhh')">RR.HH</button><button id="btnNavHistorialVentas" class="nav-btn" onclick="mostrarPagina('historial-ventas')">Historial ventas</button><button id="btnNavReportes" class="nav-btn" onclick="mostrarPagina('reportes')">Reportes</button><button id="btnNavConfiguracion" class="nav-btn" onclick="mostrarPagina('configuracion')">Configuración</button></div><div class="sidebar-footer"><button class="btn btn-danger" style="width:100%" onclick="logout()">Salir</button></div></aside><main class="content">
 <section id="page-inicio" class="page inicio-pro-v2">
   <div class="inicio-header-pro">
     <div>
@@ -400,8 +407,8 @@
 <section id="page-compras" class="page"><div class="topbar"><div><h1 class="page-title">Compras</h1><div class="page-subtitle">Ingreso de mercadería con stock automático.</div></div></div><div class="split"><div class="card"><h3>Agregar producto a la compra</h3><div class="row"><div class="field"><label>Escanear / Código / PLU</label><input id="compraCodigo" placeholder="Escaneá y enter" onkeypress="handleCodigoCompra(event)" /></div><div class="field"><label>Proveedor</label><select id="compraProveedor"></select></div></div><div class="message hidden" id="compraMsg"></div><div class="scroll-x"><table><thead><tr><th>Producto</th><th>Cant.</th><th>Costo Unit.</th><th>Subtotal</th><th></th></tr></thead><tbody id="comprasBody"></tbody></table></div></div><div class="card"><h3>Guardar compra</h3><div style="margin-bottom:10px;" class="muted">Total compra</div><div class="total-box">$<span id="compraTotal">0.00</span></div><div class="field"><label>Observaciones</label><textarea id="compraObs"></textarea></div><button class="btn btn-success" style="width:100%; margin-bottom:10px;" onclick="guardarCompra()">Guardar compra</button><button class="btn btn-secondary" style="width:100%" onclick="limpiarCompra()">Vaciar compra</button></div></div></section>
 
 <section id="page-recetas" class="page"><div class="topbar"><div><h1 class="page-title">Recetas / Producción</h1><div class="page-subtitle">Producí stock descontando insumos: pebetes, café preparado, combos y elaborados.</div></div><div class="pill" id="recetasPill">Producción manual</div></div><div class="split"><div class="card"><h3>Nueva producción</h3><div class="grid-2"><div class="field"><label>Producto final a producir</label><select id="recetaProductoFinal"><option value="">Cargando productos...</option></select></div><div class="field"><label>Cantidad que vas a producir</label><input id="recetaCantidadFinal" type="number" step="0.001" value="1" /></div></div><div class="field"><label>Observaciones</label><input id="recetaObservaciones" placeholder="Ej: pebetes turno mañana, café preparado, etc." /></div><h3 style="margin-top:18px;">Insumos a descontar</h3><div class="grid-3"><div class="field receta-buscador-wrap"><label>Producto insumo</label><input id="recetaInsumoBuscar" placeholder="PLU, código o nombre del insumo" autocomplete="off" oninput="filtrarInsumosReceta()" onkeydown="handleBuscarInsumoReceta(event)" /><input type="hidden" id="recetaInsumoProducto" /><div id="recetaInsumoResultados" class="receta-resultados hidden"></div><div class="muted" id="recetaInsumoElegido" style="font-size:12px;margin-top:6px;">Sin insumo seleccionado.</div></div><div class="field"><label>Cantidad a descontar</label><input id="recetaInsumoCantidad" type="number" step="0.001" value="1" /></div><div class="field"><label>Acción</label><button class="btn btn-secondary" style="width:100%" onclick="agregarInsumoReceta()">Agregar insumo</button></div></div><div class="scroll-x"><table><thead><tr><th>Insumo</th><th>Descuenta</th><th>Stock actual</th><th></th></tr></thead><tbody id="recetaInsumosBody"><tr><td colspan="4" class="muted">Todavía no agregaste insumos.</td></tr></tbody></table></div><div class="message hidden" id="recetaMsg"></div><div class="row" style="margin-top:16px;"><button class="btn btn-success" onclick="producirReceta()">Producir y actualizar stock</button><button class="btn btn-secondary" onclick="limpiarRecetaForm()">Limpiar</button></div></div><div class="card"><h3>Cómo usarlo</h3><div class="item-dashboard"><strong>Ejemplo pebete jamón y queso</strong><div class="muted">Producto final: Pebete J/Q · Cantidad: 20 · Insumos: 20 panes, 1 kg jamón, 1 kg queso.</div></div><div class="item-dashboard"><strong>Ejemplo café</strong><div class="muted">Producto final: Café preparado · Cantidad: 50 · Insumo: Café grande 500 g, descontar 1 unidad.</div></div><div class="alerta-item">Antes de producir, el sistema controla que tengas stock suficiente de cada insumo.</div></div></div><div class="card"><h3>Historial de producción</h3><div class="row" style="margin-bottom:12px;"><button class="btn btn-secondary" onclick="cargarHistorialRecetas()">Actualizar historial</button></div><div class="scroll-x"><table><thead><tr><th>ID</th><th>Fecha</th><th>Usuario</th><th>Producto final</th><th>Cantidad</th><th>Insumos</th><th>Obs.</th></tr></thead><tbody id="recetasHistorialBody"><tr><td colspan="7" class="muted">Todavía no cargaste el historial.</td></tr></tbody></table></div></div></section>
-<section id="page-caja" class="page"><div class="topbar"><div><h1 class="page-title">Caja</h1><div class="page-subtitle">Apertura, retiros, ingresos y cierre con informe automático.</div></div><div class="pill" id="cajaPillEstado">Caja: cargando...</div></div><div class="grid-3"><div class="card"><h3>Abrir caja</h3><div class="field"><label>Monto inicial</label><input id="cajaMontoInicial" type="number" step="0.01" /></div><div class="field"><label>Observaciones</label><input id="cajaObsApertura" /></div><button class="btn btn-primary" onclick="abrirCaja()">Abrir caja</button></div><div class="card"><h3>Movimiento</h3><div class="field"><label>Tipo</label><select id="cajaTipoMovimiento"><option value="retiro">Retiro</option><option value="ingreso">Ingreso</option></select></div><div class="field"><label>Medio</label><select id="cajaMedioMovimiento"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select></div><div class="field"><label>Monto</label><input id="cajaMontoMovimiento" type="number" step="0.01" /></div><div class="field"><label>Motivo</label><input id="cajaMotivoMovimiento" /></div><button class="btn btn-secondary" onclick="registrarMovimientoCaja()">Guardar movimiento</button></div><div class="card"><h3>Cerrar caja</h3><div class="field"><label>Efectivo real</label><input id="cajaEfectivoReal" type="number" step="0.01" /></div><div class="field"><label>Transferencia real</label><input id="cajaTransferenciaReal" type="number" step="0.01" /></div><div class="field"><label>Observaciones</label><input id="cajaObsCierre" /></div><button class="btn btn-danger" style="width:100%; margin-bottom:10px;" onclick="cerrarCaja()">Cerrar caja</button><button class="btn btn-secondary" style="width:100%;" onclick="imprimirCierreCajaActual()">Imprimir cierre</button></div></div><div class="card"><h3>Informe de caja del cajero</h3><div id="cajaInformeActual" class="caja-informe">Cargando caja...</div></div><div class="card"><h3>Movimientos de caja</h3><div id="cajaMovimientosActual" class="scroll-x">Cargando movimientos...</div></div><div class="card hidden"><h3>Estado técnico</h3><pre id="cajaEstadoPre">Cargando...</pre></div></section>
-<section id="page-historial-ventas" class="page">
+<section id="page-caja" class="page"><div class="topbar"><div><h1 class="page-title">Caja</h1><div class="page-subtitle">Apertura, retiros, ingresos y cierre con informe automático.</div></div><div class="pill" id="cajaPillEstado">Caja: cargando...</div></div><div class="grid-3"><div class="card"><h3>Abrir caja</h3><div class="field"><label>Monto inicial</label><input id="cajaMontoInicial" type="number" step="0.01" /></div><div class="field"><label>Observaciones</label><input id="cajaObsApertura" /></div><button class="btn btn-primary" onclick="abrirCaja()">Abrir caja</button></div><div class="card"><h3>Movimiento</h3><div class="field"><label>Tipo</label><select id="cajaTipoMovimiento" onchange="actualizarConceptoRetiroCaja()"><option value="retiro">Retiro</option><option value="ingreso">Ingreso</option></select></div><div class="field rrhh-concepto" id="cajaTipoRetiroWrap"><label>Concepto del retiro</label><select id="cajaTipoRetiro"><option value="otro">Otro retiro</option><option value="sueldo_empleado">Sueldo empleado</option><option value="adelanto_empleado">Adelanto empleado</option><option value="gasto_negocio">Gasto negocio</option><option value="pago_proveedor">Pago proveedor</option></select><div class="print-note">Si es sueldo o adelanto, RR.HH lo registra automáticamente al usuario que tiene la caja abierta.</div></div><div class="field"><label>Medio</label><select id="cajaMedioMovimiento"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select></div><div class="field"><label>Monto</label><input id="cajaMontoMovimiento" type="number" step="0.01" /></div><div class="field"><label>Motivo</label><input id="cajaMotivoMovimiento" /></div><button class="btn btn-secondary" onclick="registrarMovimientoCaja()">Guardar movimiento</button></div><div class="card"><h3>Cerrar caja</h3><div class="field"><label>Efectivo real</label><input id="cajaEfectivoReal" type="number" step="0.01" /></div><div class="field"><label>Transferencia real</label><input id="cajaTransferenciaReal" type="number" step="0.01" /></div><div class="field"><label>Observaciones</label><input id="cajaObsCierre" /></div><button class="btn btn-danger" style="width:100%; margin-bottom:10px;" onclick="cerrarCaja()">Cerrar caja</button><button class="btn btn-secondary" style="width:100%;" onclick="imprimirCierreCajaActual()">Imprimir cierre</button></div></div><div class="card"><h3>Informe de caja del cajero</h3><div id="cajaInformeActual" class="caja-informe">Cargando caja...</div></div><div class="card"><h3>Movimientos de caja</h3><div id="cajaMovimientosActual" class="scroll-x">Cargando movimientos...</div></div><div class="card hidden"><h3>Estado técnico</h3><pre id="cajaEstadoPre">Cargando...</pre></div></section>
+<section id="page-rrhh" class="page"><div class="topbar"><div><h1 class="page-title">RR.HH</h1><div class="page-subtitle">Sueldos y adelantos registrados automáticamente desde los retiros de caja.</div></div><div class="pill">Empleados desde Configuración → Usuarios</div></div><div class="rrhh-hero"><h2>Control de pagos del personal</h2><p>Cuando una cajera retira sueldo o adelanto, queda asociado a su usuario y aparece en este reporte.</p></div><div class="card"><h3>Filtros</h3><div class="grid-4"><div class="field"><label>Desde</label><input id="rrhhDesde" type="date" /></div><div class="field"><label>Hasta</label><input id="rrhhHasta" type="date" /></div><div class="field"><label>Empleado</label><select id="rrhhEmpleado"><option value="">Todos</option></select></div><div class="field"><label>&nbsp;</label><button class="btn btn-primary" style="width:100%" onclick="cargarRRHH()">Actualizar RR.HH</button></div></div></div><div id="rrhhResultado"><div class="reporte-empty">Cargando RR.HH...</div></div></section><section id="page-historial-ventas" class="page">
   <div class="topbar">
     <div>
       <h1 class="page-title">Historial de ventas</h1>
@@ -941,8 +948,8 @@ async function cargarMovimientosCajaActual(cajaId){
     const res=await fetch(`/api/caja/movimientos/${cajaId}`),data=await res.json();
     const items=Array.isArray(data)?data:[];
     if(!items.length){box.innerHTML='<div class="reporte-empty">Sin movimientos.</div>';return}
-    const filas=items.map(m=>{const medio=m.medio_pago||((m.tipo||"").includes("transferencia")?"transferencia":"efectivo");return `<tr><td>${formatoFechaHora(m.fecha)}</td><td>${escapeHtml(m.tipo)}</td><td>${escapeHtml(medio)}</td><td>${formatoDinero(m.monto)}</td><td>${escapeHtml(m.motivo||"")}</td><td>${escapeHtml(m.empleado_nombre||"")}</td></tr>`}).join("");
-    box.innerHTML=`<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Medio</th><th>Monto</th><th>Motivo</th><th>Empleado</th></tr></thead><tbody>${filas}</tbody></table>`;
+    const filas=items.map(m=>{const medio=m.medio_pago||((m.tipo||"").includes("transferencia")?"transferencia":"efectivo");return `<tr><td>${formatoFechaHora(m.fecha)}</td><td>${escapeHtml(m.tipo)}</td><td>${escapeHtml(medio)}</td><td>${escapeHtml(m.tipo_retiro ? etiquetaTipoRetiro(m.tipo_retiro) : '')}</td><td>${formatoDinero(m.monto)}</td><td>${escapeHtml(m.motivo||"")}</td><td>${escapeHtml(m.empleado_nombre||"")}</td></tr>`}).join("");
+    box.innerHTML=`<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Medio</th><th>Concepto</th><th>Monto</th><th>Motivo</th><th>Empleado</th></tr></thead><tbody>${filas}</tbody></table>`;
   }catch(error){box.innerHTML='<div class="reporte-empty">Error al cargar movimientos.</div>'}
 }
 async function cargarEstadoCaja(){try{const res=await fetch(`/api/caja/abierta?empleado_id=${usuarioActual?.id||""}`),data=await res.json();renderInformeCaja(data)}catch(error){document.getElementById("cajaEstadoPre").textContent="Error al cargar caja";document.getElementById("cajaInformeActual").innerHTML='<div class="reporte-empty">Error al cargar caja.</div>'}}
@@ -965,7 +972,7 @@ async function reimprimirCierreCaja(id){
   try{const res=await fetch(`/api/reportes/caja/${id}`),data=await res.json();if(!res.ok){alert(data.error||"No se pudo cargar el cierre");return}imprimirTexto(generarHTMLCierreCaja(data),"Cierre de caja FRINE")}catch(error){alert("Error de conexión al reimprimir cierre")}
 }
 async function abrirCaja(){try{const res=await fetch("/api/caja/abrir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empleado_id:usuarioActual.id,monto_inicial:document.getElementById("cajaMontoInicial").value,observaciones:document.getElementById("cajaObsApertura").value})}),data=await res.json();if(!res.ok){alert(data.error||"Error al abrir caja");return}alert("Caja abierta");document.getElementById("cajaMontoInicial").value="";document.getElementById("cajaObsApertura").value="";cargarEstadoCaja();cargarResumen()}catch(error){alert("Error de conexión")}}
-async function registrarMovimientoCaja(){if(!cajaAbiertaActual?.id){alert("No hay caja abierta");return}try{const res=await fetch("/api/caja/movimiento",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({caja_sesion_id:cajaAbiertaActual.id,tipo:document.getElementById("cajaTipoMovimiento").value,medio_pago:document.getElementById("cajaMedioMovimiento")?.value||"efectivo",monto:document.getElementById("cajaMontoMovimiento").value,motivo:document.getElementById("cajaMotivoMovimiento").value,empleado_id:usuarioActual.id})}),data=await res.json();if(!res.ok){alert(data.error||"Error al guardar movimiento");return}alert("Movimiento guardado");document.getElementById("cajaMontoMovimiento").value="";document.getElementById("cajaMotivoMovimiento").value="";cargarEstadoCaja();cargarResumen()}catch(error){alert("Error de conexión")}}
+async function registrarMovimientoCaja(){if(!cajaAbiertaActual?.id){alert("No hay caja abierta");return}try{const tipo=document.getElementById("cajaTipoMovimiento").value;const tipoRetiro=tipo==="retiro"?(document.getElementById("cajaTipoRetiro")?.value||"otro"):null;const res=await fetch("/api/caja/movimiento",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({caja_sesion_id:cajaAbiertaActual.id,tipo,medio_pago:document.getElementById("cajaMedioMovimiento")?.value||"efectivo",tipo_retiro:tipoRetiro,monto:document.getElementById("cajaMontoMovimiento").value,motivo:document.getElementById("cajaMotivoMovimiento").value,empleado_id:usuarioActual.id})}),data=await res.json();if(!res.ok){alert(data.error||"Error al guardar movimiento");return}alert(tipoRetiro==="sueldo_empleado"||tipoRetiro==="adelanto_empleado"?"Movimiento guardado y registrado en RR.HH":"Movimiento guardado");document.getElementById("cajaMontoMovimiento").value="";document.getElementById("cajaMotivoMovimiento").value="";cargarEstadoCaja();cargarResumen()}catch(error){alert("Error de conexión")}}
 async function cerrarCaja(){if(!cajaAbiertaActual?.id){alert("No hay caja abierta");return}try{const res=await fetch("/api/caja/cerrar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({caja_sesion_id:cajaAbiertaActual.id,empleado_cierre_id:usuarioActual.id,efectivo_real:document.getElementById("cajaEfectivoReal").value,transferencia_real:document.getElementById("cajaTransferenciaReal").value,observaciones:document.getElementById("cajaObsCierre").value})}),data=await res.json();if(!res.ok){alert(data.error||"Error al cerrar caja");return}const dif=Number(data?.resumen?.diferencia||0);const difT=Number(data?.resumen?.diferencia_transferencia||0);let txt=dif<0?`Caja cerrada con faltante efectivo de ${formatoDinero(Math.abs(dif))}`:dif>0?`Caja cerrada con sobrante efectivo de ${formatoDinero(dif)}`:"Caja efectivo exacta";txt+=difT<0?`\nTransferencia con faltante de ${formatoDinero(Math.abs(difT))}`:difT>0?`\nTransferencia con sobrante de ${formatoDinero(difT)}`:"\nTransferencia exacta";alert(txt);document.getElementById("cajaEfectivoReal").value="";document.getElementById("cajaTransferenciaReal").value="";document.getElementById("cajaObsCierre").value="";renderInformeCaja({caja:data.caja,resumen:data.resumen});cargarResumen()}catch(error){alert("Error de conexión")}}
 function ocultarReporteCompras(){document.getElementById("reportesComprasWrap")?.classList.add("hidden")}function limpiarResultadoReportes(){const pre=document.getElementById("reportesPre");if(pre){pre.classList.add("hidden");pre.textContent=""}ocultarReporteCompras()}function setReporteHTML(titulo,html){document.getElementById("reportesTituloResultado").textContent=titulo||"Resultado";const box=document.getElementById("reportesResultado");if(box)box.innerHTML=html;limpiarResultadoReportes()}function reporteCard(label,valor){return `<div class="reporte-metric-card"><div class="label">${label}</div><div class="valor">${valor}</div></div>`}function escapeHtml(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}function fechaCorta(v){return v?new Date(v).toLocaleDateString("es-AR"):"-"}
 function formatoFechaHora(v){
@@ -1900,6 +1907,7 @@ function renderInformeCaja(data){
         <div class="caja-linea"><span>Ventas efectivo</span><strong>${formatoDinero(r.ventas_efectivo)}</strong></div>
         <div class="caja-linea"><span>Ingresos efectivo</span><strong>${formatoDinero(r.ingresos_efectivo ?? r.ingresos_manuales)}</strong></div>
         <div class="caja-linea"><span>Retiros efectivo</span><strong>${formatoDinero(r.retiros_efectivo ?? r.retiros)}</strong></div>
+        <div class="caja-linea"><span>Sueldos / adelantos</span><strong>${formatoDinero((Number(r.retiros_sueldo||0)+Number(r.retiros_adelanto||0)))}</strong></div>
         <div class="caja-linea"><span>Efectivo esperado</span><strong>${formatoDinero(r.caja_esperada)}</strong></div>
         <div class="caja-linea"><span>Ventas transferencia</span><strong>${formatoDinero(r.ventas_transferencia)}</strong></div>
         <div class="caja-linea"><span>Ingresos transferencia</span><strong>${formatoDinero(r.ingresos_transferencia)}</strong></div>
@@ -1944,6 +1952,45 @@ async function eliminarProveedor(id){
 }
 
 
+
+function etiquetaTipoRetiro(v){
+  const mapa={sueldo_empleado:'Sueldo empleado',adelanto_empleado:'Adelanto empleado',gasto_negocio:'Gasto negocio',pago_proveedor:'Pago proveedor',otro:'Otro retiro'};
+  return mapa[String(v||'')]||String(v||'');
+}
+function actualizarConceptoRetiroCaja(){
+  const tipo=document.getElementById('cajaTipoMovimiento')?.value;
+  const wrap=document.getElementById('cajaTipoRetiroWrap');
+  if(wrap) wrap.style.display = tipo==='retiro' ? 'block' : 'none';
+}
+async function cargarRRHH(){
+  try{
+    actualizarConceptoRetiroCaja();
+    const empSel=document.getElementById('rrhhEmpleado');
+    if(empSel && empSel.options.length<=1){
+      const empleados=await fetch('/api/empleados').then(r=>r.json()).catch(()=>[]);
+      (Array.isArray(empleados)?empleados:[]).filter(e=>e.activo!==false).forEach(e=>{
+        const opt=document.createElement('option'); opt.value=e.id; opt.textContent=e.nombre||e.usuario||('Empleado #'+e.id); empSel.appendChild(opt);
+      });
+    }
+    const url=new URL('/api/rrhh/resumen', window.location.origin);
+    const desde=document.getElementById('rrhhDesde')?.value||'';
+    const hasta=document.getElementById('rrhhHasta')?.value||'';
+    const empleado=document.getElementById('rrhhEmpleado')?.value||'';
+    if(desde) url.searchParams.set('desde',desde);
+    if(hasta) url.searchParams.set('hasta',hasta);
+    if(empleado) url.searchParams.set('empleado_id',empleado);
+    const res=await fetch(url), data=await res.json();
+    if(!res.ok){alert(data.error||'Error al cargar RR.HH');return;}
+    const box=document.getElementById('rrhhResultado'); if(!box)return;
+    const resumen=data.resumen||{};
+    const empleados=Array.isArray(data.empleados)?data.empleados:[];
+    const movimientos=Array.isArray(data.movimientos)?data.movimientos:[];
+    const filasEmp=empleados.map(e=>`<tr><td><strong>${escapeHtml(e.empleado_nombre||'-')}</strong><div class="muted">${escapeHtml(e.usuario||'')}</div></td><td>${formatoDinero(e.sueldos)}</td><td>${formatoDinero(e.adelantos)}</td><td><strong>${formatoDinero(e.total_pagado)}</strong></td><td>${e.cantidad_pagos||0}</td></tr>`).join('')||'<tr><td colspan="5"><div class="reporte-empty">Sin pagos de sueldo o adelantos en el período.</div></td></tr>';
+    const filasMov=movimientos.map(m=>`<tr><td>${formatoFechaHora(m.fecha)}</td><td>${escapeHtml(m.empleado_nombre||'-')}</td><td><span class="rrhh-badge">${etiquetaTipoRetiro(m.tipo_retiro)}</span></td><td>${escapeHtml(m.medio_pago||'efectivo')}</td><td><strong>${formatoDinero(m.monto)}</strong></td><td>${escapeHtml(m.motivo||'')}</td><td>#${m.caja_sesion_id||'-'}</td></tr>`).join('')||'<tr><td colspan="7"><div class="reporte-empty">Sin movimientos.</div></td></tr>';
+    box.innerHTML=`<div class="reporte-metricas">${reporteCard('Total sueldos',formatoDinero(resumen.total_sueldos))}${reporteCard('Total adelantos',formatoDinero(resumen.total_adelantos))}${reporteCard('Total pagado',formatoDinero(resumen.total_pagado))}${reporteCard('Pagos',resumen.cantidad_pagos||0)}</div><div class="card"><h3>Resumen por empleado</h3><div class="scroll-x"><table class="reporte-tabla"><thead><tr><th>Empleado</th><th>Sueldos</th><th>Adelantos</th><th>Total cobrado</th><th>Cant. pagos</th></tr></thead><tbody>${filasEmp}</tbody></table></div></div><div class="card"><h3>Detalle de pagos</h3><div class="scroll-x"><table class="reporte-tabla"><thead><tr><th>Fecha</th><th>Empleado</th><th>Concepto</th><th>Medio</th><th>Monto</th><th>Motivo</th><th>Caja</th></tr></thead><tbody>${filasMov}</tbody></table></div></div>`;
+  }catch(error){console.error('Error RRHH:',error);alert('Error de conexión al cargar RR.HH')}
+}
+
 // =====================================================
 // FIX PERMISOS MENÚ - Mostrar SOLO lo tildado
 // No ocultar Productos / Recetas por rol cajero
@@ -1958,6 +2005,7 @@ aplicarPermisosMenu = function(){
     btnNavCompras: permisoBool('puede_compras'),
     btnNavRecetas: permisoBool('puede_recetas'),
     btnNavCaja: permisoBool('puede_caja'),
+    btnNavRRHH: permisoBool('puede_reportes') || permisoBool('puede_configuracion'),
     btnNavHistorialVentas: permisoBool('puede_ventas'),
     btnNavReportes: permisoBool('puede_reportes'),
     btnNavConfiguracion: permisoBool('puede_configuracion')
@@ -1975,6 +2023,7 @@ primeraPantallaPermitida = function(){
   if(permisoBool('puede_compras')) return 'compras';
   if(permisoBool('puede_recetas')) return 'recetas';
   if(permisoBool('puede_caja')) return 'caja';
+  if(permisoBool('puede_reportes')) return 'rrhh';
   if(permisoBool('puede_reportes')) return 'reportes';
   if(permisoBool('puede_configuracion')) return 'configuracion';
   return 'ventas';
@@ -1988,6 +2037,7 @@ mostrarPagina = function(nombre){
     compras: permisoBool('puede_compras'),
     recetas: permisoBool('puede_recetas'),
     caja: permisoBool('puede_caja'),
+    rrhh: permisoBool('puede_reportes') || permisoBool('puede_configuracion'),
     'historial-ventas': permisoBool('puede_ventas'),
     reportes: permisoBool('puede_reportes'),
     configuracion: permisoBool('puede_configuracion')
@@ -2001,7 +2051,7 @@ mostrarPagina = function(nombre){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+nombre)?.classList.add('active');
   const btnMap = {
-    inicio:'btnNavInicio', ventas:'btnNavVentas', productos:'btnNavProductos', compras:'btnNavCompras', recetas:'btnNavRecetas', caja:'btnNavCaja',
+    inicio:'btnNavInicio', ventas:'btnNavVentas', productos:'btnNavProductos', compras:'btnNavCompras', recetas:'btnNavRecetas', caja:'btnNavCaja', rrhh:'btnNavRRHH',
     'historial-ventas':'btnNavHistorialVentas', reportes:'btnNavReportes', configuracion:'btnNavConfiguracion'
   };
   document.getElementById(btnMap[nombre])?.classList.add('active');
@@ -2012,7 +2062,8 @@ mostrarPagina = function(nombre){
   if(nombre==='productos' && typeof cargarProductos === 'function') cargarProductos();
   if(nombre==='compras' && typeof cargarProveedores === 'function') cargarProveedores();
   if(nombre==='recetas') { if(typeof cargarProductosRecetas === 'function') cargarProductosRecetas(); if(typeof cargarHistorialRecetas === 'function') cargarHistorialRecetas(); }
-  if(nombre==='caja' && typeof cargarEstadoCaja === 'function') cargarEstadoCaja();
+  if(nombre==='caja' && typeof cargarEstadoCaja === 'function') { cargarEstadoCaja(); setTimeout(actualizarConceptoRetiroCaja,50); }
+  if(nombre==='rrhh' && typeof cargarRRHH === 'function') cargarRRHH();
   if(nombre==='historial-ventas' && typeof cargarHistorialVentas === 'function') cargarHistorialVentas();
   if(nombre==='reportes' && typeof cargarReportes === 'function') cargarReportes();
   if(nombre==='configuracion' && typeof cargarConfiguracion === 'function') cargarConfiguracion();
@@ -2730,3 +2781,4 @@ window.addEventListener('load',()=>setTimeout(refrescarBotonAsistenteFrine,300))
 
 
 </body>
+</html>
