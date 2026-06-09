@@ -313,6 +313,12 @@ async function asegurarColumnasAlmacen() {
   `);
 
   await pool.query(`
+    ALTER TABLE caja_movimientos
+    ADD COLUMN IF NOT EXISTS tipo_retiro VARCHAR(40) DEFAULT 'otro',
+    ADD COLUMN IF NOT EXISTS rrhh_empleado_id INTEGER
+  `);
+
+  await pool.query(`
     UPDATE caja_movimientos
     SET medio_pago = 'efectivo'
     WHERE medio_pago IS NULL OR TRIM(medio_pago) = ''
@@ -351,7 +357,9 @@ async function calcularResumenCaja(clientOrPool, cajaSesionId) {
       COALESCE(SUM(CASE WHEN tipo = 'ingreso' AND COALESCE(medio_pago, 'efectivo') = 'transferencia' THEN monto ELSE 0 END), 0) AS ingresos_transferencia,
       COALESCE(SUM(CASE WHEN tipo = 'retiro' THEN monto ELSE 0 END), 0) AS retiros,
       COALESCE(SUM(CASE WHEN tipo = 'retiro' AND COALESCE(medio_pago, 'efectivo') = 'efectivo' THEN monto ELSE 0 END), 0) AS retiros_efectivo,
-      COALESCE(SUM(CASE WHEN tipo = 'retiro' AND COALESCE(medio_pago, 'efectivo') = 'transferencia' THEN monto ELSE 0 END), 0) AS retiros_transferencia
+      COALESCE(SUM(CASE WHEN tipo = 'retiro' AND COALESCE(medio_pago, 'efectivo') = 'transferencia' THEN monto ELSE 0 END), 0) AS retiros_transferencia,
+      COALESCE(SUM(CASE WHEN tipo = 'retiro' AND tipo_retiro = 'sueldo_empleado' THEN monto ELSE 0 END), 0) AS retiros_sueldo,
+      COALESCE(SUM(CASE WHEN tipo = 'retiro' AND tipo_retiro = 'adelanto_empleado' THEN monto ELSE 0 END), 0) AS retiros_adelanto
     FROM caja_movimientos
     WHERE caja_sesion_id = $1
     `,
@@ -371,6 +379,8 @@ async function calcularResumenCaja(clientOrPool, cajaSesionId) {
   const retiros = n2(m.retiros);
   const retirosEfectivo = n2(m.retiros_efectivo);
   const retirosTransferencia = n2(m.retiros_transferencia);
+  const retirosSueldo = n2(m.retiros_sueldo);
+  const retirosAdelanto = n2(m.retiros_adelanto);
 
   const cajaEsperada = n2(
     apertura +
@@ -408,6 +418,8 @@ async function calcularResumenCaja(clientOrPool, cajaSesionId) {
       retiros,
       retiros_efectivo: retirosEfectivo,
       retiros_transferencia: retirosTransferencia,
+      retiros_sueldo: retirosSueldo,
+      retiros_adelanto: retirosAdelanto,
       caja_esperada: cajaEsperada,
       transferencia_esperada: transferenciaEsperada,
       efectivo_real: efectivoReal,
@@ -1957,7 +1969,7 @@ app.post("/api/caja/abrir", async (req, res) => {
 
 app.post("/api/caja/movimiento", async (req, res) => {
   try {
-    const { caja_sesion_id, tipo, monto, motivo, empleado_id, medio_pago } = req.body;
+    const { caja_sesion_id, tipo, monto, motivo, empleado_id, medio_pago, tipo_retiro } = req.body;
 
     if (!caja_sesion_id) {
       return res.status(400).json({ error: "Caja no informada" });
@@ -1968,16 +1980,20 @@ app.post("/api/caja/movimiento", async (req, res) => {
     }
 
     const medioPagoFinal = String(medio_pago || "efectivo").toLowerCase() === "transferencia" ? "transferencia" : "efectivo";
+    const tiposRetiroValidos = ["sueldo_empleado", "adelanto_empleado", "gasto_negocio", "pago_proveedor", "otro"];
+    const tipoRetiroFinal = tipo === "retiro" && tiposRetiroValidos.includes(String(tipo_retiro || "")) ? String(tipo_retiro) : (tipo === "retiro" ? "otro" : null);
+    const rrhhEmpleadoId = ["sueldo_empleado", "adelanto_empleado"].includes(tipoRetiroFinal) ? (empleado_id || null) : null;
+    const motivoFinal = motivo || (tipoRetiroFinal === "sueldo_empleado" ? "Retiro por sueldo" : tipoRetiroFinal === "adelanto_empleado" ? "Retiro por adelanto" : "");
 
     await registrarActividadEmpleado(pool, empleado_id);
 
     const result = await pool.query(
       `
-      INSERT INTO caja_movimientos (caja_sesion_id, tipo, medio_pago, monto, motivo, empleado_id)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO caja_movimientos (caja_sesion_id, tipo, medio_pago, monto, motivo, empleado_id, tipo_retiro, rrhh_empleado_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
       `,
-      [caja_sesion_id, tipo, medioPagoFinal, n2(monto), motivo || "", empleado_id || null]
+      [caja_sesion_id, tipo, medioPagoFinal, n2(monto), motivoFinal, empleado_id || null, tipoRetiroFinal, rrhhEmpleadoId]
     );
 
     res.json(result.rows[0]);
@@ -3264,6 +3280,95 @@ app.get("/api/reportes/caja/:caja_sesion_id", async (req, res) => {
   } catch (error) {
     console.error("Error reporte caja:", error);
     res.status(500).json({ error: "Error al obtener reporte de caja" });
+  }
+});
+
+
+// ==========================================
+// RR.HH - Sueldos y adelantos desde caja
+// ==========================================
+app.get("/api/rrhh/resumen", async (req, res) => {
+  try {
+    const { desde, hasta, empleado_id } = req.query;
+    const params = [];
+    const where = ["cm.tipo = 'retiro'", "cm.tipo_retiro IN ('sueldo_empleado', 'adelanto_empleado')"];
+
+    if (desde) {
+      params.push(desde);
+      where.push(`(cm.fecha AT TIME ZONE 'America/Argentina/Buenos_Aires')::date >= $${params.length}::date`);
+    }
+    if (hasta) {
+      params.push(hasta);
+      where.push(`(cm.fecha AT TIME ZONE 'America/Argentina/Buenos_Aires')::date <= $${params.length}::date`);
+    }
+    if (empleado_id) {
+      params.push(empleado_id);
+      where.push(`COALESCE(cm.rrhh_empleado_id, cm.empleado_id) = $${params.length}`);
+    }
+
+    const whereSql = where.join(" AND ");
+
+    const resumenResult = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(CASE WHEN cm.tipo_retiro = 'sueldo_empleado' THEN cm.monto ELSE 0 END), 0) AS total_sueldos,
+        COALESCE(SUM(CASE WHEN cm.tipo_retiro = 'adelanto_empleado' THEN cm.monto ELSE 0 END), 0) AS total_adelantos,
+        COALESCE(SUM(cm.monto), 0) AS total_pagado,
+        COUNT(*)::int AS cantidad_pagos
+      FROM caja_movimientos cm
+      WHERE ${whereSql}
+      `,
+      params
+    );
+
+    const empleadosResult = await pool.query(
+      `
+      SELECT
+        COALESCE(cm.rrhh_empleado_id, cm.empleado_id) AS empleado_id,
+        COALESCE(e.nombre, 'Sin empleado') AS empleado_nombre,
+        COALESCE(e.usuario, '') AS usuario,
+        COALESCE(SUM(CASE WHEN cm.tipo_retiro = 'sueldo_empleado' THEN cm.monto ELSE 0 END), 0) AS sueldos,
+        COALESCE(SUM(CASE WHEN cm.tipo_retiro = 'adelanto_empleado' THEN cm.monto ELSE 0 END), 0) AS adelantos,
+        COALESCE(SUM(cm.monto), 0) AS total_pagado,
+        COUNT(*)::int AS cantidad_pagos
+      FROM caja_movimientos cm
+      LEFT JOIN empleados e ON e.id = COALESCE(cm.rrhh_empleado_id, cm.empleado_id)
+      WHERE ${whereSql}
+      GROUP BY COALESCE(cm.rrhh_empleado_id, cm.empleado_id), e.nombre, e.usuario
+      ORDER BY total_pagado DESC, empleado_nombre ASC
+      `,
+      params
+    );
+
+    const movimientosResult = await pool.query(
+      `
+      SELECT
+        cm.id,
+        cm.fecha,
+        cm.caja_sesion_id,
+        cm.tipo_retiro,
+        cm.medio_pago,
+        cm.monto,
+        cm.motivo,
+        COALESCE(e.nombre, 'Sin empleado') AS empleado_nombre,
+        COALESCE(e.usuario, '') AS usuario
+      FROM caja_movimientos cm
+      LEFT JOIN empleados e ON e.id = COALESCE(cm.rrhh_empleado_id, cm.empleado_id)
+      WHERE ${whereSql}
+      ORDER BY cm.fecha DESC, cm.id DESC
+      LIMIT 500
+      `,
+      params
+    );
+
+    res.json({
+      resumen: resumenResult.rows[0] || {},
+      empleados: empleadosResult.rows,
+      movimientos: movimientosResult.rows
+    });
+  } catch (error) {
+    console.error("Error RRHH resumen:", error);
+    res.status(500).json({ error: "Error al obtener RR.HH" });
   }
 });
 
