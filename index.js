@@ -2,6 +2,7 @@ const Afip = require("@afipsdk/afip.js");
 const express = require("express");
 const path = require("path");
 const { Pool } = require("pg");
+const crearLoginRouter = require("./routes/login");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -45,6 +46,9 @@ const afip = new Afip({
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("."));
+
+// Módulo de autenticación
+app.use("/api", crearLoginRouter({ pool, registrarActividadEmpleado }));
 
 function n2(valor) {
   return Number(Number(valor || 0).toFixed(2));
@@ -482,17 +486,6 @@ async function cargarConfiguracion() {
     console.error("Error cargarConfiguracion:", error);
   }
 }
-
-// ==========================================
-// LOGIN - MÓDULO SEPARADO
-// ==========================================
-const registrarRutasLogin = require("./routes/login");
-registrarRutasLogin(app, {
-  pool,
-  vacio,
-  registrarActividadEmpleado
-});
-
 
 // ==========================================
 // EMPLEADOS / CONFIGURACION
