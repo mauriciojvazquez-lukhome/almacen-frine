@@ -6,6 +6,7 @@ const crearLoginRouter = require("./routes/login");
 const crearEmpleadosRouter = require("./routes/empleados");
 const crearProveedoresRouter = require("./routes/proveedores");
 const crearClientesRouter = require("./routes/clientes");
+const crearCategoriasRouter = require("./routes/categorias");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -57,6 +58,7 @@ app.use("/api", crearLoginRouter({ pool, registrarActividadEmpleado }));
 app.use("/api", crearEmpleadosRouter({ pool }));
 app.use("/api", crearProveedoresRouter({ pool }));
 app.use("/api", crearClientesRouter({ pool, n2, vacio }));
+app.use("/api", crearCategoriasRouter({ pool, vacio }));
 
 function n2(valor) {
   return Number(Number(valor || 0).toFixed(2));
@@ -482,47 +484,7 @@ async function cargarConfiguracion() {
   }
 }
 
-// ==========================================
-// CATEGORIAS
-// ==========================================
-app.get("/api/categorias", async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT *
-      FROM categorias
-      WHERE activo = true
-      ORDER BY nombre ASC
-    `);
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Error categorias:", error);
-    res.status(500).json({ error: "Error al obtener categorías" });
-  }
-});
-
-app.post("/api/categorias", async (req, res) => {
-  try {
-    const { nombre } = req.body;
-
-    if (vacio(nombre)) {
-      return res.status(400).json({ error: "El nombre es obligatorio" });
-    }
-
-    const result = await pool.query(
-      `
-      INSERT INTO categorias (nombre)
-      VALUES ($1)
-      RETURNING *
-      `,
-      [String(nombre).trim()]
-    );
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error("Error crear categoria:", error);
-    res.status(500).json({ error: "Error al crear categoría" });
-  }
-});
+// Módulo Categorías cargado desde routes/categorias.js
 
 
 // Módulo Proveedores cargado desde routes/proveedores.js
