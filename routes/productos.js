@@ -13,7 +13,7 @@ module.exports = function crearProductosRouter({
   // ==========================================
   // PRODUCTOS
   // ==========================================
-  router.get("/api/productos", async (req, res) => {
+  router.get("/productos", async (req, res) => {
     try {
       const q = req.query.q ? String(req.query.q).trim() : "";
       const categoriaId = req.query.categoria_id ? Number(req.query.categoria_id) : null;
@@ -58,7 +58,7 @@ module.exports = function crearProductosRouter({
     }
   });
 
-  router.get("/api/productos/:id", async (req, res) => {
+  router.get("/productos/:id", async (req, res) => {
     try {
       const { id } = req.params;
 
@@ -86,7 +86,7 @@ module.exports = function crearProductosRouter({
     }
   });
 
-  router.get("/api/productos/codigo/:codigo", async (req, res) => {
+  router.get("/productos/codigo/:codigo", async (req, res) => {
     try {
       const { codigo } = req.params;
       const codigoBuscado = String(codigo || "").trim();
@@ -194,7 +194,7 @@ module.exports = function crearProductosRouter({
     }
   });
 
-  router.post("/api/productos", async (req, res) => {
+  router.post("/productos", async (req, res) => {
     try {
       const {
         codigo_barras,
@@ -264,7 +264,7 @@ module.exports = function crearProductosRouter({
     }
   });
 
-  router.put("/api/productos/:id", async (req, res) => {
+  router.put("/productos/:id", async (req, res) => {
     try {
       const { id } = req.params;
       const {
@@ -346,7 +346,7 @@ module.exports = function crearProductosRouter({
   // ==========================================
   // PRODUCTOS PRO v2 - PRESENTACIONES / CODIGOS / STOCK
   // ==========================================
-  router.get("/api/productos/:id/presentaciones", async (req, res) => {
+  router.get("/productos/:id/presentaciones", async (req, res) => {
     try {
       const { id } = req.params;
 
@@ -367,7 +367,7 @@ module.exports = function crearProductosRouter({
     }
   });
 
-  router.post("/api/productos/:id/presentaciones", async (req, res) => {
+  router.post("/productos/:id/presentaciones", async (req, res) => {
     try {
       const { id } = req.params;
       const { nombre, codigo_barras, plu, factor, precio_venta, es_compra, es_venta, activo } = req.body;
@@ -421,7 +421,7 @@ module.exports = function crearProductosRouter({
     }
   });
 
-  router.put("/api/productos/:id/presentaciones/:presentacion_id", async (req, res) => {
+  router.put("/productos/:id/presentaciones/:presentacion_id", async (req, res) => {
     try {
       const { id, presentacion_id } = req.params;
       const { nombre, codigo_barras, plu, factor, precio_venta, es_compra, es_venta, activo } = req.body;
@@ -480,7 +480,7 @@ module.exports = function crearProductosRouter({
     }
   });
 
-  router.delete("/api/productos/:id/presentaciones/:presentacion_id", async (req, res) => {
+  router.delete("/productos/:id/presentaciones/:presentacion_id", async (req, res) => {
     try {
       const { id, presentacion_id } = req.params;
 
@@ -506,7 +506,7 @@ module.exports = function crearProductosRouter({
     }
   });
 
-  router.get("/api/productos/:id/codigos", async (req, res) => {
+  router.get("/productos/:id/codigos", async (req, res) => {
     try {
       const { id } = req.params;
 
@@ -527,7 +527,7 @@ module.exports = function crearProductosRouter({
     }
   });
 
-  router.post("/api/productos/:id/codigos", async (req, res) => {
+  router.post("/productos/:id/codigos", async (req, res) => {
     try {
       const { id } = req.params;
       const { codigo, tipo, descripcion, activo } = req.body;
@@ -558,7 +558,7 @@ module.exports = function crearProductosRouter({
     }
   });
 
-  router.delete("/api/productos/:id/codigos/:codigo_id", async (req, res) => {
+  router.delete("/productos/:id/codigos/:codigo_id", async (req, res) => {
     try {
       const { id, codigo_id } = req.params;
 
@@ -584,7 +584,7 @@ module.exports = function crearProductosRouter({
     }
   });
 
-  router.post("/api/productos/:id/ajustar-stock", async (req, res) => {
+  router.post("/productos/:id/ajustar-stock", async (req, res) => {
     const client = await pool.connect();
 
     try {
@@ -678,7 +678,7 @@ module.exports = function crearProductosRouter({
     }
   });
 
-  router.post("/api/productos/:id/dar-baja", async (req, res) => {
+  router.post("/productos/:id/dar-baja", async (req, res) => {
     try {
       const { id } = req.params;
       const { motivo } = req.body;
