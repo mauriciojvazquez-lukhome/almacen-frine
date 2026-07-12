@@ -409,7 +409,7 @@
     <div class="gerencial-kpi"><div class="g-label">Ventas del mes</div><div class="g-value" id="gVentasMes">$0</div><div class="g-foot" id="gVariacionMes">Comparando...</div></div>
     <div class="gerencial-kpi"><div class="g-label">Compras del mes</div><div class="g-value" id="gComprasMes">$0</div><div class="g-foot">Mercadería ingresada</div></div>
     <div class="gerencial-kpi"><div class="g-label">Gastos + sueldos</div><div class="g-value" id="gGastosMes">$0</div><div class="g-foot" id="gDetalleGastos">Gastos $0 · Sueldos $0</div></div>
-    <div class="gerencial-kpi"><div class="g-label">Rentabilidad estimada</div><div class="g-value" id="gGananciaMes">$0</div><div class="g-foot">Margen menos gastos y sueldos</div></div>
+    <div class="gerencial-kpi"><div class="g-label">Resultado estimado del mes</div><div class="g-value" id="gGananciaMes">$0</div><div class="g-foot">Ventas − CMV − gastos − sueldos</div></div>
   </div>
   <div class="gerencial-grid2">
     <div class="gerencial-panel"><h3>Ventas de los últimos 12 meses</h3><div id="gVentas12Meses" class="gerencial-chart"></div></div>
@@ -2904,29 +2904,119 @@ window.addEventListener('load',()=>setTimeout(refrescarBotonAsistenteFrine,300))
 
 
 async function cargarDashboardGerencial(){
-  const dinero=v=>"$ "+money(v||0);
-  try{
-    const res=await fetch('/api/dashboard/gerencial');
-    const data=await res.json();
-    if(!res.ok)throw new Error(data.error||'No se pudo cargar');
-    const k=data.kpis||{};
-    document.getElementById('gVentasHoy').textContent=dinero(k.ventas_hoy);
-    document.getElementById('gTicketsHoy').textContent=`${k.tickets_hoy||0} tickets · promedio ${dinero(k.promedio_ticket)}`;
-    document.getElementById('gVentasMes').textContent=dinero(k.ventas_mes);
-    const ant=Number(k.ventas_mes_anterior||0),act=Number(k.ventas_mes||0),pct=ant?((act-ant)/ant*100):0;
-    document.getElementById('gVariacionMes').innerHTML=`<span class="${pct>=0?'metric-up':'metric-down'}">${pct>=0?'▲':'▼'} ${Math.abs(pct).toFixed(1)}%</span> vs mes anterior`;
-    document.getElementById('gComprasMes').textContent=dinero(k.compras_mes);
-    document.getElementById('gGastosMes').textContent=dinero(Number(k.gastos_mes||0)+Number(k.sueldos_mes||0));
-    document.getElementById('gDetalleGastos').textContent=`Gastos ${dinero(k.gastos_mes)} · Sueldos ${dinero(k.sueldos_mes)}`;
-    const gan=document.getElementById('gGananciaMes');gan.textContent=dinero(k.ganancia_estimada_mes);gan.style.color=Number(k.ganancia_estimada_mes)>=0?'#15803d':'#b91c1c';
-    renderGerencial12Meses(data.ventas_12_meses||[]);
-    renderGerencialComparativa(data.compras_vs_ventas||[]);
-    renderGerencialRanking('gCategorias',data.categorias||[],x=>`${qty(x.cantidad)} vendidos`);
-    renderGerencialRanking('gProductos',data.productos||[],x=>`${qty(x.cantidad)} unidades`);
-    renderGerencialRanking('gEmpleados',data.empleados||[],x=>`${x.tickets||0} tickets`);
-    renderGerencialRanking('gProveedores',data.proveedores||[],x=>`${x.compras||0} compras`);
-    const alertBox=document.getElementById('gAlertas');alertBox.innerHTML=(data.alertas||[]).map(a=>`<div class="g-alert ${a.tipo||'advertencia'}">${a.texto}</div>`).join('');
-  }catch(error){document.getElementById('gAlertas').innerHTML=`<div class="g-alert peligro">${error.message}</div>`;}
+  const dinero = v => "$ " + money(Number(v || 0));
+  const numeroSeguro = v => Number(v || 0);
+
+  try {
+    const res = await fetch("/api/dashboard/gerencial?ts=" + Date.now(), {
+      cache: "no-store"
+    });
+
+    const texto = await res.text();
+    let data = {};
+    try {
+      data = texto ? JSON.parse(texto) : {};
+    } catch (_) {
+      throw new Error("El servidor no devolvió JSON válido.");
+    }
+
+    if (!res.ok) {
+      throw new Error(data.detalle || data.error || "No se pudo cargar el Dashboard Gerencial.");
+    }
+
+    const k = data.kpis || {};
+    const comparativos = data.comparativos || {};
+    const evolucion = Array.isArray(data.evolucion_12_meses)
+      ? data.evolucion_12_meses
+      : [];
+
+    document.getElementById("gVentasHoy").textContent = dinero(k.ventas_hoy);
+    document.getElementById("gTicketsHoy").textContent =
+      `${numeroSeguro(k.tickets_hoy)} tickets · promedio ${dinero(k.promedio_ticket_hoy ?? k.promedio_ticket)}`;
+
+    document.getElementById("gVentasMes").textContent = dinero(k.ventas_mes);
+
+    const variacionVentas = comparativos.ventas_pct;
+    const variacionValida = variacionVentas !== null &&
+      variacionVentas !== undefined &&
+      Number.isFinite(Number(variacionVentas));
+
+    document.getElementById("gVariacionMes").innerHTML = variacionValida
+      ? `<span class="${Number(variacionVentas) >= 0 ? "metric-up" : "metric-down"}">${Number(variacionVentas) >= 0 ? "▲" : "▼"} ${Math.abs(Number(variacionVentas)).toFixed(1)}%</span> vs mes anterior`
+      : "Sin base suficiente para comparar";
+
+    document.getElementById("gComprasMes").textContent = dinero(k.compras_mes);
+
+    const gastos = numeroSeguro(k.gastos_mes);
+    const sueldos = numeroSeguro(k.sueldos_mes);
+    document.getElementById("gGastosMes").textContent = dinero(gastos + sueldos);
+    document.getElementById("gDetalleGastos").textContent =
+      `Gastos ${dinero(gastos)} · Sueldos ${dinero(sueldos)}`;
+
+    const resultado = numeroSeguro(k.resultado_neto_mes ?? k.ganancia_estimada_mes);
+    const resultadoEl = document.getElementById("gGananciaMes");
+    resultadoEl.textContent = dinero(resultado);
+    resultadoEl.style.color = resultado >= 0 ? "#15803d" : "#b91c1c";
+
+    renderGerencial12Meses(
+      evolucion.map(x => ({
+        etiqueta: x.etiqueta,
+        total: numeroSeguro(x.ventas)
+      }))
+    );
+
+    renderGerencialComparativa(
+      evolucion.slice(-6).map(x => ({
+        etiqueta: x.etiqueta,
+        ventas: numeroSeguro(x.ventas),
+        compras: numeroSeguro(x.compras)
+      }))
+    );
+
+    renderGerencialRanking(
+      "gCategorias",
+      (data.categorias || []).map(x => ({
+        ...x,
+        total_venta: numeroSeguro(x.total),
+        total: numeroSeguro(x.ganancia)
+      })),
+      x => `${qty(x.cantidad)} vendidos · ventas ${dinero(x.total_venta)}`
+    );
+
+    renderGerencialRanking(
+      "gProductos",
+      (data.productos || []).map(x => ({
+        ...x,
+        total_venta: numeroSeguro(x.total),
+        total: numeroSeguro(x.ganancia)
+      })),
+      x => `${qty(x.cantidad)} unidades · ventas ${dinero(x.total_venta)}`
+    );
+
+    renderGerencialRanking(
+      "gEmpleados",
+      data.empleados || [],
+      x => `${numeroSeguro(x.tickets)} tickets · promedio ${dinero(x.promedio)}`
+    );
+
+    renderGerencialRanking(
+      "gProveedores",
+      data.proveedores || [],
+      x => `${numeroSeguro(x.compras)} compras`
+    );
+
+    const alertBox = document.getElementById("gAlertas");
+    alertBox.innerHTML = (data.alertas || [])
+      .map(a => `<div class="g-alert ${a.tipo || "advertencia"}">${a.texto}</div>`)
+      .join("") || '<div class="g-alert advertencia">No hay alertas disponibles.</div>';
+
+  } catch (error) {
+    console.error("Error Dashboard Gerencial:", error);
+    document.getElementById("gAlertas").innerHTML =
+      `<div class="g-alert peligro">${error.message}</div>`;
+    renderGerencial12Meses([]);
+    renderGerencialComparativa([]);
+  }
 }
 function renderGerencial12Meses(items){const box=document.getElementById('gVentas12Meses');box.innerHTML='';if(!items.length){box.innerHTML='<div class="dash-empty">Sin datos.</div>';return}const max=Math.max(...items.map(x=>Number(x.total||0)),1);items.forEach(x=>{const d=document.createElement('div');d.className='gcol';const pct=Math.max(2,Number(x.total||0)/max*100);d.innerHTML=`<div class="gamount">${Number(x.total||0)>0?'$'+Math.round(Number(x.total)/1000)+'k':''}</div><div class="gbar" style="height:${pct}%"></div><div class="glabel">${x.etiqueta}</div>`;box.appendChild(d)})}
 function renderGerencialComparativa(items){const box=document.getElementById('gComprasVsVentas');box.innerHTML='';if(!items.length){box.innerHTML='<div class="dash-empty">Sin datos.</div>';return}const max=Math.max(...items.flatMap(x=>[Number(x.ventas||0),Number(x.compras||0)]),1);items.forEach(x=>{const d=document.createElement('div');d.className='gcompare-row';d.innerHTML=`<div>${x.etiqueta}</div><div class="gcompare-bars"><div class="gline"><div style="width:${Math.max(2,Number(x.ventas||0)/max*100)}%"></div></div><span>Ventas $ ${money(x.ventas)}</span></div><div class="gcompare-bars"><div class="gline orange"><div style="width:${Math.max(2,Number(x.compras||0)/max*100)}%"></div></div><span>Compras $ ${money(x.compras)}</span></div>`;box.appendChild(d)})}
