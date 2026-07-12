@@ -12,6 +12,7 @@ const crearComprasRouter = require("./routes/compras");
 const crearCajaRouter = require("./routes/caja");
 const crearVentasRouter = require("./routes/ventas");
 const crearReportesRouter = require("./routes/reportes");
+const crearRrhhRouter = require("./routes/rrhh");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -69,6 +70,7 @@ app.use("/api", crearComprasRouter({ pool, n2, n3, redondearPrecio, recalcularPr
 app.use("/api", crearCajaRouter({ pool, n2, buscarCajaAbierta, calcularResumenCaja, registrarActividadEmpleado }));
 app.use("/api", crearVentasRouter({ pool, n2, n3, registrarActividadEmpleado }));
 app.use("/api", crearReportesRouter({ pool, n2, n3, buscarCajaAbierta, calcularResumenCaja, SQL_HOY_ARGENTINA }));
+app.use("/api", crearRrhhRouter({ pool }));
 
 function n2(valor) {
   return Number(Number(valor || 0).toFixed(2));
@@ -604,93 +606,7 @@ app.get("/api/ia-plu", async (req, res) => {
 
 // Módulo Reportes cargado desde routes/reportes.js
 
-// ==========================================
-// RR.HH - Sueldos y adelantos desde caja
-// ==========================================
-app.get("/api/rrhh/resumen", async (req, res) => {
-  try {
-    const { desde, hasta, empleado_id } = req.query;
-    const params = [];
-    const where = ["cm.tipo = 'retiro'", "cm.tipo_retiro IN ('sueldo_empleado', 'adelanto_empleado')"];
-
-    if (desde) {
-      params.push(desde);
-      where.push(`(cm.fecha AT TIME ZONE 'America/Argentina/Buenos_Aires')::date >= $${params.length}::date`);
-    }
-    if (hasta) {
-      params.push(hasta);
-      where.push(`(cm.fecha AT TIME ZONE 'America/Argentina/Buenos_Aires')::date <= $${params.length}::date`);
-    }
-    if (empleado_id) {
-      params.push(empleado_id);
-      where.push(`COALESCE(cm.rrhh_empleado_id, cm.empleado_id) = $${params.length}`);
-    }
-
-    const whereSql = where.join(" AND ");
-
-    const resumenResult = await pool.query(
-      `
-      SELECT
-        COALESCE(SUM(CASE WHEN cm.tipo_retiro = 'sueldo_empleado' THEN cm.monto ELSE 0 END), 0) AS total_sueldos,
-        COALESCE(SUM(CASE WHEN cm.tipo_retiro = 'adelanto_empleado' THEN cm.monto ELSE 0 END), 0) AS total_adelantos,
-        COALESCE(SUM(cm.monto), 0) AS total_pagado,
-        COUNT(*)::int AS cantidad_pagos
-      FROM caja_movimientos cm
-      WHERE ${whereSql}
-      `,
-      params
-    );
-
-    const empleadosResult = await pool.query(
-      `
-      SELECT
-        COALESCE(cm.rrhh_empleado_id, cm.empleado_id) AS empleado_id,
-        COALESCE(e.nombre, 'Sin empleado') AS empleado_nombre,
-        COALESCE(e.usuario, '') AS usuario,
-        COALESCE(SUM(CASE WHEN cm.tipo_retiro = 'sueldo_empleado' THEN cm.monto ELSE 0 END), 0) AS sueldos,
-        COALESCE(SUM(CASE WHEN cm.tipo_retiro = 'adelanto_empleado' THEN cm.monto ELSE 0 END), 0) AS adelantos,
-        COALESCE(SUM(cm.monto), 0) AS total_pagado,
-        COUNT(*)::int AS cantidad_pagos
-      FROM caja_movimientos cm
-      LEFT JOIN empleados e ON e.id = COALESCE(cm.rrhh_empleado_id, cm.empleado_id)
-      WHERE ${whereSql}
-      GROUP BY COALESCE(cm.rrhh_empleado_id, cm.empleado_id), e.nombre, e.usuario
-      ORDER BY total_pagado DESC, empleado_nombre ASC
-      `,
-      params
-    );
-
-    const movimientosResult = await pool.query(
-      `
-      SELECT
-        cm.id,
-        cm.fecha,
-        cm.caja_sesion_id,
-        cm.tipo_retiro,
-        cm.medio_pago,
-        cm.monto,
-        cm.motivo,
-        COALESCE(e.nombre, 'Sin empleado') AS empleado_nombre,
-        COALESCE(e.usuario, '') AS usuario
-      FROM caja_movimientos cm
-      LEFT JOIN empleados e ON e.id = COALESCE(cm.rrhh_empleado_id, cm.empleado_id)
-      WHERE ${whereSql}
-      ORDER BY cm.fecha DESC, cm.id DESC
-      LIMIT 500
-      `,
-      params
-    );
-
-    res.json({
-      resumen: resumenResult.rows[0] || {},
-      empleados: empleadosResult.rows,
-      movimientos: movimientosResult.rows
-    });
-  } catch (error) {
-    console.error("Error RRHH resumen:", error);
-    res.status(500).json({ error: "Error al obtener RR.HH" });
-  }
-});
+// Módulo RR.HH. cargado desde routes/rrhh.js
 
 // Dashboard Inicio PRO cargado desde routes/reportes.js
 
