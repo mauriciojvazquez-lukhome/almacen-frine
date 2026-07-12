@@ -13,6 +13,7 @@ const crearVentasRouter = require("./routes/ventas");
 const crearReportesRouter = require("./routes/reportes");
 const crearRrhhRouter = require("./routes/rrhh");
 const crearAfipRouter = require("./routes/afip");
+const crearDashboardGerencialRouter = require("./routes/dashboard-gerencial");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -60,6 +61,7 @@ app.use("/api", crearVentasRouter({ pool, n2, n3, registrarActividadEmpleado }))
 app.use("/api", crearReportesRouter({ pool, n2, n3, buscarCajaAbierta, calcularResumenCaja, SQL_HOY_ARGENTINA }));
 app.use("/api", crearRrhhRouter({ pool }));
 app.use("/api", crearAfipRouter({ fechaAfipArgentina }));
+app.use("/api", crearDashboardGerencialRouter({ pool, n2 }));
 
 function n2(valor) {
   return Number(Number(valor || 0).toFixed(2));
