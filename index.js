@@ -1,4 +1,3 @@
-const Afip = require("@afipsdk/afip.js");
 const express = require("express");
 const path = require("path");
 const { Pool } = require("pg");
@@ -13,6 +12,7 @@ const crearCajaRouter = require("./routes/caja");
 const crearVentasRouter = require("./routes/ventas");
 const crearReportesRouter = require("./routes/reportes");
 const crearRrhhRouter = require("./routes/rrhh");
+const crearAfipRouter = require("./routes/afip");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,18 +41,6 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-function normalizarCertificado(valor) {
-  return String(valor || "").replace(/\\n/g, "\n").trim();
-}
-
-const afip = new Afip({
-  CUIT: Number(process.env.AFIP_CUIT || 20920936300),
-  access_token: process.env.AFIPSDK_ACCESS_TOKEN,
-  cert: normalizarCertificado(process.env.AFIP_CERT),
-  key: normalizarCertificado(process.env.AFIP_KEY),
-  production: true
-});
-
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("."));
@@ -71,6 +59,7 @@ app.use("/api", crearCajaRouter({ pool, n2, buscarCajaAbierta, calcularResumenCa
 app.use("/api", crearVentasRouter({ pool, n2, n3, registrarActividadEmpleado }));
 app.use("/api", crearReportesRouter({ pool, n2, n3, buscarCajaAbierta, calcularResumenCaja, SQL_HOY_ARGENTINA }));
 app.use("/api", crearRrhhRouter({ pool }));
+app.use("/api", crearAfipRouter({ fechaAfipArgentina }));
 
 function n2(valor) {
   return Number(Number(valor || 0).toFixed(2));
@@ -1333,65 +1322,7 @@ app.post("/api/asistente-frine", async (req, res) => {
   }
 });
 
-// ==========================================
-// FACTURA AFIP
-// ==========================================
-
-app.post("/api/facturar", async (req, res) => {
-  try {
-
-    const {
-      total,
-      doc_tipo,
-      doc_nro
-    } = req.body;
-
-    const ultimo = await afip.ElectronicBilling.getLastVoucher(2, 11);
-
-    const data = {
-      CantReg: 1,
-      PtoVta: 2,
-      CbteTipo: 11,
-      Concepto: 1,
-      DocTipo: doc_tipo || 99,
-      DocNro: doc_nro || 0,
-      CbteDesde: ultimo + 1,
-      CbteHasta: ultimo + 1,
-      CbteFch: fechaAfipArgentina(),
-      ImpTotal: Number(total),
-      ImpTotConc: 0,
-      ImpNeto: Number(total),
-      ImpOpEx: 0,
-      ImpIVA: 0,
-      ImpTrib: 0,
-      MonId: "PES",
-      MonCotiz: 1
-    };
-
-    const respuesta = await afip.ElectronicBilling.createVoucher(data);
-
-    res.json({
-      ok: true,
-      cae: respuesta.CAE,
-      vencimiento: respuesta.CAEFchVto,
-      comprobante: ultimo + 1
-    });
-
-  } catch (error) {
-
-    console.error("ERROR AFIP:", error);
-
-    const detalleAfip = error?.response?.data || error?.data || null;
-
-    res.status(500).json({
-      ok: false,
-      error: error.message,
-      detalle: detalleAfip
-    });
-
-  }
-});
-
+// Módulo AFIP / ARCA cargado desde routes/afip.js
 
 // ==========================================
 // RECETAS / PRODUCCION
