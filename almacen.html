@@ -2776,6 +2776,87 @@ window.addEventListener('load',()=>setTimeout(refrescarBotonAsistenteFrine,300))
     if (document.getElementById("historialVentaDetalle")) document.getElementById("historialVentaDetalle").textContent = "Seleccioná una venta para ver el detalle.";
     cargarHistorialVentas();
   };
+
+  async function hvObtenerVenta(id){
+    const ventaId = Number(id);
+    if (!Number.isFinite(ventaId) || ventaId <= 0) throw new Error("Número de venta inválido");
+    const res = await fetch(`/api/ventas/${ventaId}?ts=${Date.now()}`);
+    let data = null;
+    try { data = await res.json(); } catch(e) { throw new Error(`Respuesta inválida del servidor (HTTP ${res.status})`); }
+    if (!res.ok) throw new Error(data?.error || "No se pudo obtener la venta");
+    return data;
+  }
+
+  function hvDetalleTexto(data){
+    const venta = data?.venta || {};
+    const detalle = Array.isArray(data?.detalle) ? data.detalle : [];
+    const lineas = [];
+    lineas.push(`VENTA #${venta.id || "-"}`);
+    lineas.push(`Fecha: ${hvFecha(venta.fecha)}`);
+    lineas.push(`Cajero: ${venta.empleado_nombre || "-"}`);
+    lineas.push(`Forma de pago: ${venta.forma_pago || "-"}`);
+    if (venta.cliente_nombre) lineas.push(`Cliente: ${venta.cliente_nombre}`);
+    lineas.push("");
+    lineas.push("PRODUCTOS");
+    if (!detalle.length) lineas.push("Sin detalle de productos.");
+    detalle.forEach(item => {
+      const cantidad = Number(item.cantidad || 0).toLocaleString("es-AR", { maximumFractionDigits: 3 });
+      lineas.push(`• ${item.nombre || "Producto"} — ${cantidad} x $${hvMoney(item.precio_unitario)} = $${hvMoney(item.subtotal)}`);
+    });
+    lineas.push("");
+    lineas.push(`TOTAL: $${hvMoney(venta.total)}`);
+    lineas.push(`Observaciones: ${venta.observaciones || "-"}`);
+    return lineas.join("\n");
+  }
+
+  function hvTicketHtml(data){
+    const venta = data?.venta || {};
+    const detalle = Array.isArray(data?.detalle) ? data.detalle : [];
+    const items = detalle.map(item => {
+      const cantidad = Number(item.cantidad || 0).toLocaleString("es-AR", { maximumFractionDigits: 3 });
+      return `<div class="t-item"><div class="t-nombre">${hvEsc(item.nombre || "Producto")}</div><div class="t-line"><span>${hvEsc(cantidad)} x $ ${hvMoney(item.precio_unitario)}</span><strong>$${hvMoney(item.subtotal)}</strong></div></div>`;
+    }).join("");
+    return `<div class="ticket">
+      <div class="t-center t-brand">FRINE</div>
+      <div class="t-center t-sub">Reimpresión de comprobante</div>
+      <div class="t-sep"></div>
+      <div class="t-row"><span>Fecha</span><strong>${hvEsc(hvFecha(venta.fecha))}</strong></div>
+      <div class="t-row"><span>Cajero</span><strong>${hvEsc(venta.empleado_nombre || "-")}</strong></div>
+      <div class="t-row"><span>Venta</span><strong>${hvEsc(venta.id || "-")}</strong></div>
+      ${venta.cliente_nombre ? `<div class="t-row"><span>Cliente</span><strong>${hvEsc(venta.cliente_nombre)}</strong></div>` : ""}
+      <div class="t-sep"></div>
+      ${items || '<div class="t-small">Sin detalle de productos.</div>'}
+      <div class="t-sep"></div>
+      <div class="t-total"><span>TOTAL</span><strong>$${hvMoney(venta.total)}</strong></div>
+      <div class="t-row"><span>PAGO</span><strong>${hvEsc(String(venta.forma_pago || "-").toUpperCase())}</strong></div>
+      <div class="t-obs">OBS: ${hvEsc(venta.observaciones || "-")}</div>
+    </div>`;
+  }
+
+  window.verDetalleVenta = async function(id){
+    const destino = document.getElementById("historialVentaDetalle");
+    if (destino) destino.textContent = "Cargando detalle de la venta...";
+    try {
+      const data = await hvObtenerVenta(id);
+      if (destino) destino.textContent = hvDetalleTexto(data);
+    } catch(error) {
+      console.error("Error detalle venta:", error);
+      if (destino) destino.textContent = `Error al obtener la venta: ${error.message || error}`;
+      alert(`Error al ver la venta: ${error.message || error}`);
+    }
+  };
+
+  window.reimprimirVenta = async function(id){
+    try {
+      const data = await hvObtenerVenta(id);
+      const html = hvTicketHtml(data);
+      if (typeof imprimirTexto !== "function") throw new Error("La función de impresión no está disponible");
+      imprimirTexto(html, `Venta ${data?.venta?.id || id} - FRINE`);
+    } catch(error) {
+      console.error("Error reimprimir venta:", error);
+      alert(`Error al reimprimir la venta: ${error.message || error}`);
+    }
+  };
 })();
 </script>
 
