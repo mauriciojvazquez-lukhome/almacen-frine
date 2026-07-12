@@ -63,13 +63,13 @@ module.exports = function crearDashboardGerencialRouter({ pool, n2 }) {
         pool.query(`
           SELECT
             COALESCE(SUM(CASE WHEN ${fechaMovimiento} >= ${inicioMes} AND ${fechaMovimiento} < ${inicioMesSiguiente}
-              AND cm.tipo = 'retiro' AND cm.tipo_retiro IN ('gasto_negocio','otro') THEN cm.monto ELSE 0 END),0) AS gastos_mes,
+              AND cm.tipo = 'retiro' AND cm.tipo_retiro = 'gasto_negocio' THEN cm.monto ELSE 0 END),0) AS gastos_mes,
             COALESCE(SUM(CASE WHEN ${fechaMovimiento} >= ${inicioMes} AND ${fechaMovimiento} < ${inicioMesSiguiente}
               AND cm.tipo = 'retiro' AND cm.tipo_retiro IN ('sueldo_empleado','adelanto_empleado') THEN cm.monto ELSE 0 END),0) AS sueldos_mes,
             COALESCE(SUM(CASE WHEN ${fechaMovimiento} >= ${inicioMes} AND ${fechaMovimiento} < ${inicioMesSiguiente}
               AND cm.tipo = 'retiro' AND cm.tipo_retiro = 'pago_proveedor' THEN cm.monto ELSE 0 END),0) AS pagos_proveedores_mes,
             COALESCE(SUM(CASE WHEN ${fechaMovimiento} >= ${inicioMesAnterior} AND ${fechaMovimiento} < ${inicioMes}
-              AND cm.tipo = 'retiro' AND cm.tipo_retiro IN ('gasto_negocio','otro') THEN cm.monto ELSE 0 END),0) AS gastos_mes_anterior,
+              AND cm.tipo = 'retiro' AND cm.tipo_retiro = 'gasto_negocio' THEN cm.monto ELSE 0 END),0) AS gastos_mes_anterior,
             COALESCE(SUM(CASE WHEN ${fechaMovimiento} >= ${inicioMesAnterior} AND ${fechaMovimiento} < ${inicioMes}
               AND cm.tipo = 'retiro' AND cm.tipo_retiro IN ('sueldo_empleado','adelanto_empleado') THEN cm.monto ELSE 0 END),0) AS sueldos_mes_anterior
           FROM caja_movimientos cm
@@ -103,7 +103,7 @@ module.exports = function crearDashboardGerencialRouter({ pool, n2 }) {
           ),
           mov_mes AS (
             SELECT date_trunc('month', ${fechaMovimiento}) AS mes,
-                   COALESCE(SUM(CASE WHEN cm.tipo='retiro' AND cm.tipo_retiro IN ('gasto_negocio','otro') THEN cm.monto ELSE 0 END),0) AS gastos,
+                   COALESCE(SUM(CASE WHEN cm.tipo='retiro' AND cm.tipo_retiro = 'gasto_negocio' THEN cm.monto ELSE 0 END),0) AS gastos,
                    COALESCE(SUM(CASE WHEN cm.tipo='retiro' AND cm.tipo_retiro IN ('sueldo_empleado','adelanto_empleado') THEN cm.monto ELSE 0 END),0) AS sueldos
             FROM caja_movimientos cm GROUP BY 1
           )
@@ -176,7 +176,7 @@ module.exports = function crearDashboardGerencialRouter({ pool, n2 }) {
                  COUNT(*)::int AS movimientos
           FROM caja_movimientos cm
           WHERE ${fechaMovimiento} >= ${inicioMes} AND ${fechaMovimiento} < ${inicioMesSiguiente}
-            AND cm.tipo='retiro' AND cm.tipo_retiro IN ('gasto_negocio','otro')
+            AND cm.tipo='retiro' AND cm.tipo_retiro = 'gasto_negocio'
           GROUP BY 1 ORDER BY total DESC LIMIT 8
         `).catch(() => ({ rows: [] }))
       ]);
@@ -239,6 +239,8 @@ module.exports = function crearDashboardGerencialRouter({ pool, n2 }) {
           pagos_proveedores_mes: n2(m.pagos_proveedores_mes),
           gastos_mes_anterior: n2(gastosAnterior), sueldos_mes_anterior: n2(sueldosAnterior),
           resultado_neto_mes: n2(resultadoNeto), resultado_neto_anterior: n2(resultadoAnterior),
+          ganancia_estimada_mes: n2(resultadoNeto),
+          promedio_ticket: ticketsHoy ? n2(ventasHoy / ticketsHoy) : 0,
           unidades_mes: n2(c.unidades_mes), productos_distintos_mes: numero(c.productos_distintos_mes),
           stock_critico: numero(st.criticos), stock_negativo: numero(st.negativos), capital_stock: n2(st.capital_stock)
         },
@@ -249,6 +251,16 @@ module.exports = function crearDashboardGerencialRouter({ pool, n2 }) {
         evolucion_12_meses: evolucion.rows.map(r => ({
           etiqueta: r.etiqueta, ventas: n2(r.ventas), compras: n2(r.compras), cmv: n2(r.cmv),
           margen_bruto: n2(r.margen_bruto), gastos: n2(r.gastos), sueldos: n2(r.sueldos), resultado: n2(r.resultado), tickets: numero(r.tickets)
+        })),
+
+        ventas_12_meses: evolucion.rows.map(r => ({
+          etiqueta: r.etiqueta,
+          total: n2(r.ventas)
+        })),
+        compras_vs_ventas: evolucion.rows.slice(-6).map(r => ({
+          etiqueta: r.etiqueta,
+          ventas: n2(r.ventas),
+          compras: n2(r.compras)
         })),
         categorias: categorias.rows.map(r => ({ nombre:r.nombre, total:n2(r.total), costo:n2(r.costo), ganancia:n2(r.ganancia), cantidad:numero(r.cantidad) })),
         productos: productos.rows.map(r => ({ nombre:r.nombre, total:n2(r.total), costo:n2(r.costo), ganancia:n2(r.ganancia), cantidad:numero(r.cantidad) })),
