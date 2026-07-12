@@ -326,6 +326,20 @@
   @media(max-width:1350px){.gerencial-kpis{grid-template-columns:repeat(3,1fr)}.gerencial-grid4{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:850px){.gerencial-kpis,.gerencial-grid2,.gerencial-grid4{grid-template-columns:1fr}}
 
+
+  /* ===== DASHBOARD GERENCIAL PRO - ETAPA 2 ===== */
+  .gerencial-kpis-etapa2{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .g-kpi-good .g-value{color:#15803d}.g-kpi-bad .g-value{color:#b91c1c}.g-kpi-purple .g-value{color:#7e22ce}.g-kpi-orange .g-value{color:#ea580c}
+  .g-estado-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px;margin-bottom:18px}
+  .g-estado-lista{display:flex;flex-direction:column;gap:0}.g-estado-linea{display:grid;grid-template-columns:1fr auto;gap:14px;padding:13px 0;border-bottom:1px solid #e5e7eb;font-weight:850}.g-estado-linea:last-child{border-bottom:0}.g-estado-linea.total{font-size:19px;font-weight:950;border-top:2px solid #cbd5e1;margin-top:5px}.g-estado-linea.positivo strong{color:#15803d}.g-estado-linea.negativo strong{color:#b91c1c}
+  .g-mini-metricas{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.g-mini{background:#f8fafc;border:1px solid #e5e7eb;border-radius:15px;padding:14px}.g-mini .label{font-size:11px;text-transform:uppercase;color:#64748b;font-weight:900}.g-mini .valor{font-size:22px;font-weight:950;margin-top:7px;color:#0f172a}.g-mini .pie{font-size:11px;color:#64748b;font-weight:800;margin-top:5px}
+  .g-evolucion{display:flex;flex-direction:column;gap:12px}.g-evol-row{display:grid;grid-template-columns:72px 1fr 130px;gap:10px;align-items:center;font-size:12px;font-weight:850}.g-evol-bars{display:grid;gap:4px}.g-evol-bar{height:11px;border-radius:999px;background:#e5e7eb;overflow:hidden}.g-evol-bar>div{height:100%;border-radius:999px;background:#2563eb}.g-evol-bar.resultado>div{background:#16a34a}.g-evol-bar.resultado.negativo>div{background:#dc2626}.g-evol-value{text-align:right;font-weight:950}
+  .g-leyenda{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;font-weight:850;color:#475569;margin-bottom:12px}.g-dot{width:10px;height:10px;border-radius:999px;display:inline-block;margin-right:5px;background:#2563eb}.g-dot.green{background:#16a34a}.g-dot.orange{background:#f97316}.g-dot.red{background:#dc2626}
+  .g-nota{padding:13px 15px;border-radius:14px;background:#eff6ff;color:#1e3a8a;border:1px solid #bfdbfe;font-weight:800;font-size:13px;margin-top:14px}
+  .g-gastos-lista{display:flex;flex-direction:column;gap:9px}.g-gasto-item{display:grid;grid-template-columns:1fr auto;gap:10px;padding:11px 12px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:13px}.g-gasto-item strong{font-weight:950}.g-gasto-item span{color:#64748b;font-size:11px;display:block;margin-top:2px}
+  @media(max-width:1200px){.gerencial-kpis-etapa2{grid-template-columns:repeat(2,1fr)}.g-estado-grid{grid-template-columns:1fr}}
+  @media(max-width:700px){.gerencial-kpis-etapa2,.g-mini-metricas{grid-template-columns:1fr}.g-evol-row{grid-template-columns:60px 1fr}.g-evol-value{grid-column:2;text-align:left}}
+
 </style>
 </head>
 <body>
@@ -403,25 +417,64 @@
 </section>
 
 <section id="page-dashboard-gerencial" class="page">
-  <div class="gerencial-hero"><h1>Dashboard Gerencial PRO</h1><p>La foto completa del negocio: ventas, compras, gastos, rentabilidad y rankings del mes.</p></div>
-  <div class="gerencial-kpis">
-    <div class="gerencial-kpi"><div class="g-label">Ventas de hoy</div><div class="g-value" id="gVentasHoy">$0</div><div class="g-foot" id="gTicketsHoy">0 tickets</div></div>
-    <div class="gerencial-kpi"><div class="g-label">Ventas del mes</div><div class="g-value" id="gVentasMes">$0</div><div class="g-foot" id="gVariacionMes">Comparando...</div></div>
-    <div class="gerencial-kpi"><div class="g-label">Compras del mes</div><div class="g-value" id="gComprasMes">$0</div><div class="g-foot">Mercadería ingresada</div></div>
-    <div class="gerencial-kpi"><div class="g-label">Gastos + sueldos</div><div class="g-value" id="gGastosMes">$0</div><div class="g-foot" id="gDetalleGastos">Gastos $0 · Sueldos $0</div></div>
-    <div class="gerencial-kpi"><div class="g-label">Rentabilidad estimada</div><div class="g-value" id="gGananciaMes">$0</div><div class="g-foot">Margen menos gastos y sueldos</div></div>
+  <div class="gerencial-hero">
+    <h1>Dashboard Gerencial PRO · Etapa 2</h1>
+    <p>Resultado económico, margen, compras, gastos y comparativos del mes.</p>
   </div>
+
+  <div class="gerencial-kpis gerencial-kpis-etapa2">
+    <div class="gerencial-kpi"><div class="g-label">Ventas del mes</div><div class="g-value" id="gVentasMes">$0</div><div class="g-foot" id="gVariacionMes">Comparando...</div></div>
+    <div class="gerencial-kpi g-kpi-orange"><div class="g-label">Costo mercadería vendida</div><div class="g-value" id="gCmvMes">$0</div><div class="g-foot">Estimado al costo actual</div></div>
+    <div class="gerencial-kpi g-kpi-purple"><div class="g-label">Margen bruto</div><div class="g-value" id="gMargenBruto">$0</div><div class="g-foot" id="gMargenPct">Margen 0%</div></div>
+    <div class="gerencial-kpi g-kpi-good" id="gResultadoCard"><div class="g-label">Resultado estimado</div><div class="g-value" id="gResultadoNeto">$0</div><div class="g-foot" id="gVariacionResultado">Después de gastos y sueldos</div></div>
+    <div class="gerencial-kpi"><div class="g-label">Compras del mes</div><div class="g-value" id="gComprasMes">$0</div><div class="g-foot" id="gVariacionCompras">Ingreso de mercadería</div></div>
+    <div class="gerencial-kpi"><div class="g-label">Gastos del negocio</div><div class="g-value" id="gGastosNegocio">$0</div><div class="g-foot" id="gVariacionGastos">Retiros por gastos</div></div>
+    <div class="gerencial-kpi"><div class="g-label">Sueldos y adelantos</div><div class="g-value" id="gSueldosMes">$0</div><div class="g-foot">Registrados desde Caja</div></div>
+    <div class="gerencial-kpi"><div class="g-label">Ticket promedio mensual</div><div class="g-value" id="gTicketPromedioMes">$0</div><div class="g-foot" id="gTicketsMes">0 tickets</div></div>
+  </div>
+
+  <div class="g-estado-grid">
+    <div class="gerencial-panel">
+      <h3>Estado de resultados del mes</h3>
+      <div class="g-estado-lista">
+        <div class="g-estado-linea"><span>Ventas</span><strong id="gEstadoVentas">$0</strong></div>
+        <div class="g-estado-linea negativo"><span>− Costo de mercadería vendida</span><strong id="gEstadoCmv">$0</strong></div>
+        <div class="g-estado-linea positivo"><span>= Margen bruto</span><strong id="gEstadoMargen">$0</strong></div>
+        <div class="g-estado-linea negativo"><span>− Gastos del negocio</span><strong id="gEstadoGastos">$0</strong></div>
+        <div class="g-estado-linea negativo"><span>− Sueldos y adelantos</span><strong id="gEstadoSueldos">$0</strong></div>
+        <div class="g-estado-linea total" id="gEstadoResultadoLinea"><span>= Resultado estimado</span><strong id="gEstadoResultado">$0</strong></div>
+      </div>
+      <div class="g-nota" id="gNotaCostos"></div>
+    </div>
+    <div class="gerencial-panel">
+      <h3>Indicadores operativos</h3>
+      <div class="g-mini-metricas">
+        <div class="g-mini"><div class="label">Ventas de hoy</div><div class="valor" id="gVentasHoy">$0</div><div class="pie" id="gTicketsHoy">0 tickets</div></div>
+        <div class="g-mini"><div class="label">Unidades vendidas</div><div class="valor" id="gUnidadesMes">0</div><div class="pie">Durante el mes</div></div>
+        <div class="g-mini"><div class="label">Productos distintos</div><div class="valor" id="gProductosDistintos">0</div><div class="pie">Con ventas este mes</div></div>
+        <div class="g-mini"><div class="label">Capital en stock</div><div class="valor" id="gCapitalStock">$0</div><div class="pie">Valorizado al costo</div></div>
+        <div class="g-mini"><div class="label">Stock crítico</div><div class="valor" id="gStockCritico">0</div><div class="pie" id="gStockNegativo">0 negativos</div></div>
+        <div class="g-mini"><div class="label">Pagos a proveedores</div><div class="valor" id="gPagosProveedores">$0</div><div class="pie">Retiros registrados</div></div>
+      </div>
+    </div>
+  </div>
+
   <div class="gerencial-grid2">
-    <div class="gerencial-panel"><h3>Ventas de los últimos 12 meses</h3><div id="gVentas12Meses" class="gerencial-chart"></div></div>
+    <div class="gerencial-panel"><h3>Evolución de ventas y resultado · 12 meses</h3><div class="g-leyenda"><span><i class="g-dot"></i>Ventas</span><span><i class="g-dot green"></i>Resultado positivo</span><span><i class="g-dot red"></i>Resultado negativo</span></div><div id="gEvolucionResultado" class="g-evolucion"></div></div>
     <div class="gerencial-panel"><h3>Compras vs ventas · últimos 6 meses</h3><div id="gComprasVsVentas"></div></div>
   </div>
+
   <div class="gerencial-grid4">
-    <div class="gerencial-panel"><h3>Top categorías</h3><div id="gCategorias" class="grank"></div></div>
-    <div class="gerencial-panel"><h3>Top productos</h3><div id="gProductos" class="grank"></div></div>
+    <div class="gerencial-panel"><h3>Categorías más rentables</h3><div id="gCategorias" class="grank"></div></div>
+    <div class="gerencial-panel"><h3>Productos más rentables</h3><div id="gProductos" class="grank"></div></div>
     <div class="gerencial-panel"><h3>Ranking empleados</h3><div id="gEmpleados" class="grank"></div></div>
     <div class="gerencial-panel"><h3>Top proveedores</h3><div id="gProveedores" class="grank"></div></div>
   </div>
-  <div class="gerencial-panel" style="margin-top:18px"><h3>Alertas gerenciales</h3><div id="gAlertas"></div></div>
+
+  <div class="gerencial-grid2" style="margin-top:18px">
+    <div class="gerencial-panel"><h3>Detalle de gastos del mes</h3><div id="gGastosDetalle" class="g-gastos-lista"></div></div>
+    <div class="gerencial-panel"><h3>Alertas gerenciales</h3><div id="gAlertas"></div></div>
+  </div>
 </section>
 
 <section id="page-ventas" class="page"><div class="topbar"><div><h1 class="page-title">Ventas</h1><div class="page-subtitle">POS rápido con scanner, atajos y ticket prolijo.</div></div><div class="pill" id="ventaModoPill">F1 efectivo · F2 transferencia · F3 cuenta corriente · F4 cobrar · F5 IA PLU</div></div><div class="venta-toolbar"><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Escanear / Código / PLU</label><input id="ventaCodigo" placeholder="Escaneá y enter" onkeypress="handleCodigoVenta(event)" /></div></div><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Forma de pago</label><select id="ventaFormaPago" onchange="actualizarModoPagoVisual()"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="cuenta_corriente">Cuenta corriente</option></select></div></div><div class="card" id="ventaClienteCard" style="margin-bottom:0; display:none;"><div class="field" style="margin-bottom:0;"><label>Cliente CC</label><select id="ventaClienteId"><option value="">Seleccionar cliente</option></select></div></div><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Acciones rápidas</label><div class="row"><button class="btn btn-success" onclick="guardarVenta()">Cobrar</button><button class="btn btn-secondary" onclick="limpiarTicket()">Vaciar</button><button class="btn btn-primary" onclick="abrirIaPlu()">🤖 IA PLU</button></div></div></div></div><div class="split"><div class="card"><div class="venta-headline"><h3 style="margin:0;">Ticket actual</h3><div class="tag tag-blue" id="ventaCantidadItems">0 items</div></div><div class="message hidden" id="ventaMsg"></div><div class="scroll-x"><table class="ticket-table"><thead><tr><th>Producto</th><th style="width:170px;">Cantidad</th><th>Precio</th><th>Subtotal</th><th>Stock</th><th></th></tr></thead><tbody id="ventaTicketBody"></tbody></table></div><div id="ventaVacio" class="venta-ticket-vacio">Todavía no cargaste productos en el ticket.</div></div><div><div class="venta-card-total"><div class="mini">TOTAL A COBRAR</div><div class="big">$<span id="ventaTotal">0.00</span></div></div><div class="card"><h3>Cierre del ticket</h3><div class="venta-resumen"><div class="tag" id="ventaTagPago">Efectivo</div><div class="tag tag-green" id="ventaTagEstado">Listo para cobrar</div></div><div class="field"><label>Observaciones</label><textarea id="ventaObs"></textarea></div><button class="btn btn-success" style="width:100%; margin-bottom:10px;" onclick="guardarVenta()">Cobrar venta</button><button class="btn btn-ghost" style="width:100%; margin-bottom:10px;" onclick="imprimirUltimoComprobanteManual()">Reimprimir último comprobante</button><button class="btn btn-secondary" style="width:100%" onclick="limpiarTicket()">Vaciar ticket</button><div class="venta-atajos"><div class="atajo">F1<br>Efectivo</div><div class="atajo">F2<br>Transferencia</div><div class="atajo">F3<br>Cuenta corriente</div><div class="atajo">F4<br>Cobrar</div><div class="atajo">F5<br>IA PLU</div></div><div class="print-note" id="ventaNotaAfip">Efectivo imprime comprobante simple. Factura ARCA/AFIP real para transferencia: se genera CAE automáticamente.</div></div></div></div></section>
@@ -2905,76 +2958,46 @@ window.addEventListener('load',()=>setTimeout(refrescarBotonAsistenteFrine,300))
 
 async function cargarDashboardGerencial(){
   const dinero=v=>"$ "+money(v||0);
+  const variacionTexto=(valor,etiqueta)=>valor===null||valor===undefined?etiqueta:`<span class="${Number(valor)>=0?'metric-up':'metric-down'}">${Number(valor)>=0?'▲':'▼'} ${Math.abs(Number(valor)).toFixed(1)}%</span> ${etiqueta}`;
   try{
     const res=await fetch('/api/dashboard/gerencial');
     const data=await res.json();
-    if(!res.ok)throw new Error(data.error||'No se pudo cargar');
-    const k=data.kpis||{};
-    document.getElementById('gVentasHoy').textContent=dinero(k.ventas_hoy);
-    document.getElementById('gTicketsHoy').textContent=`${k.tickets_hoy||0} tickets · promedio ${dinero(k.promedio_ticket)}`;
-    document.getElementById('gVentasMes').textContent=dinero(k.ventas_mes);
-    const ant=Number(k.ventas_mes_anterior||0),act=Number(k.ventas_mes||0),pct=ant?((act-ant)/ant*100):0;
-    document.getElementById('gVariacionMes').innerHTML=`<span class="${pct>=0?'metric-up':'metric-down'}">${pct>=0?'▲':'▼'} ${Math.abs(pct).toFixed(1)}%</span> vs mes anterior`;
-    document.getElementById('gComprasMes').textContent=dinero(k.compras_mes);
-    document.getElementById('gGastosMes').textContent=dinero(Number(k.gastos_mes||0)+Number(k.sueldos_mes||0));
-    document.getElementById('gDetalleGastos').textContent=`Gastos ${dinero(k.gastos_mes)} · Sueldos ${dinero(k.sueldos_mes)}`;
-    const gan=document.getElementById('gGananciaMes');gan.textContent=dinero(k.ganancia_estimada_mes);gan.style.color=Number(k.ganancia_estimada_mes)>=0?'#15803d':'#b91c1c';
-    renderGerencial12Meses(data.ventas_12_meses||[]);
-    renderGerencialComparativa(data.compras_vs_ventas||[]);
-    renderGerencialRanking('gCategorias',data.categorias||[],x=>`${qty(x.cantidad)} vendidos`);
-    renderGerencialRanking('gProductos',data.productos||[],x=>`${qty(x.cantidad)} unidades`);
-    renderGerencialRanking('gEmpleados',data.empleados||[],x=>`${x.tickets||0} tickets`);
+    if(!res.ok)throw new Error(data.detalle||data.error||'No se pudo cargar');
+    const k=data.kpis||{},cmp=data.comparativos||{};
+    const setText=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val};
+    const setHtml=(id,val)=>{const el=document.getElementById(id);if(el)el.innerHTML=val};
+
+    setText('gVentasHoy',dinero(k.ventas_hoy));
+    setText('gTicketsHoy',`${k.tickets_hoy||0} tickets · promedio ${dinero(k.promedio_ticket_hoy)}`);
+    setText('gVentasMes',dinero(k.ventas_mes)); setHtml('gVariacionMes',variacionTexto(cmp.ventas_pct,'vs mes anterior'));
+    setText('gCmvMes',dinero(k.cmv_mes));
+    setText('gMargenBruto',dinero(k.margen_bruto_mes)); setText('gMargenPct',`Margen ${Number(k.margen_pct||0).toFixed(1)}%`);
+    setText('gResultadoNeto',dinero(k.resultado_neto_mes)); setHtml('gVariacionResultado',variacionTexto(cmp.resultado_pct,'vs mes anterior'));
+    const resultadoCard=document.getElementById('gResultadoCard');if(resultadoCard)resultadoCard.className=`gerencial-kpi ${Number(k.resultado_neto_mes)>=0?'g-kpi-good':'g-kpi-bad'}`;
+    setText('gComprasMes',dinero(k.compras_mes)); setHtml('gVariacionCompras',variacionTexto(cmp.compras_pct,'vs mes anterior'));
+    setText('gGastosNegocio',dinero(k.gastos_mes)); setHtml('gVariacionGastos',variacionTexto(cmp.gastos_pct,'gastos + sueldos vs anterior'));
+    setText('gSueldosMes',dinero(k.sueldos_mes)); setText('gTicketPromedioMes',dinero(k.ticket_promedio_mes)); setText('gTicketsMes',`${k.tickets_mes||0} tickets del mes`);
+
+    setText('gEstadoVentas',dinero(k.ventas_mes));setText('gEstadoCmv',dinero(k.cmv_mes));setText('gEstadoMargen',dinero(k.margen_bruto_mes));setText('gEstadoGastos',dinero(k.gastos_mes));setText('gEstadoSueldos',dinero(k.sueldos_mes));setText('gEstadoResultado',dinero(k.resultado_neto_mes));
+    const linea=document.getElementById('gEstadoResultadoLinea');if(linea)linea.className=`g-estado-linea total ${Number(k.resultado_neto_mes)>=0?'positivo':'negativo'}`;
+    setText('gNotaCostos',data.nota_costos||'');
+    setText('gUnidadesMes',qty(k.unidades_mes));setText('gProductosDistintos',k.productos_distintos_mes||0);setText('gCapitalStock',dinero(k.capital_stock));setText('gStockCritico',k.stock_critico||0);setText('gStockNegativo',`${k.stock_negativo||0} negativos`);setText('gPagosProveedores',dinero(k.pagos_proveedores_mes));
+
+    renderGerencialEvolucion(data.evolucion_12_meses||[]);
+    renderGerencialComparativa((data.evolucion_12_meses||[]).slice(-6));
+    renderGerencialRankingRentable('gCategorias',data.categorias||[],x=>`${qty(x.cantidad)} vendidos · margen ${x.total?((Number(x.ganancia)/Number(x.total))*100).toFixed(1):'0.0'}%`);
+    renderGerencialRankingRentable('gProductos',data.productos||[],x=>`${qty(x.cantidad)} unidades · ventas $ ${money(x.total)}`);
+    renderGerencialRanking('gEmpleados',data.empleados||[],x=>`${x.tickets||0} tickets · prom. $ ${money(x.promedio)}`);
     renderGerencialRanking('gProveedores',data.proveedores||[],x=>`${x.compras||0} compras`);
-    const alertBox=document.getElementById('gAlertas');alertBox.innerHTML=(data.alertas||[]).map(a=>`<div class="g-alert ${a.tipo||'advertencia'}">${a.texto}</div>`).join('');
-  }catch(error){document.getElementById('gAlertas').innerHTML=`<div class="g-alert peligro">${error.message}</div>`;}
+    renderGerencialGastos(data.gastos_detalle||[]);
+    const alertBox=document.getElementById('gAlertas');if(alertBox)alertBox.innerHTML=(data.alertas||[]).map(a=>`<div class="g-alert ${a.tipo||'advertencia'}">${a.texto}</div>`).join('');
+  }catch(error){const box=document.getElementById('gAlertas');if(box)box.innerHTML=`<div class="g-alert peligro">${error.message}</div>`;console.error(error)}
 }
-function renderGerencial12Meses(items){const box=document.getElementById('gVentas12Meses');box.innerHTML='';if(!items.length){box.innerHTML='<div class="dash-empty">Sin datos.</div>';return}const max=Math.max(...items.map(x=>Number(x.total||0)),1);items.forEach(x=>{const d=document.createElement('div');d.className='gcol';const pct=Math.max(2,Number(x.total||0)/max*100);d.innerHTML=`<div class="gamount">${Number(x.total||0)>0?'$'+Math.round(Number(x.total)/1000)+'k':''}</div><div class="gbar" style="height:${pct}%"></div><div class="glabel">${x.etiqueta}</div>`;box.appendChild(d)})}
-function renderGerencialComparativa(items){const box=document.getElementById('gComprasVsVentas');box.innerHTML='';if(!items.length){box.innerHTML='<div class="dash-empty">Sin datos.</div>';return}const max=Math.max(...items.flatMap(x=>[Number(x.ventas||0),Number(x.compras||0)]),1);items.forEach(x=>{const d=document.createElement('div');d.className='gcompare-row';d.innerHTML=`<div>${x.etiqueta}</div><div class="gcompare-bars"><div class="gline"><div style="width:${Math.max(2,Number(x.ventas||0)/max*100)}%"></div></div><span>Ventas $ ${money(x.ventas)}</span></div><div class="gcompare-bars"><div class="gline orange"><div style="width:${Math.max(2,Number(x.compras||0)/max*100)}%"></div></div><span>Compras $ ${money(x.compras)}</span></div>`;box.appendChild(d)})}
-function renderGerencialRanking(id,items,subFn){const box=document.getElementById(id);box.innerHTML='';if(!items.length){box.innerHTML='<div class="dash-empty">Sin datos este mes.</div>';return}items.slice(0,10).forEach((x,i)=>{const d=document.createElement('div');d.className='grank-item';d.innerHTML=`<div class="grank-num">${i+1}</div><div><div class="grank-name">${escapeHtmlTicket(x.nombre||'-')}</div><div class="grank-sub">${subFn(x)}</div></div><div class="grank-money">$ ${money(x.total)}</div>`;box.appendChild(d)})}
-
-</script>
-
-
-
-<script>
-/* ===== FIX SEGURO DASHBOARD GERENCIAL ===== */
-function abrirDashboardGerencialSeguro() {
-  try {
-    document.querySelectorAll(".page").forEach(function (pagina) {
-      pagina.classList.remove("active");
-    });
-
-    document.querySelectorAll(".nav-btn").forEach(function (boton) {
-      boton.classList.remove("active");
-    });
-
-    var paginaGerencial = document.getElementById("page-dashboard-gerencial");
-    var botonGerencial = document.getElementById("btnNavGerencial");
-
-    if (!paginaGerencial) {
-      alert("No se encontró la pantalla Dashboard Gerencial.");
-      return;
-    }
-
-    paginaGerencial.classList.add("active");
-    if (botonGerencial) botonGerencial.classList.add("active");
-
-    window.scrollTo(0, 0);
-
-    if (typeof cargarDashboardGerencial === "function") {
-      cargarDashboardGerencial();
-    } else {
-      var alertas = document.getElementById("gAlertas");
-      if (alertas) {
-        alertas.innerHTML =
-          '<div class="g-alert peligro">No se encontró la función para cargar el Dashboard Gerencial.</div>';
-      }
-    }
-  } catch (error) {
-    console.error("Error al abrir Dashboard Gerencial:", error);
-    alert("Error al abrir Dashboard Gerencial: " + error.message);
-  }
-}
+function renderGerencialEvolucion(items){const box=document.getElementById('gEvolucionResultado');if(!box)return;box.innerHTML='';if(!items.length){box.innerHTML='<div class="dash-empty">Sin datos.</div>';return}const max=Math.max(...items.flatMap(x=>[Math.abs(Number(x.ventas||0)),Math.abs(Number(x.resultado||0))]),1);items.forEach(x=>{const resultado=Number(x.resultado||0);const d=document.createElement('div');d.className='g-evol-row';d.innerHTML=`<div>${x.etiqueta}</div><div class="g-evol-bars"><div class="g-evol-bar"><div style="width:${Math.max(1,Number(x.ventas||0)/max*100)}%"></div></div><div class="g-evol-bar resultado ${resultado<0?'negativo':''}"><div style="width:${Math.max(1,Math.abs(resultado)/max*100)}%"></div></div></div><div class="g-evol-value">${resultado>=0?'+':''}$ ${money(resultado)}</div>`;box.appendChild(d)})}
+function renderGerencialComparativa(items){const box=document.getElementById('gComprasVsVentas');if(!box)return;box.innerHTML='';if(!items.length){box.innerHTML='<div class="dash-empty">Sin datos.</div>';return}const max=Math.max(...items.flatMap(x=>[Number(x.ventas||0),Number(x.compras||0)]),1);items.forEach(x=>{const d=document.createElement('div');d.className='gcompare-row';d.innerHTML=`<div>${x.etiqueta}</div><div class="gcompare-bars"><div class="gline"><div style="width:${Math.max(1,Number(x.ventas||0)/max*100)}%"></div></div><span>Ventas $ ${money(x.ventas)}</span></div><div class="gcompare-bars"><div class="gline orange"><div style="width:${Math.max(1,Number(x.compras||0)/max*100)}%"></div></div><span>Compras $ ${money(x.compras)}</span></div>`;box.appendChild(d)})}
+function renderGerencialRanking(id,items,subFn){const box=document.getElementById(id);if(!box)return;box.innerHTML='';if(!items.length){box.innerHTML='<div class="dash-empty">Sin datos este mes.</div>';return}items.slice(0,10).forEach((x,i)=>{const d=document.createElement('div');d.className='grank-item';d.innerHTML=`<div class="grank-num">${i+1}</div><div><div class="grank-name">${escapeHtmlTicket(x.nombre||'-')}</div><div class="grank-sub">${subFn(x)}</div></div><div class="grank-money">$ ${money(x.total)}</div>`;box.appendChild(d)})}
+function renderGerencialRankingRentable(id,items,subFn){const box=document.getElementById(id);if(!box)return;box.innerHTML='';if(!items.length){box.innerHTML='<div class="dash-empty">Sin datos este mes.</div>';return}items.slice(0,10).forEach((x,i)=>{const d=document.createElement('div');d.className='grank-item';d.innerHTML=`<div class="grank-num">${i+1}</div><div><div class="grank-name">${escapeHtmlTicket(x.nombre||'-')}</div><div class="grank-sub">${subFn(x)}</div></div><div class="grank-money" style="color:${Number(x.ganancia)>=0?'#15803d':'#b91c1c'}">$ ${money(x.ganancia)}</div>`;box.appendChild(d)})}
+function renderGerencialGastos(items){const box=document.getElementById('gGastosDetalle');if(!box)return;box.innerHTML='';if(!items.length){box.innerHTML='<div class="dash-empty">No hay gastos detallados registrados este mes.</div>';return}items.forEach(x=>{const d=document.createElement('div');d.className='g-gasto-item';d.innerHTML=`<div><strong>${escapeHtmlTicket(x.concepto||'Sin detalle')}</strong><span>${x.movimientos||0} movimiento/s</span></div><strong>$ ${money(x.total)}</strong>`;box.appendChild(d)})}
 </script>
 
 </body>
