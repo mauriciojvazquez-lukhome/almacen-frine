@@ -762,7 +762,79 @@ function imprimirTexto(html,titulo){
     .t-obs { margin-top: 1mm; word-break: break-word; }
     @media screen { body { background:#eee; } .ticket { background:#fff; min-height: 20mm; } }
     @media print { html, body { width: 58mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-  </style></head><body>${html}</body></html>`);
+  </style></head><body>${html}
+<script>
+if (typeof cargarDashboardGerencial === "function") {
+  window.cargarDashboardGerencial = cargarDashboardGerencial;
+}
+</script>
+
+<script>
+/* ===== FIX NAVEGACIÓN DASHBOARD GERENCIAL ===== */
+(function () {
+  function abrirDashboardGerencialSeguro() {
+    const usuario = window.usuarioActual || (
+      typeof usuarioActual !== "undefined" ? usuarioActual : null
+    );
+
+    const esCajero = typeof window.esCajeroActual === "function"
+      ? window.esCajeroActual()
+      : String(usuario?.rol || "").toLowerCase() === "cajero";
+
+    if (!usuario?.puede_inicio || esCajero) {
+      if (typeof window.primeraPantallaPermitida === "function" &&
+          typeof window.mostrarPagina === "function") {
+        window.mostrarPagina(window.primeraPantallaPermitida());
+      }
+      return;
+    }
+
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+
+    const pagina = document.getElementById("page-dashboard-gerencial");
+    const boton = document.getElementById("btnNavGerencial");
+
+    if (!pagina) {
+      console.error("No existe page-dashboard-gerencial");
+      alert("No se encontró la pantalla Dashboard Gerencial.");
+      return;
+    }
+
+    pagina.classList.add("active");
+    if (boton) boton.classList.add("active");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    if (typeof window.cargarDashboardGerencial === "function") {
+      window.cargarDashboardGerencial();
+    } else if (typeof cargarDashboardGerencial === "function") {
+      cargarDashboardGerencial();
+    } else {
+      console.error("cargarDashboardGerencial no está definida");
+      const alertas = document.getElementById("gAlertas");
+      if (alertas) {
+        alertas.innerHTML =
+          '<div class="g-alert peligro">No se pudo iniciar el Dashboard Gerencial porque falta su función de carga.</div>';
+      }
+    }
+  }
+
+  window.abrirDashboardGerencialSeguro = abrirDashboardGerencialSeguro;
+
+  window.addEventListener("DOMContentLoaded", function () {
+    const boton = document.getElementById("btnNavGerencial");
+    if (!boton) return;
+
+    boton.removeAttribute("onclick");
+    boton.addEventListener("click", function (event) {
+      event.preventDefault();
+      abrirDashboardGerencialSeguro();
+    });
+  });
+})();
+</script>
+
+</body></html>`);
   w.document.close();
   w.focus();
   setTimeout(()=>w.print(),350);
