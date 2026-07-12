@@ -330,7 +330,7 @@
 </head>
 <body>
 <div id="loginScreen"><div class="login-card"><h1>FRINE</h1><p>Ingresá con tu usuario y contraseña.</p><div class="field"><label>Usuario</label><input id="loginUsuario" placeholder="Ej: admin" /></div><div class="field"><label>Contraseña</label><input id="loginPassword" type="password" placeholder="Tu contraseña" /></div><button class="btn btn-primary" style="width:100%" onclick="hacerLogin()">Ingresar</button><div id="loginError" class="login-error"></div></div></div>
-<div id="app"><div class="layout"><aside class="sidebar"><div class="brand">FRINE</div><div class="brand-sub">Sistema de almacén</div><div class="user-box"><div class="name" id="sidebarNombre">-</div><div class="role" id="sidebarRol">-</div></div><div class="nav-scroll"><button id="btnNavInicio" class="nav-btn" onclick="mostrarPagina('inicio')">Inicio</button><button id="btnNavGerencial" class="nav-btn" onclick="mostrarPagina('dashboard-gerencial')">Dashboard Gerencial</button><button id="btnNavVentas" class="nav-btn" onclick="mostrarPagina('ventas')">Ventas</button><button id="btnNavProductos" class="nav-btn" onclick="mostrarPagina('productos')">Productos</button><button id="btnNavCompras" class="nav-btn" onclick="mostrarPagina('compras')">Compras</button><button id="btnNavRecetas" class="nav-btn" onclick="mostrarPagina('recetas')">Recetas</button><button id="btnNavCaja" class="nav-btn" onclick="mostrarPagina('caja')">Caja</button><button id="btnNavRRHH" class="nav-btn" onclick="mostrarPagina('rrhh')">RR.HH</button><button id="btnNavHistorialVentas" class="nav-btn" onclick="mostrarPagina('historial-ventas')">Historial ventas</button><button id="btnNavReportes" class="nav-btn" onclick="mostrarPagina('reportes')">Reportes</button><button id="btnNavConfiguracion" class="nav-btn" onclick="mostrarPagina('configuracion')">Configuración</button></div><div class="sidebar-footer"><button class="btn btn-danger" style="width:100%" onclick="logout()">Salir</button></div></aside><main class="content">
+<div id="app"><div class="layout"><aside class="sidebar"><div class="brand">FRINE</div><div class="brand-sub">Sistema de almacén</div><div class="user-box"><div class="name" id="sidebarNombre">-</div><div class="role" id="sidebarRol">-</div></div><div class="nav-scroll"><button id="btnNavInicio" class="nav-btn" onclick="mostrarPagina('inicio')">Inicio</button><button id="btnNavGerencial" class="nav-btn" onclick="abrirDashboardGerencialSeguro()">Dashboard Gerencial</button><button id="btnNavVentas" class="nav-btn" onclick="mostrarPagina('ventas')">Ventas</button><button id="btnNavProductos" class="nav-btn" onclick="mostrarPagina('productos')">Productos</button><button id="btnNavCompras" class="nav-btn" onclick="mostrarPagina('compras')">Compras</button><button id="btnNavRecetas" class="nav-btn" onclick="mostrarPagina('recetas')">Recetas</button><button id="btnNavCaja" class="nav-btn" onclick="mostrarPagina('caja')">Caja</button><button id="btnNavRRHH" class="nav-btn" onclick="mostrarPagina('rrhh')">RR.HH</button><button id="btnNavHistorialVentas" class="nav-btn" onclick="mostrarPagina('historial-ventas')">Historial ventas</button><button id="btnNavReportes" class="nav-btn" onclick="mostrarPagina('reportes')">Reportes</button><button id="btnNavConfiguracion" class="nav-btn" onclick="mostrarPagina('configuracion')">Configuración</button></div><div class="sidebar-footer"><button class="btn btn-danger" style="width:100%" onclick="logout()">Salir</button></div></aside><main class="content">
 <section id="page-inicio" class="page inicio-pro-v2">
   <div class="inicio-header-pro">
     <div>
@@ -762,79 +762,7 @@ function imprimirTexto(html,titulo){
     .t-obs { margin-top: 1mm; word-break: break-word; }
     @media screen { body { background:#eee; } .ticket { background:#fff; min-height: 20mm; } }
     @media print { html, body { width: 58mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-  </style></head><body>${html}
-<script>
-if (typeof cargarDashboardGerencial === "function") {
-  window.cargarDashboardGerencial = cargarDashboardGerencial;
-}
-</script>
-
-<script>
-/* ===== FIX NAVEGACIÓN DASHBOARD GERENCIAL ===== */
-(function () {
-  function abrirDashboardGerencialSeguro() {
-    const usuario = window.usuarioActual || (
-      typeof usuarioActual !== "undefined" ? usuarioActual : null
-    );
-
-    const esCajero = typeof window.esCajeroActual === "function"
-      ? window.esCajeroActual()
-      : String(usuario?.rol || "").toLowerCase() === "cajero";
-
-    if (!usuario?.puede_inicio || esCajero) {
-      if (typeof window.primeraPantallaPermitida === "function" &&
-          typeof window.mostrarPagina === "function") {
-        window.mostrarPagina(window.primeraPantallaPermitida());
-      }
-      return;
-    }
-
-    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-
-    const pagina = document.getElementById("page-dashboard-gerencial");
-    const boton = document.getElementById("btnNavGerencial");
-
-    if (!pagina) {
-      console.error("No existe page-dashboard-gerencial");
-      alert("No se encontró la pantalla Dashboard Gerencial.");
-      return;
-    }
-
-    pagina.classList.add("active");
-    if (boton) boton.classList.add("active");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-
-    if (typeof window.cargarDashboardGerencial === "function") {
-      window.cargarDashboardGerencial();
-    } else if (typeof cargarDashboardGerencial === "function") {
-      cargarDashboardGerencial();
-    } else {
-      console.error("cargarDashboardGerencial no está definida");
-      const alertas = document.getElementById("gAlertas");
-      if (alertas) {
-        alertas.innerHTML =
-          '<div class="g-alert peligro">No se pudo iniciar el Dashboard Gerencial porque falta su función de carga.</div>';
-      }
-    }
-  }
-
-  window.abrirDashboardGerencialSeguro = abrirDashboardGerencialSeguro;
-
-  window.addEventListener("DOMContentLoaded", function () {
-    const boton = document.getElementById("btnNavGerencial");
-    if (!boton) return;
-
-    boton.removeAttribute("onclick");
-    boton.addEventListener("click", function (event) {
-      event.preventDefault();
-      abrirDashboardGerencialSeguro();
-    });
-  });
-})();
-</script>
-
-</body></html>`);
+  </style></head><body>${html}</body></html>`);
   w.document.close();
   w.focus();
   setTimeout(()=>w.print(),350);
@@ -3006,6 +2934,48 @@ function renderGerencialRanking(id,items,subFn){const box=document.getElementByI
 
 </script>
 
+
+
+<script>
+/* ===== FIX SEGURO DASHBOARD GERENCIAL ===== */
+function abrirDashboardGerencialSeguro() {
+  try {
+    document.querySelectorAll(".page").forEach(function (pagina) {
+      pagina.classList.remove("active");
+    });
+
+    document.querySelectorAll(".nav-btn").forEach(function (boton) {
+      boton.classList.remove("active");
+    });
+
+    var paginaGerencial = document.getElementById("page-dashboard-gerencial");
+    var botonGerencial = document.getElementById("btnNavGerencial");
+
+    if (!paginaGerencial) {
+      alert("No se encontró la pantalla Dashboard Gerencial.");
+      return;
+    }
+
+    paginaGerencial.classList.add("active");
+    if (botonGerencial) botonGerencial.classList.add("active");
+
+    window.scrollTo(0, 0);
+
+    if (typeof cargarDashboardGerencial === "function") {
+      cargarDashboardGerencial();
+    } else {
+      var alertas = document.getElementById("gAlertas");
+      if (alertas) {
+        alertas.innerHTML =
+          '<div class="g-alert peligro">No se encontró la función para cargar el Dashboard Gerencial.</div>';
+      }
+    }
+  } catch (error) {
+    console.error("Error al abrir Dashboard Gerencial:", error);
+    alert("Error al abrir Dashboard Gerencial: " + error.message);
+  }
+}
+</script>
 
 </body>
 </html>
