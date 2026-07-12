@@ -13,7 +13,7 @@ module.exports = function crearReportesRouter({
 // ==========================================
 // REPORTES
 // ==========================================
-router.get("/api/reportes/resumen", async (req, res) => {
+router.get("/reportes/resumen", async (req, res) => {
   try {
     const ventasHoy = await pool.query(`
       SELECT COALESCE(SUM(total), 0) AS total
@@ -48,7 +48,7 @@ router.get("/api/reportes/resumen", async (req, res) => {
   }
 });
 
-router.get("/api/reportes/ventas-por-producto", async (req, res) => {
+router.get("/reportes/ventas-por-producto", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
@@ -69,7 +69,7 @@ router.get("/api/reportes/ventas-por-producto", async (req, res) => {
   }
 });
 
-router.get("/api/reportes/ventas-por-empleado", async (req, res) => {
+router.get("/reportes/ventas-por-empleado", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
@@ -90,7 +90,7 @@ router.get("/api/reportes/ventas-por-empleado", async (req, res) => {
   }
 });
 
-router.get("/api/reportes/ventas-diarias", async (req, res) => {
+router.get("/reportes/ventas-diarias", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
@@ -109,7 +109,7 @@ router.get("/api/reportes/ventas-diarias", async (req, res) => {
   }
 });
 
-router.get("/api/reportes/stock-bajo", async (req, res) => {
+router.get("/reportes/stock-bajo", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
@@ -130,7 +130,7 @@ router.get("/api/reportes/stock-bajo", async (req, res) => {
 });
 
 
-router.get("/api/reportes/inventario-resumen", async (req, res) => {
+router.get("/reportes/inventario-resumen", async (req, res) => {
   try {
     const { estado, q } = req.query;
     const condiciones = ["p.activo = true"];
@@ -201,7 +201,7 @@ router.get("/api/reportes/inventario-resumen", async (req, res) => {
   }
 });
 
-router.get("/api/reportes/compras", async (req, res) => {
+router.get("/reportes/compras", async (req, res) => {
   try {
     const { desde, hasta, proveedor_id, producto_id, q } = req.query;
 
@@ -435,7 +435,7 @@ router.get("/api/reportes/compras", async (req, res) => {
 
 
 
-router.get("/api/reportes/usuarios", async (req, res) => {
+router.get("/reportes/usuarios", async (req, res) => {
   console.log("GET /api/reportes/usuarios llamado");
   try {
     await pool.query(`ALTER TABLE empleados ADD COLUMN IF NOT EXISTS ultima_actividad TIMESTAMP`).catch(() => {});
@@ -530,7 +530,7 @@ router.get("/api/reportes/usuarios", async (req, res) => {
   }
 });
 
-router.get("/api/reportes/cajeros", async (req, res) => {
+router.get("/reportes/cajeros", async (req, res) => {
   try {
     const { desde, hasta, empleado_id } = req.query;
 
@@ -649,7 +649,7 @@ router.get("/api/reportes/cajeros", async (req, res) => {
   }
 });
 
-router.get("/api/reportes/caja/:caja_sesion_id", async (req, res) => {
+router.get("/reportes/caja/:caja_sesion_id", async (req, res) => {
   try {
     const { caja_sesion_id } = req.params;
 
@@ -696,7 +696,7 @@ router.get("/api/reportes/caja/:caja_sesion_id", async (req, res) => {
 // ==========================================
 // DASHBOARD INICIO PRO
 // ==========================================
-router.get("/api/dashboard/inicio-pro", async (req, res) => {
+router.get("/dashboard/inicio-pro", async (req, res) => {
   try {
     const fechaLocal = "((fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date)";
 
