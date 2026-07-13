@@ -181,6 +181,110 @@ module.exports = function crearDashboardGerencialRouter({ pool, n2 }) {
         `).catch(() => ({ rows: [] }))
       ]);
 
+      const [
+        productosSinMovimiento,
+        productosMargenBajo,
+        clientesDeudaAlta,
+        diferenciasCaja
+      ] = await Promise.all([
+        pool.query(`
+          SELECT
+            p.id,
+            p.nombre,
+            COALESCE(p.stock_actual,0) AS stock_actual,
+            MAX(v.fecha) AS ultima_venta,
+            CASE
+              WHEN MAX(v.fecha) IS NULL THEN NULL
+              ELSE FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(v.fecha))) / 86400)::int
+            END AS dias_sin_vender
+          FROM productos p
+          LEFT JOIN ventas_detalle vd ON vd.producto_id = p.id
+          LEFT JOIN ventas v ON v.id = vd.venta_id
+          WHERE p.activo = true
+            AND COALESCE(p.stock_actual,0) > 0
+          GROUP BY p.id, p.nombre, p.stock_actual
+          HAVING MAX(v.fecha) IS NULL OR MAX(v.fecha) < NOW() - INTERVAL '60 days'
+          ORDER BY
+            CASE WHEN MAX(v.fecha) IS NULL THEN 0 ELSE 1 END,
+            MAX(v.fecha) ASC NULLS FIRST
+          LIMIT 12
+        `).catch(() => ({ rows: [] })),
+
+        pool.query(`
+          SELECT
+            COALESCE(p.nombre,'Producto') AS nombre,
+            COALESCE(SUM(vd.subtotal),0) AS ventas,
+            COALESCE(SUM(vd.cantidad * (COALESCE(p.costo,0) / NULLIF(COALESCE(p.cantidad_bulto,1),0))),0) AS costo,
+            COALESCE(SUM(vd.subtotal - vd.cantidad * (COALESCE(p.costo,0) / NULLIF(COALESCE(p.cantidad_bulto,1),0))),0) AS ganancia,
+            CASE
+              WHEN COALESCE(SUM(vd.subtotal),0) > 0
+              THEN (
+                COALESCE(SUM(vd.subtotal - vd.cantidad * (COALESCE(p.costo,0) / NULLIF(COALESCE(p.cantidad_bulto,1),0))),0)
+                / COALESCE(SUM(vd.subtotal),0)
+              ) * 100
+              ELSE 0
+            END AS margen_pct
+          FROM ventas_detalle vd
+          INNER JOIN ventas v ON v.id = vd.venta_id
+          LEFT JOIN productos p ON p.id = vd.producto_id
+          WHERE ${fechaVenta} >= ${inicioMes}
+            AND ${fechaVenta} < ${inicioMesSiguiente}
+          GROUP BY p.id, p.nombre
+          HAVING COALESCE(SUM(vd.subtotal),0) > 0
+             AND (
+               COALESCE(SUM(vd.subtotal - vd.cantidad * (COALESCE(p.costo,0) / NULLIF(COALESCE(p.cantidad_bulto,1),0))),0)
+               / COALESCE(SUM(vd.subtotal),0)
+             ) * 100 < 15
+          ORDER BY ventas DESC
+          LIMIT 12
+        `).catch(() => ({ rows: [] })),
+
+        pool.query(`
+          SELECT
+            c.id,
+            c.nombre,
+            COALESCE(SUM(
+              CASE
+                WHEN ccm.tipo IN ('venta','deuda','cargo') THEN ccm.monto
+                WHEN ccm.tipo IN ('pago','abono') THEN -ccm.monto
+                ELSE 0
+              END
+            ),0) AS saldo
+          FROM clientes c
+          LEFT JOIN cuenta_corriente_movimientos ccm ON ccm.cliente_id = c.id
+          WHERE c.activo = true
+          GROUP BY c.id, c.nombre
+          HAVING COALESCE(SUM(
+            CASE
+              WHEN ccm.tipo IN ('venta','deuda','cargo') THEN ccm.monto
+              WHEN ccm.tipo IN ('pago','abono') THEN -ccm.monto
+              ELSE 0
+            END
+          ),0) > 0
+          ORDER BY saldo DESC
+          LIMIT 10
+        `).catch(() => ({ rows: [] })),
+
+        pool.query(`
+          SELECT
+            COALESCE(e.nombre,'Sin empleado') AS nombre,
+            COUNT(*) FILTER (
+              WHERE ABS(COALESCE(cs.diferencia,0)) > 0.01
+            )::int AS cierres_con_diferencia,
+            COALESCE(SUM(ABS(COALESCE(cs.diferencia,0))),0) AS diferencia_total
+          FROM caja_sesiones cs
+          LEFT JOIN empleados e ON e.id = cs.empleado_cierre_id
+          WHERE cs.estado = 'cerrada'
+            AND COALESCE(cs.fecha_cierre, cs.updated_at, cs.fecha_apertura) >= NOW() - INTERVAL '60 days'
+          GROUP BY e.id, e.nombre
+          HAVING COUNT(*) FILTER (
+            WHERE ABS(COALESCE(cs.diferencia,0)) > 0.01
+          ) > 0
+          ORDER BY cierres_con_diferencia DESC, diferencia_total DESC
+          LIMIT 10
+        `).catch(() => ({ rows: [] }))
+      ]);
+
       const v = resumenVentas.rows[0] || {};
       const c = resumenCostos.rows[0] || {};
       const co = compras.rows[0] || {};
@@ -222,6 +326,65 @@ module.exports = function crearDashboardGerencialRouter({ pool, n2 }) {
       if (resultadoNeto < 0) alertas.push({ tipo: 'peligro', texto: 'El resultado estimado del mes es negativo después de costo de mercadería, gastos y sueldos.' });
       else if (ventasMes > 0) alertas.push({ tipo: 'ok', texto: `El resultado estimado del mes es positivo: $ ${n2(resultadoNeto).toLocaleString('es-AR')}.` });
       if (numero(st.criticos) > 0) alertas.push({ tipo: 'advertencia', texto: `Hay ${numero(st.criticos)} productos en stock crítico; ${numero(st.negativos)} tienen stock negativo.` });
+      const recomendaciones = [];
+
+      if (productosMargenBajo.rows.length) {
+        const primero = productosMargenBajo.rows[0];
+        recomendaciones.push({
+          prioridad: 'alta',
+          titulo: 'Revisar precios y costos',
+          texto: `${primero.nombre} tiene un margen estimado de ${numero(primero.margen_pct).toFixed(1)}%. Hay ${productosMargenBajo.rows.length} productos por debajo del 15%.`
+        });
+      }
+
+      if (productosSinMovimiento.rows.length) {
+        recomendaciones.push({
+          prioridad: 'media',
+          titulo: 'Mover stock inmovilizado',
+          texto: `Hay ${productosSinMovimiento.rows.length} productos con stock que no se venden hace más de 60 días o nunca registraron ventas.`
+        });
+      }
+
+      if (clientesDeudaAlta.rows.length) {
+        recomendaciones.push({
+          prioridad: 'media',
+          titulo: 'Gestionar cuenta corriente',
+          texto: `${clientesDeudaAlta.rows[0].nombre} tiene la mayor deuda registrada: $ ${n2(clientesDeudaAlta.rows[0].saldo).toLocaleString('es-AR')}.`
+        });
+      }
+
+      if (diferenciasCaja.rows.length) {
+        recomendaciones.push({
+          prioridad: 'alta',
+          titulo: 'Revisar cierres de caja',
+          texto: `${diferenciasCaja.rows[0].nombre} registra ${numero(diferenciasCaja.rows[0].cierres_con_diferencia)} cierres con diferencia en los últimos 60 días.`
+        });
+      }
+
+      if (varCompras !== null && varCompras > 25) {
+        recomendaciones.push({
+          prioridad: 'media',
+          titulo: 'Controlar nivel de compras',
+          texto: `Las compras aumentaron ${varCompras.toFixed(1)}%. Compará el crecimiento con ventas y rotación antes de volver a comprar.`
+        });
+      }
+
+      if (resultadoNeto > 0 && margenPct >= 20) {
+        recomendaciones.push({
+          prioridad: 'baja',
+          titulo: 'Resultado saludable',
+          texto: `El resultado estimado es positivo y el margen bruto alcanza ${margenPct.toFixed(1)}%. Mantené el control de costos y gastos.`
+        });
+      }
+
+      if (!recomendaciones.length) {
+        recomendaciones.push({
+          prioridad: 'baja',
+          titulo: 'Sin acciones urgentes',
+          texto: 'Con los datos disponibles no aparecen recomendaciones críticas para este período.'
+        });
+      }
+
       if (!alertas.length) alertas.push({ tipo: 'ok', texto: 'No hay alertas gerenciales importantes con los datos disponibles.' });
 
       res.json({
@@ -267,6 +430,29 @@ module.exports = function crearDashboardGerencialRouter({ pool, n2 }) {
         empleados: empleados.rows.map(r => ({ nombre:r.nombre, total:n2(r.total), tickets:numero(r.tickets), promedio:n2(r.promedio) })),
         proveedores: proveedores.rows.map(r => ({ nombre:r.nombre, total:n2(r.total), compras:numero(r.compras) })),
         gastos_detalle: gastosDetalle.rows.map(r => ({ concepto:r.concepto, total:n2(r.total), movimientos:numero(r.movimientos) })),
+        productos_sin_movimiento: productosSinMovimiento.rows.map(r => ({
+          nombre: r.nombre,
+          stock_actual: n2(r.stock_actual),
+          ultima_venta: r.ultima_venta,
+          dias_sin_vender: r.dias_sin_vender === null ? null : numero(r.dias_sin_vender)
+        })),
+        productos_margen_bajo: productosMargenBajo.rows.map(r => ({
+          nombre: r.nombre,
+          ventas: n2(r.ventas),
+          costo: n2(r.costo),
+          ganancia: n2(r.ganancia),
+          margen_pct: n2(r.margen_pct)
+        })),
+        clientes_deuda_alta: clientesDeudaAlta.rows.map(r => ({
+          nombre: r.nombre,
+          saldo: n2(r.saldo)
+        })),
+        diferencias_caja: diferenciasCaja.rows.map(r => ({
+          nombre: r.nombre,
+          cierres_con_diferencia: numero(r.cierres_con_diferencia),
+          diferencia_total: n2(r.diferencia_total)
+        })),
+        recomendaciones,
         alertas,
         nota_costos: 'La rentabilidad es estimada con el costo actual guardado en cada producto. Las compras se muestran aparte porque aumentan stock y no se descuentan nuevamente del resultado.'
       });
