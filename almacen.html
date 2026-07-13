@@ -326,6 +326,29 @@
   @media(max-width:1350px){.gerencial-kpis{grid-template-columns:repeat(3,1fr)}.gerencial-grid4{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:850px){.gerencial-kpis,.gerencial-grid2,.gerencial-grid4{grid-template-columns:1fr}}
 
+
+  /* ===== DASHBOARD GERENCIAL PRO - ETAPA 3 ===== */
+  .g-etapa3-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:18px}
+  .g-etapa3-grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-top:18px}
+  .g-intel-card{background:white;border:1px solid #dbe3ef;border-radius:20px;padding:20px;box-shadow:0 10px 30px rgba(15,23,42,.06);min-width:0}
+  .g-intel-card h3{margin:0 0 15px;font-size:18px}
+  .g-intel-list{display:flex;flex-direction:column;gap:10px}
+  .g-intel-item{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 13px;border:1px solid #e5e7eb;border-radius:14px;background:#f8fafc}
+  .g-intel-title{font-weight:900;color:#0f172a}
+  .g-intel-sub{font-size:12px;color:#64748b;font-weight:750;margin-top:4px}
+  .g-intel-value{font-weight:950;text-align:right;color:#0f172a;white-space:nowrap}
+  .g-rec{border-radius:16px;padding:15px 16px;margin-bottom:11px;border-left:5px solid #94a3b8;background:#f8fafc}
+  .g-rec.alta{background:#fee2e2;border-color:#dc2626;color:#7f1d1d}
+  .g-rec.media{background:#fff7ed;border-color:#f97316;color:#9a3412}
+  .g-rec.baja{background:#dcfce7;border-color:#16a34a;color:#166534}
+  .g-rec-title{font-weight:950;margin-bottom:5px}
+  .g-rec-text{font-size:13px;font-weight:750;line-height:1.4}
+  .g-badge{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:950}
+  .g-badge.red{background:#fee2e2;color:#991b1b}.g-badge.orange{background:#ffedd5;color:#9a3412}.g-badge.blue{background:#dbeafe;color:#1d4ed8}.g-badge.green{background:#dcfce7;color:#166534}
+  .g-etapa3-empty{padding:17px;border-radius:14px;background:#f8fafc;border:1px dashed #cbd5e1;color:#64748b;font-weight:800;text-align:center}
+  @media(max-width:1200px){.g-etapa3-grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:850px){.g-etapa3-grid,.g-etapa3-grid4{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -422,6 +445,36 @@
     <div class="gerencial-panel"><h3>Top proveedores</h3><div id="gProveedores" class="grank"></div></div>
   </div>
   <div class="gerencial-panel" style="margin-top:18px"><h3>Alertas gerenciales</h3><div id="gAlertas"></div></div>
+
+  <div class="g-etapa3-grid">
+    <div class="g-intel-card">
+      <h3>💡 Recomendaciones automáticas</h3>
+      <div id="gRecomendaciones"></div>
+    </div>
+    <div class="g-intel-card">
+      <h3>💳 Clientes con mayor deuda</h3>
+      <div id="gClientesDeuda" class="g-intel-list"></div>
+    </div>
+  </div>
+
+  <div class="g-etapa3-grid4">
+    <div class="g-intel-card">
+      <h3>📦 Stock sin movimiento</h3>
+      <div id="gSinMovimiento" class="g-intel-list"></div>
+    </div>
+    <div class="g-intel-card">
+      <h3>⚠️ Productos con margen bajo</h3>
+      <div id="gMargenBajo" class="g-intel-list"></div>
+    </div>
+    <div class="g-intel-card">
+      <h3>🧾 Diferencias de caja</h3>
+      <div id="gDiferenciasCaja" class="g-intel-list"></div>
+    </div>
+    <div class="g-intel-card">
+      <h3>📌 Resumen de control</h3>
+      <div id="gResumenControl" class="g-intel-list"></div>
+    </div>
+  </div>
 </section>
 
 <section id="page-ventas" class="page"><div class="topbar"><div><h1 class="page-title">Ventas</h1><div class="page-subtitle">POS rápido con scanner, atajos y ticket prolijo.</div></div><div class="pill" id="ventaModoPill">F1 efectivo · F2 transferencia · F3 cuenta corriente · F4 cobrar · F5 IA PLU</div></div><div class="venta-toolbar"><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Escanear / Código / PLU</label><input id="ventaCodigo" placeholder="Escaneá y enter" onkeypress="handleCodigoVenta(event)" /></div></div><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Forma de pago</label><select id="ventaFormaPago" onchange="actualizarModoPagoVisual()"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="cuenta_corriente">Cuenta corriente</option></select></div></div><div class="card" id="ventaClienteCard" style="margin-bottom:0; display:none;"><div class="field" style="margin-bottom:0;"><label>Cliente CC</label><select id="ventaClienteId"><option value="">Seleccionar cliente</option></select></div></div><div class="card" style="margin-bottom:0;"><div class="field" style="margin-bottom:0;"><label>Acciones rápidas</label><div class="row"><button class="btn btn-success" onclick="guardarVenta()">Cobrar</button><button class="btn btn-secondary" onclick="limpiarTicket()">Vaciar</button><button class="btn btn-primary" onclick="abrirIaPlu()">🤖 IA PLU</button></div></div></div></div><div class="split"><div class="card"><div class="venta-headline"><h3 style="margin:0;">Ticket actual</h3><div class="tag tag-blue" id="ventaCantidadItems">0 items</div></div><div class="message hidden" id="ventaMsg"></div><div class="scroll-x"><table class="ticket-table"><thead><tr><th>Producto</th><th style="width:170px;">Cantidad</th><th>Precio</th><th>Subtotal</th><th>Stock</th><th></th></tr></thead><tbody id="ventaTicketBody"></tbody></table></div><div id="ventaVacio" class="venta-ticket-vacio">Todavía no cargaste productos en el ticket.</div></div><div><div class="venta-card-total"><div class="mini">TOTAL A COBRAR</div><div class="big">$<span id="ventaTotal">0.00</span></div></div><div class="card"><h3>Cierre del ticket</h3><div class="venta-resumen"><div class="tag" id="ventaTagPago">Efectivo</div><div class="tag tag-green" id="ventaTagEstado">Listo para cobrar</div></div><div class="field"><label>Observaciones</label><textarea id="ventaObs"></textarea></div><button class="btn btn-success" style="width:100%; margin-bottom:10px;" onclick="guardarVenta()">Cobrar venta</button><button class="btn btn-ghost" style="width:100%; margin-bottom:10px;" onclick="imprimirUltimoComprobanteManual()">Reimprimir último comprobante</button><button class="btn btn-secondary" style="width:100%" onclick="limpiarTicket()">Vaciar ticket</button><div class="venta-atajos"><div class="atajo">F1<br>Efectivo</div><div class="atajo">F2<br>Transferencia</div><div class="atajo">F3<br>Cuenta corriente</div><div class="atajo">F4<br>Cobrar</div><div class="atajo">F5<br>IA PLU</div></div><div class="print-note" id="ventaNotaAfip">Efectivo imprime comprobante simple. Factura ARCA/AFIP real para transferencia: se genera CAE automáticamente.</div></div></div></div></section>
@@ -3005,6 +3058,13 @@ async function cargarDashboardGerencial(){
       x => `${numeroSeguro(x.compras)} compras`
     );
 
+    renderGerencialRecomendaciones(data.recomendaciones || []);
+    renderGerencialClientesDeuda(data.clientes_deuda_alta || []);
+    renderGerencialSinMovimiento(data.productos_sin_movimiento || []);
+    renderGerencialMargenBajo(data.productos_margen_bajo || []);
+    renderGerencialDiferenciasCaja(data.diferencias_caja || []);
+    renderGerencialResumenControl(data);
+
     const alertBox = document.getElementById("gAlertas");
     alertBox.innerHTML = (data.alertas || [])
       .map(a => `<div class="g-alert ${a.tipo || "advertencia"}">${a.texto}</div>`)
@@ -3028,6 +3088,79 @@ function renderGerencialRanking(id,items,subFn){const box=document.getElementByI
 
 <script>
 /* ===== FIX SEGURO DASHBOARD GERENCIAL ===== */
+
+function renderGerencialRecomendaciones(items){
+  const box=document.getElementById("gRecomendaciones");
+  if(!box)return;
+  if(!items.length){box.innerHTML='<div class="g-etapa3-empty">Sin recomendaciones disponibles.</div>';return}
+  box.innerHTML=items.map(x=>`
+    <div class="g-rec ${x.prioridad||"media"}">
+      <div class="g-rec-title">${escapeHtmlTicket(x.titulo||"Recomendación")}</div>
+      <div class="g-rec-text">${escapeHtmlTicket(x.texto||"")}</div>
+    </div>`).join("");
+}
+
+function renderGerencialClientesDeuda(items){
+  const box=document.getElementById("gClientesDeuda");
+  if(!box)return;
+  if(!items.length){box.innerHTML='<div class="g-etapa3-empty">No hay deudas positivas detectadas.</div>';return}
+  box.innerHTML=items.slice(0,10).map((x,i)=>`
+    <div class="g-intel-item">
+      <div><div class="g-intel-title">${i+1}. ${escapeHtmlTicket(x.nombre||"-")}</div><div class="g-intel-sub">Cuenta corriente pendiente</div></div>
+      <div class="g-intel-value">$ ${money(x.saldo)}</div>
+    </div>`).join("");
+}
+
+function renderGerencialSinMovimiento(items){
+  const box=document.getElementById("gSinMovimiento");
+  if(!box)return;
+  if(!items.length){box.innerHTML='<div class="g-etapa3-empty">No hay productos inmovilizados detectados.</div>';return}
+  box.innerHTML=items.slice(0,10).map(x=>`
+    <div class="g-intel-item">
+      <div><div class="g-intel-title">${escapeHtmlTicket(x.nombre||"-")}</div><div class="g-intel-sub">${x.dias_sin_vender===null?"Sin ventas registradas":x.dias_sin_vender+" días sin vender"}</div></div>
+      <div><span class="g-badge blue">Stock ${qty(x.stock_actual)}</span></div>
+    </div>`).join("");
+}
+
+function renderGerencialMargenBajo(items){
+  const box=document.getElementById("gMargenBajo");
+  if(!box)return;
+  if(!items.length){box.innerHTML='<div class="g-etapa3-empty">No hay productos por debajo del 15% de margen.</div>';return}
+  box.innerHTML=items.slice(0,10).map(x=>`
+    <div class="g-intel-item">
+      <div><div class="g-intel-title">${escapeHtmlTicket(x.nombre||"-")}</div><div class="g-intel-sub">Ventas $ ${money(x.ventas)} · Ganancia $ ${money(x.ganancia)}</div></div>
+      <div><span class="g-badge red">${Number(x.margen_pct||0).toFixed(1)}%</span></div>
+    </div>`).join("");
+}
+
+function renderGerencialDiferenciasCaja(items){
+  const box=document.getElementById("gDiferenciasCaja");
+  if(!box)return;
+  if(!items.length){box.innerHTML='<div class="g-etapa3-empty">No hay diferencias detectadas en los últimos 60 días.</div>';return}
+  box.innerHTML=items.slice(0,10).map(x=>`
+    <div class="g-intel-item">
+      <div><div class="g-intel-title">${escapeHtmlTicket(x.nombre||"-")}</div><div class="g-intel-sub">${Number(x.cierres_con_diferencia||0)} cierres con diferencia</div></div>
+      <div class="g-intel-value">$ ${money(x.diferencia_total)}</div>
+    </div>`).join("");
+}
+
+function renderGerencialResumenControl(data){
+  const box=document.getElementById("gResumenControl");
+  if(!box)return;
+  const k=data.kpis||{};
+  const pmb=(data.productos_margen_bajo||[]).length;
+  const psm=(data.productos_sin_movimiento||[]).length;
+  const dc=(data.diferencias_caja||[]).length;
+  const cc=(data.clientes_deuda_alta||[]).length;
+  box.innerHTML=`
+    <div class="g-intel-item"><div><div class="g-intel-title">Stock crítico</div><div class="g-intel-sub">Productos por reponer</div></div><span class="g-badge orange">${Number(k.stock_critico||0)}</span></div>
+    <div class="g-intel-item"><div><div class="g-intel-title">Stock negativo</div><div class="g-intel-sub">Requiere revisión</div></div><span class="g-badge red">${Number(k.stock_negativo||0)}</span></div>
+    <div class="g-intel-item"><div><div class="g-intel-title">Margen bajo</div><div class="g-intel-sub">Productos detectados</div></div><span class="g-badge red">${pmb}</span></div>
+    <div class="g-intel-item"><div><div class="g-intel-title">Sin movimiento</div><div class="g-intel-sub">Más de 60 días</div></div><span class="g-badge blue">${psm}</span></div>
+    <div class="g-intel-item"><div><div class="g-intel-title">Empleados con diferencias</div><div class="g-intel-sub">Últimos 60 días</div></div><span class="g-badge orange">${dc}</span></div>
+    <div class="g-intel-item"><div><div class="g-intel-title">Clientes con deuda</div><div class="g-intel-sub">Saldos positivos</div></div><span class="g-badge blue">${cc}</span></div>`;
+}
+
 function abrirDashboardGerencialSeguro() {
   try {
     document.querySelectorAll(".page").forEach(function (pagina) {
